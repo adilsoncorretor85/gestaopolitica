@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     let status: 'INVITED' | 'USER_EXISTS' = 'INVITED'
 
     // Check if user already exists
-    const { data: existingUser, error: getUserError } = await admin.auth.getUserByEmail(body.email)
+    const { data: existingUser, error: getUserError } = await admin.auth.admin.getUserByEmail(body.email)
 
     if (existingUser?.user) {
       // User already exists - generate recovery link
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       status = 'USER_EXISTS'
 
       try {
-        const { data: recoveryLink } = await admin.auth.generateLink({
+        const { data: recoveryLink } = await admin.auth.admin.generateLink({
           type: 'recovery',
           email: body.email,
         })
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       }
     } else {
       // User doesn't exist - create new user and send invite
-      const { data: newUser, error: createUserError } = await admin.auth.createUser({
+      const { data: newUser, error: createUserError } = await admin.auth.admin.createUser({
         email: body.email,
         email_confirm: false,
         user_metadata: {
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
       // Send invitation email
       try {
-        const { data: inviteData, error: inviteError } = await admin.auth.inviteUserByEmail(body.email, {
+        const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(body.email, {
           redirectTo,
           data: {
             full_name: body.full_name,
