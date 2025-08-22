@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
         let actionLink: string | null = null;
 
         // 1) Tentar usar o fluxo oficial de convite
-        const r1 = await admin.auth.admin.inviteUserByEmail(body.email, {
+        const r1 = await admin.auth.inviteUserByEmail(body.email, {
           redirectTo,
           // metadata opcional:
           data: body.full_name ? { full_name: body.full_name } : undefined,
@@ -112,8 +112,7 @@ Deno.serve(async (req) => {
           // e devolvemos o link para o admin copiar/colar.
           if ((r1.error as any)?.code === "email_exists") {
             // Tentar gerar link de "invite"
-            const { data: linkData, error: linkErr } =
-              await admin.auth.admin.generateLink({
+            const { data: linkData, error: linkErr } = await admin.auth.generateLink({
                 type: "invite",
                 email: body.email,
                 options: { redirectTo },
@@ -121,8 +120,7 @@ Deno.serve(async (req) => {
 
             if (linkErr) {
               // Fallback: gerar link de "recovery" (reset de senha)
-              const { data: recData, error: recErr } =
-                await admin.auth.admin.generateLink({
+              const { data: recData, error: recErr } = await admin.auth.generateLink({
                   type: "recovery",
                   email: body.email,
                   options: { redirectTo },
