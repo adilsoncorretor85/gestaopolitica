@@ -11,6 +11,7 @@ import Lideres from "@/pages/Lideres";
 import LideresForm from "@/pages/LideresForm";
 import ConviteAccept from "@/pages/ConviteAccept";
 import AcceptInvite from "@/pages/AcceptInvite";
+import Convite from "@/pages/Convite";
 import Auditoria from "@/pages/Auditoria";
 import ProtectedAdmin from "@/components/ProtectedAdmin";
 
@@ -113,7 +114,6 @@ export default function App() {
           
           <Route path="/convite/:token" element={<ConviteAccept />} />
           <Route path="/convite" element={<Convite />} />
-          <Route path="/convite" element={<AcceptInvite />} />
           
           {/* Redirects for compatibility */}
           <Route path="/contatos" element={<Navigate to="/pessoas" replace />} />
