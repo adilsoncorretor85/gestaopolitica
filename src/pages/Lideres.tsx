@@ -44,11 +44,13 @@ export default function LideresPage() {
     try {
       const result = await resendInvite(leader.email, leader.full_name || undefined);
       
-      const message = result.ok 
-        ? `Convite reenviado com sucesso!`
-        : 'Erro ao reenviar convite';
-      
-      alert(message);
+      if (result.ok) {
+        const extra = result.action_link ? `\n\nLink (debug): ${result.action_link}` : '';
+        const message = `Reenvio disparado (${result.mode || 'email'}).${extra}`;
+        alert(message);
+      } else {
+        alert('Erro ao reenviar convite');
+      }
       
       // Recarregar a lista
       load();
