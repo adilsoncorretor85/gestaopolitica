@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
 import { fetchLeaders, reinviteLeader, type LeaderRow } from '@/services/admin';
-import { revokeInvite, removeLeader } from '@/services/leader';
+import { revokeInvite, resendInvite } from '@/services/leader';
 import { Users, Plus, Edit2, Shield, Mail, Phone, MapPin, Copy, RefreshCw, Clock } from 'lucide-react';
 
 export default function LideresPage() {
@@ -42,15 +42,11 @@ export default function LideresPage() {
 
   const handleReinvite = async (leader: LeaderRow) => {
     try {
-      const full_name = leader.full_name || leader.email;
-      const result = await reinviteLeader({ 
-        full_name, 
-        email: leader.email 
-      });
+      const result = await resendInvite(leader.email, leader.full_name || undefined);
       
-      const message = result.status === 'USER_EXISTS' 
-        ? `Link de recuperação gerado!\n\nLink: ${result.acceptUrl}`
-        : `Convite reenviado com sucesso!\n\nLink: ${result.acceptUrl}`;
+      const message = result.ok 
+        ? `Convite reenviado com sucesso!`
+        : 'Erro ao reenviar convite';
       
       alert(message);
       
@@ -73,27 +69,6 @@ export default function LideresPage() {
     } catch (error) {
       console.error('Erro ao cancelar convite:', error);
       alert(error instanceof Error ? error.message : 'Erro ao cancelar convite');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleRemoveLeader = async (leaderId: string, fullName: string, hard = false) => {
-    const action = hard ? 'excluir definitivamente' : 'desativar';
-    const warning = hard 
-      ? `Excluir definitivamente ${fullName}? Esta ação é irreversível e todos os dados serão perdidos.`
-      : `Desativar ${fullName}? O usuário ficará bloqueado de acessar o sistema.`;
-    
-    if (!confirm(warning)) return;
-    
-    try {
-      setActionLoading(`${hard ? 'hard' : 'soft'}-${leaderId}`);
-      const result = await removeLeader(leaderId, { hard });
-      alert(hard ? 'Líder excluído com sucesso!' : 'Líder desativado com sucesso!');
-      load(); // Recarregar lista
-    } catch (error) {
-      console.error(`Erro ao ${action} líder:`, error);
-      alert(error instanceof Error ? error.message : `Erro ao ${action} líder`);
     } finally {
       setActionLoading(null);
     }
@@ -307,22 +282,6 @@ export default function LideresPage() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Link>
-                                <button
-                                  onClick={() => handleRemoveLeader(leader.id, leader.full_name || leader.email, false)}
-                                  disabled={actionLoading === `soft-${leader.id}`}
-                                  className="px-3 py-1 text-sm bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50 transition-colors"
-                                  title="Desativar líder"
-                                >
-                                  {actionLoading === `soft-${leader.id}` ? 'Desativando...' : 'Desativar'}
-                                </button>
-                                <button
-                                  onClick={() => handleRemoveLeader(leader.id, leader.full_name || leader.email, true)}
-                                  disabled={actionLoading === `hard-${leader.id}`}
-                                  className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded hover:bg-red-200 disabled:opacity-50 transition-colors"
-                                  title="Excluir líder permanentemente"
-                                >
-                                  {actionLoading === `hard-${leader.id}` ? 'Excluindo...' : 'Excluir'}
-                                </button>
                               </div>
                             ) : (
                               <div className="flex items-center justify-end space-x-2">

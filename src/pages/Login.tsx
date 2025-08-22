@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Vote } from 'lucide-react';
+
+function parseHash(): Record<string, string> {
+  const hash = window.location.hash?.replace(/^#/, '') || '';
+  const q = new URLSearchParams(hash);
+  const out: Record<string, string> = {};
+  for (const [k, v] of q.entries()) out[k] = v;
+  return out;
+}
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +17,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const h = parseHash();
+    const access_token = h['access_token'];
+    const refresh_token = h['refresh_token'];
+    if (access_token && refresh_token) {
+      supabase.auth
+        .setSession({ access_token, refresh_token })
+        .then(() => {
+          // limpa o hash e segue para o app
+          history.replaceState(null, '', window.location.pathname);
+          navigate('/dashboard');
+        })
+        .catch(() => {
+          // se der ruim, só limpa hash para não travar
+          history.replaceState(null, '', window.location.pathname);
+        });
+    }
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

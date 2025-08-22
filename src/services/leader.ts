@@ -1,40 +1,58 @@
 import { supabase } from '@/lib/supabaseClient'
 
-const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/leader_admin`
+const FN = '/functions/v1/invite_leader'
 
-async function callLeaderAdmin(action: string, payload: any) {
+async function call(action: string, payload: Record<string, any> = {}) {
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Sem sessão')
+  if (!session?.access_token) throw new Error('No session')
 
-  const res = await fetch(FN_URL, {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}${FN}`
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ action, payload }),
+    body: JSON.stringify({ action, ...payload, appUrl: window.location.origin }),
   })
 
+  const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    // mostrar o texto de erro ajuda MUITO
-    const text = await res.text()
-    throw new Error(`${res.status}: ${text}`)
+    const err = json?.error || res.statusText
+    throw new Error(String(err))
   }
-  return res.json()
+  return json
 }
 
-// Funções administrativas usando a Edge Function
-export const revokeInvite = (email: string) =>
-  callLeaderAdmin('revoke_invite', { email })
+export async function inviteLeader(data: {
+  full_name: string
+  email: string
+  phone?: string
+  birth_date?: string | null
+  gender?: string | null
+  cep?: string | null
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+  notes?: string | null
+}) {
+  return call('invite', data)
+}
 
-export const listPendingLeaders = () =>
-  callLeaderAdmin('list_pending', {})
+export async function listPendingLeaders() {
+  return call('list_pending')
+}
 
-export const resendInvite = (email: string) =>
-  callLeaderAdmin('resend_invite', { email })
+export async function resendInvite(email: string, full_name?: string) {
+  return call('resend_invite', { email, full_name })
+}
 
-export const removeLeader = (leaderId: string, opts?: { hard?: boolean; reassignTo?: string }) =>
-  callLeaderAdmin('remove_leader', { leaderId, ...opts })
+export async function revokeInvite(email: string) {
+  return call('revoke_invite', { email })
+}
 
 // Funções existentes mantidas para compatibilidade
 export interface InviteLeaderData {
@@ -60,38 +78,6 @@ export interface InviteLeaderResponse {
   userId: string
   message?: string
   error?: string
-}
-
-export async function inviteLeader(data: InviteLeaderData): Promise<InviteLeaderResponse> {
-  try {
-    // Get current session
-    const { data: session } = await supabase.auth.getSession()
-    
-    if (!session.session) {
-      throw new Error('Usuário não autenticado')
-    }
-
-    // Call Edge Function
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite_leader`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Erro ao enviar convite')
-    }
-
-    return result
-  } catch (error) {
-    console.error('Erro ao convidar líder:', error)
-    throw error
-  }
 }
 
 export async function getLeaders() {
