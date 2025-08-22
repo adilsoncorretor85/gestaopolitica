@@ -62,7 +62,11 @@ export async function inviteLeader(data: {
   state?: string | null
   notes?: string | null
 }) {
-  return call('invite', data)
+  const payload = {
+    ...data,
+    redirectTo: `${window.location.origin}/convite`,
+  }
+  return call('invite', payload)
 }
 
 export const listPendingLeaders = () => callActions('list_pending')
