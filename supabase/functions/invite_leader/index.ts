@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
     // Get origin for acceptUrl fallback
     const origin = body.appUrl || req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || ''
-    const fallbackUrl = `${origin}/login`
+    const fallbackUrl = `${origin}/convite`
     const redirectTo = `${origin}/convite`
 
     let authUserId: string
