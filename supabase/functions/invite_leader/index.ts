@@ -101,17 +101,26 @@ Deno.serve(async (req) => {
     let status: 'INVITED' | 'USER_EXISTS' = 'INVITED'
 
     // Check if user already exists
-    const { data: existingUser, error: getUserError } = await admin.auth.admin.getUserByEmail(body.email)
+    // Check if user already exists by listing users and filtering by email
+    const { data: usersData, error: listUsersError } = await admin.auth.admin.listUsers()
+    
+    if (listUsersError) {
+      console.error('Error listing users:', listUsersError)
+      // Continue with invite flow - if we can't check, assume user doesn't exist
+    }
+    
+    const existingUser = usersData?.users?.find(user => user.email === body.email)
 
-    if (existingUser?.user) {
+    if (existingUser) {
       // User already exists - generate recovery link
-      authUserId = existingUser.user.id
+      authUserId = existingUser.id
       status = 'USER_EXISTS'
 
       try {
         const { data: recoveryLink } = await admin.auth.admin.generateLink({
           type: 'recovery',
           email: body.email,
+          options: { redirectTo }
         })
         acceptUrl = recoveryLink.properties?.action_link ?? fallbackUrl
       } catch (recoveryError) {
