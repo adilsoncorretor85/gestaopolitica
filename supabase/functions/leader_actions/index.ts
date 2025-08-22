@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Body;
     const { admin } = await requireAdmin(req);
     const origin = getOrigin(req, body);
+    const redirectTo = `${origin}/convite`; // Redireciona para página de convite
 
     switch (body.action) {
       case "list_pending": {
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
 
         // 1) Tentar usar o fluxo oficial de convite
         const r1 = await admin.auth.admin.inviteUserByEmail(body.email, {
-          redirectTo: origin,
+          redirectTo,
           // metadata opcional:
           data: body.full_name ? { full_name: body.full_name } : undefined,
         });
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
               await admin.auth.admin.generateLink({
                 type: "invite",
                 email: body.email,
-                options: { redirectTo: origin },
+                options: { redirectTo },
               });
 
             if (linkErr) {
@@ -124,7 +125,7 @@ Deno.serve(async (req) => {
                 await admin.auth.admin.generateLink({
                   type: "recovery",
                   email: body.email,
-                  options: { redirectTo: origin },
+                  options: { redirectTo },
                 });
 
               if (recErr) throw recErr;

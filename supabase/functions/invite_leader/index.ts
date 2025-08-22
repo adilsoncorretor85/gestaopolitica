@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
     // Get origin for acceptUrl fallback
     const origin = body.appUrl || req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || ''
     const fallbackUrl = `${origin}/login`
+    const redirectTo = `${origin}/convite`
 
     let authUserId: string
     let acceptUrl: string
@@ -137,7 +138,7 @@ Deno.serve(async (req) => {
       // Send invitation email
       try {
         const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(body.email, {
-          redirectTo: `${origin}/login`,
+          redirectTo,
           data: {
             full_name: body.full_name,
             invite_token: crypto.randomUUID(),

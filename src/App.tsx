@@ -112,6 +112,7 @@ export default function App() {
           />
           
           <Route path="/convite/:token" element={<ConviteAccept />} />
+          <Route path="/convite" element={<Convite />} />
           <Route path="/convite" element={<AcceptInvite />} />
           
           {/* Redirects for compatibility */}

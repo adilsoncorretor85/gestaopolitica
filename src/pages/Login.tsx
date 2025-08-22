@@ -10,6 +10,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // Detectar convite e redirecionar para /convite
+  useEffect(() => {
+    if (window.location.hash.includes("type=invite")) {
+      navigate("/convite" + window.location.hash);
+      return;
+    }
+  }, [navigate]);
+
   useEffect(() => {
     const hash = window.location.hash?.slice(1);
     if (!hash) return;
