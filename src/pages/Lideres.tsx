@@ -42,14 +42,18 @@ export default function LideresPage() {
 
   const handleReinvite = async (leader: LeaderRow) => {
     try {
+      setActionLoading(`reinvite-${leader.email}`);
       const result = await resendInvite(leader.email, leader.full_name || undefined);
       
       if (result.ok) {
-        const extra = result.action_link ? `\n\nLink (debug): ${result.action_link}` : '';
-        const message = `Reenvio disparado (${result.mode || 'email'}).${extra}`;
-        alert(message);
-      } else {
-        alert('Erro ao reenviar convite');
+        if (result.sent) {
+          alert('E-mail de convite reenviado com sucesso!');
+        } else if (result.link) {
+          const message = `Convite criado. Link para copiar:\n\n${result.link}`;
+          alert(message);
+        } else {
+          alert('Convite processado com sucesso!');
+        }
       }
       
       // Recarregar a lista
@@ -57,6 +61,8 @@ export default function LideresPage() {
     } catch (error) {
       console.error('Erro ao reenviar convite:', error);
       alert(error instanceof Error ? error.message : 'Erro ao reenviar convite');
+    } finally {
+      setActionLoading(null);
     }
   };
 

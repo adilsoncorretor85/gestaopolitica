@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 
 const FN = '/functions/v1/invite_leader'
+const ACTIONS_FN = '/functions/v1/leader_actions'
 
 async function call(action: string, payload: Record<string, any> = {}) {
   const { data: { session } } = await supabase.auth.getSession()
@@ -24,6 +25,28 @@ async function call(action: string, payload: Record<string, any> = {}) {
   return json
 }
 
+async function callActions(action: string, payload: Record<string, any> = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('No session')
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL}${ACTIONS_FN}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...payload, appUrl: window.location.origin }),
+  })
+
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const err = json?.error || json?.message || res.statusText
+    throw new Error(String(err))
+  }
+  return json
+}
+
 export async function inviteLeader(data: {
   full_name: string
   email: string
@@ -42,17 +65,13 @@ export async function inviteLeader(data: {
   return call('invite', data)
 }
 
-export async function listPendingLeaders() {
-  return call('list_pending')
-}
+export const listPendingLeaders = () => callActions('list_pending')
 
-export async function resendInvite(email: string, full_name?: string) {
-  return call('resend_invite', { email, full_name })
-}
+export const resendInvite = (email: string, full_name?: string) =>
+  callActions('resend_invite', { email, full_name })
 
-export async function revokeInvite(email: string) {
-  return call('revoke_invite', { email })
-}
+export const revokeInvite = (email: string) =>
+  callActions('revoke_invite', { email })
 
 // Funções existentes mantidas para compatibilidade
 export interface InviteLeaderData {
