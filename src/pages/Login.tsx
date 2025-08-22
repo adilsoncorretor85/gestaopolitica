@@ -3,14 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Vote } from 'lucide-react';
 
-function parseHash(): Record<string, string> {
-  const hash = window.location.hash?.replace(/^#/, '') || '';
-  const q = new URLSearchParams(hash);
-  const out: Record<string, string> = {};
-  for (const [k, v] of q.entries()) out[k] = v;
-  return out;
-}
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,22 +11,32 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const h = parseHash();
-    const access_token = h['access_token'];
-    const refresh_token = h['refresh_token'];
-    if (access_token && refresh_token) {
-      supabase.auth
-        .setSession({ access_token, refresh_token })
-        .then(() => {
-          // limpa o hash e segue para o app
-          history.replaceState(null, '', window.location.pathname);
-          navigate('/dashboard');
-        })
-        .catch(() => {
-          // se der ruim, só limpa hash para não travar
-          history.replaceState(null, '', window.location.pathname);
-        });
-    }
+    const hash = window.location.hash?.slice(1);
+    if (!hash) return;
+
+    const params = new URLSearchParams(hash);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const type = params.get('type'); // 'invite', 'recovery', etc.
+
+    (async () => {
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        // limpa o hash para não ficar poluído
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+        if (!error) {
+          // se veio de convite ou recuperação, peça para definir senha
+          if (type === 'invite' || type === 'recovery') {
+            navigate('/definir-senha', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        } else {
+          console.error('Erro ao setar sessão:', error);
+        }
+      }
+    })();
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {

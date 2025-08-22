@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
+import DefinirSenha from "@/pages/DefinirSenha";
 import Pessoas from "@/pages/Pessoas";
 import PessoasForm from "@/pages/PessoasForm";
 import Lideres from "@/pages/Lideres";
@@ -40,6 +41,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/definir-senha" element={<DefinirSenha />} />
           
           <Route
             path="/dashboard"
