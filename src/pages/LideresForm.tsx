@@ -6,7 +6,7 @@ import { z } from 'zod';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
-import { getLeader, updateLeader, inviteLeader } from '@/services/leader';
+import { getLeaderById, updateLeader, inviteLeader, deactivateLeader } from '@/services/leader';
 import { fetchCep } from '@/lib/viacep';
 import { ArrowLeft, Search, Loader2 } from 'lucide-react';
 
@@ -62,22 +62,20 @@ export default function LideresFormPage() {
     
     try {
       setLoading(true);
-      const leader = await getLeader(id);
-      if (leader) {
-        setValue('full_name', leader.profile.full_name);
-        setValue('email', leader.email);
-        setValue('phone', leader.phone || '');
-        setValue('birth_date', leader.birth_date || '');
-        setValue('gender', leader.gender);
-        setValue('cep', leader.cep || '');
-        setValue('street', leader.street || '');
-        setValue('number', leader.number || '');
-        setValue('complement', leader.complement || '');
-        setValue('neighborhood', leader.neighborhood || '');
-        setValue('city', leader.city || '');
-        setValue('state', leader.state || '');
-        setValue('notes', leader.notes || '');
-      }
+      const data = await getLeaderById(id);
+      setValue('full_name', data.full_name || '');
+      setValue('email', data.email || '');
+      setValue('phone', data.phone || '');
+      setValue('birth_date', data.birth_date || '');
+      setValue('gender', data.gender);
+      setValue('cep', data.cep || '');
+      setValue('street', data.street || '');
+      setValue('number', data.number || '');
+      setValue('complement', data.complement || '');
+      setValue('neighborhood', data.neighborhood || '');
+      setValue('city', data.city || '');
+      setValue('state', data.state || '');
+      setValue('notes', data.notes || '');
     } catch (error) {
       console.error('Erro ao carregar líder:', error);
       alert('Erro ao carregar líder');
@@ -136,6 +134,22 @@ export default function LideresFormPage() {
     } catch (error) {
       console.error('Erro ao salvar líder:', error);
       alert(error instanceof Error ? error.message : 'Erro ao salvar líder');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!id || !confirm('Desativar este líder?')) return;
+    
+    try {
+      setSaving(true);
+      await deactivateLeader(id);
+      alert('Líder desativado com sucesso!');
+      navigate('/lideres');
+    } catch (error) {
+      console.error('Erro ao desativar líder:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao desativar líder');
     } finally {
       setSaving(false);
     }
@@ -378,6 +392,16 @@ export default function LideresFormPage() {
                   >
                     Cancelar
                   </Link>
+                  {id && (
+                    <button
+                      type="button"
+                      onClick={handleDeactivate}
+                      disabled={saving}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      Desativar Líder
+                    </button>
+                  )}
                   <button
                     type="submit"
                     disabled={saving}

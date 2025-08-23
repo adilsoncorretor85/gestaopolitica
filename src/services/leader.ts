@@ -69,6 +69,76 @@ export async function inviteLeader(data: {
   return call('invite', payload)
 }
 
+export async function getLeaderById(id: string) {
+  // 1) leader_profiles
+  const { data: lp, error: e1 } = await supabase
+    .from('leader_profiles')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (e1) throw e1
+
+  // 2) profiles (só para pegar/salvar o full_name)
+  const { data: pr, error: e2 } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', id)
+    .single()
+  if (e2) throw e2
+
+  return { ...lp, full_name: pr?.full_name ?? '' }
+}
+
+type LeaderUpdate = {
+  full_name?: string
+  email?: string
+  phone?: string
+  birth_date?: string | null
+  gender?: 'M' | 'F' | 'O' | null
+  cep?: string | null
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+  notes?: string | null
+  status?: 'ACTIVE' | 'INACTIVE' | 'INVITED' | 'PENDING'
+}
+
+export async function updateLeader(id: string, payload: LeaderUpdate) {
+  // Atualiza leader_profiles (contato/endereço/etc.)
+  const lp: any = { ...payload }
+  delete lp.full_name // nome fica em profiles
+
+  const { error: lpErr } = await supabase
+    .from('leader_profiles')
+    .update(lp)
+    .eq('id', id)
+  if (lpErr) throw lpErr
+
+  // Se veio full_name, atualiza em profiles
+  if (payload.full_name) {
+    const { error: prErr } = await supabase
+      .from('profiles')
+      .update({ full_name: payload.full_name })
+      .eq('id', id)
+    if (prErr) throw prErr
+  }
+
+  // Retorna o detalhe atualizado
+  return await getLeaderById(id)
+}
+
+export async function deactivateLeader(id: string) {
+  // "Excluir" no painel = desativar (some de Ativos)
+  const { error } = await supabase
+    .from('leader_profiles')
+    .update({ status: 'INACTIVE' })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export const listPendingLeaders = () => callActions('list_pending')
 
 export const resendInvite = (email: string, full_name?: string) =>
@@ -76,142 +146,3 @@ export const resendInvite = (email: string, full_name?: string) =>
 
 export const revokeInvite = (email: string) =>
   callActions('revoke_invite', { email })
-
-// Funções existentes mantidas para compatibilidade
-export interface InviteLeaderData {
-  full_name: string
-  email: string
-  phone?: string
-  birth_date?: string
-  gender?: 'M' | 'F' | 'O'
-  cep?: string
-  street?: string
-  number?: string
-  complement?: string
-  neighborhood?: string
-  city?: string
-  state?: string
-  notes?: string
-}
-
-export interface InviteLeaderResponse {
-  ok: boolean
-  acceptUrl: string
-  status: 'INVITED' | 'USER_EXISTS'
-  userId: string
-  message?: string
-  error?: string
-}
-
-export async function getLeaders() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      full_name,
-      role,
-      created_at,
-      leader_profiles (
-        email,
-        phone,
-        birth_date,
-        gender,
-        cep,
-        street,
-        number,
-        complement,
-        neighborhood,
-        city,
-        state,
-        notes,
-        status,
-        created_at,
-        updated_at
-      )
-    `)
-    .eq('role', 'LEADER')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
-}
-
-export async function getLeader(id: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      full_name,
-      role,
-      created_at,
-      leader_profiles (
-        email,
-        phone,
-        birth_date,
-        gender,
-        cep,
-        street,
-        number,
-        complement,
-        neighborhood,
-        city,
-        state,
-        notes,
-        status,
-        created_at,
-        updated_at
-      )
-    `)
-    .eq('id', id)
-    .eq('role', 'LEADER')
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export async function updateLeader(id: string, data: Partial<InviteLeaderData>) {
-  const { profile_data, leader_data } = separateProfileData(data)
-
-  // Update profile if needed
-  if (Object.keys(profile_data).length > 0) {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update(profile_data)
-      .eq('id', id)
-
-    if (profileError) throw profileError
-  }
-
-  // Update leader profile
-  if (Object.keys(leader_data).length > 0) {
-    const { error: leaderError } = await supabase
-      .from('leader_profiles')
-      .update(leader_data)
-      .eq('id', id)
-
-    if (leaderError) throw leaderError
-  }
-
-  return getLeader(id)
-}
-
-export async function updateLeaderStatus(id: string, status: 'ACTIVE' | 'INACTIVE') {
-  const { error } = await supabase
-    .from('leader_profiles')
-    .update({ status })
-    .eq('id', id)
-
-  if (error) throw error
-}
-
-function separateProfileData(data: Partial<InviteLeaderData>) {
-  const { full_name, ...leader_data } = data
-  const profile_data: any = {}
-  
-  if (full_name !== undefined) {
-    profile_data.full_name = full_name
-  }
-
-  return { profile_data, leader_data }
-}
