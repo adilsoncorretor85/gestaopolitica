@@ -56,22 +56,23 @@ export async function getLeaderDetail(id: string) {
 // Atualiza SOMENTE campos preenchidos (evita apagar com vazio)
 export async function updateLeaderProfile(id: string, input: Partial<LeaderDetail>) {
   const payload: Record<string, any> = {};
+
   const add = (k: keyof LeaderDetail) => {
     const v = input[k];
     if (v === undefined || v === null) return;
     if (typeof v === "string" && v.trim() === "") return;
     payload[k] = v;
   };
-  ["full_name","email","phone","birth_date","gender","cep","street","number","complement",
-   "neighborhood","city","state","notes"] as (keyof LeaderDetail)[]
-  .forEach(add);
+
+  const fields: (keyof LeaderDetail)[] = [
+    "full_name","email","phone","birth_date","gender","cep","street","number","complement",
+    "neighborhood","city","state","notes",
+  ];
+  fields.forEach(add);
 
   if (Object.keys(payload).length === 0) return; // nada pra salvar
 
-  const { error } = await supabase
-    .from("leader_profiles")
-    .update(payload)
-    .eq("id", id);
+  const { error } = await supabase.from("leader_profiles").update(payload).eq("id", id);
   if (error) throw error;
 }
 

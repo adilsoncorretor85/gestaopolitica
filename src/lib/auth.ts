@@ -1,69 +1,21 @@
-import { createClient } from '@/lib/supabase/client';
-import { Profile } from '@/types';
+// src/lib/auth.ts
+import { supabase } from "@/lib/supabaseClient";
 
-export async function getCurrentUser() {
-  const supabase = createClient();
-  
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
-  if (error || !user) {
-    return null;
-  }
+export async function getCurrentProfile() {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+  if (!user) return null;
 
-  return user;
-}
-
-export async function getCurrentProfile(): Promise<Profile | null> {
-  const supabase = createClient();
-  
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    return null;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, role, full_name")
+    .eq("id", user.id)
     .single();
 
-  if (profileError || !profile) {
-    return null;
-  }
-
-  return profile;
+  return data ?? null;
 }
 
-export async function createProfile(userId: string, fullName?: string, role: 'ADMIN' | 'LEADER' = 'LEADER') {
-  const supabase = createClient();
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert({
-      id: userId,
-      role,
-      full_name: fullName,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
-export async function signOut() {
-  const supabase = createClient();
-  await supabase.auth.signOut();
-}
-
-export function isAdmin(profile: Profile | null): boolean {
-  return profile?.role === 'ADMIN';
-}
-
-export function isLeader(profile: Profile | null): boolean {
-  return profile?.role === 'LEADER';
+export async function isAdmin() {
+  const p = await getCurrentProfile();
+  return p?.role === "ADMIN";
 }
