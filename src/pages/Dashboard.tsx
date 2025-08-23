@@ -3,7 +3,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
-import { countPendingLeaders, countActiveLeaders } from '@/services/admin';
+import { getLeaderCounters } from '@/lib/dashboard';
 import { listPeople } from '@/services/people';
 import { Users, UserCheck, Target, TrendingUp, Calendar, MapPin } from 'lucide-react';
 
@@ -34,10 +34,7 @@ export default function DashboardPage() {
       setError('');
       
       // Carregar contadores de líderes
-      const [activeLeaders, pendingLeaders] = await Promise.all([
-        countActiveLeaders(),
-        countPendingLeaders(),
-      ]);
+      const { active: activeLeaders, pending: pendingLeaders } = await getLeaderCounters();
       
       // Carregar pessoas
       const peopleResult = await listPeople({

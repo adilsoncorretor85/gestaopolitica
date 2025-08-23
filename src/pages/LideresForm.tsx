@@ -6,7 +6,7 @@ import { z } from 'zod';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
-import { getLeaderById, updateLeader, inviteLeader, deactivateLeader } from '@/services/leader';
+import { getLeaderDetail, updateLeaderProfile, inviteLeader, deactivateLeader, type LeaderDetail } from '@/services/leader';
 import { fetchCep } from '@/lib/viacep';
 import { ArrowLeft, Search, Loader2 } from 'lucide-react';
 
@@ -62,7 +62,7 @@ export default function LideresFormPage() {
     
     try {
       setLoading(true);
-      const data = await getLeaderById(id);
+      const data = await getLeaderDetail(id);
       setValue('full_name', data.full_name || '');
       setValue('email', data.email || '');
       setValue('phone', data.phone || '');
@@ -115,19 +115,15 @@ export default function LideresFormPage() {
       
       if (id) {
         // Update existing leader
-        await updateLeader(id, data);
+        await updateLeaderProfile(id, data);
         alert('Líder atualizado com sucesso!');
       } else {
         // Invite new leader
         const result = await inviteLeader(data);
-        if (result.ok) {
-          const statusMessage = result.status === 'USER_EXISTS' 
-            ? 'Usuário já existe no sistema. Link de recuperação enviado.'
-            : 'Novo convite enviado com sucesso!';
-          alert(`${statusMessage}\n\n${result.message}\n\nLink: ${result.acceptUrl}`);
-        } else {
-          throw new Error(result.error || 'Erro ao enviar convite');
-        }
+        const statusMessage = result.status === 'USER_EXISTS' 
+          ? 'Usuário já existe no sistema. Link de recuperação enviado.'
+          : 'Novo convite enviado com sucesso!';
+        alert(`${statusMessage}\n\n${result.message}\n\nLink: ${result.acceptUrl}`);
       }
       
       navigate('/lideres');

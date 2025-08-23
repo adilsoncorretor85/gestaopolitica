@@ -3,6 +3,25 @@ import { DashboardStats } from '@/types';
 import { getCurrentProfile, isAdmin } from './auth';
 import { format, subDays } from 'date-fns';
 
+export async function getLeaderCounters() {
+  const supabase = createClient();
+  
+  const pending = await supabase
+    .from("app_leaders_list")
+    .select("*", { count: "exact", head: true })
+    .eq("is_pending", true);
+    
+  const active = await supabase
+    .from("app_leaders_list")
+    .select("*", { count: "exact", head: true })
+    .eq("is_active", true);
+    
+  return { 
+    pending: pending.count ?? 0, 
+    active: active.count ?? 0 
+  };
+}
+
 export async function getDashboardStats(days = 30): Promise<DashboardStats> {
   const supabase = createClient();
   const profile = await getCurrentProfile();
