@@ -129,7 +129,7 @@ export default function LideresFormPage() {
       navigate('/lideres');
     } catch (error) {
       console.error('Erro ao salvar líder:', error);
-      alert(`Erro ao salvar líder: ${error instanceof Error ? error.message : String(error)}`);
+      alert(error instanceof Error ? error.message : 'Erro ao salvar líder');
     } finally {
       setSaving(false);
     }
