@@ -115,21 +115,31 @@ export default function LideresFormPage() {
       
       if (id) {
         // Update existing leader
-        await updateLeaderProfile(id, data);
-        alert('Líder atualizado com sucesso!');
+        try {
+          await updateLeaderProfile(id, data);
+          alert('Líder atualizado com sucesso!');
+        } catch (e: any) {
+          alert(`Erro ao salvar líder: ${e?.message ?? String(e)}`);
+          return;
+        }
       } else {
         // Invite new leader
-        const result = await inviteLeader(data);
-        const statusMessage = result.status === 'USER_EXISTS' 
-          ? 'Usuário já existe no sistema. Link de recuperação enviado.'
-          : 'Novo convite enviado com sucesso!';
-        alert(`${statusMessage}\n\n${result.message}\n\nLink: ${result.acceptUrl}`);
+        try {
+          const result = await inviteLeader(data);
+          const statusMessage = result.status === 'USER_EXISTS' 
+            ? 'Usuário já existe no sistema. Link de recuperação enviado.'
+            : 'Novo convite enviado com sucesso!';
+          alert(`${statusMessage}\n\n${result.message}\n\nLink: ${result.acceptUrl}`);
+        } catch (e: any) {
+          alert(`Erro ao enviar convite: ${e?.message ?? String(e)}`);
+          return;
+        }
       }
       
       navigate('/lideres');
     } catch (error) {
-      console.error('Erro ao salvar líder:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao salvar líder');
+      console.error('Erro geral:', error);
+      alert(`Erro inesperado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setSaving(false);
     }

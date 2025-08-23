@@ -18,8 +18,8 @@ export type LeaderDetail = {
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  birth_date: string | null; // ISO (aaaa-mm-dd)
-  gender: string | null;
+  birth_date: string | null;
+  gender: "M" | "F" | "O" | null;
   cep: string | null;
   street: string | null;
   number: string | null;
@@ -28,7 +28,7 @@ export type LeaderDetail = {
   city: string | null;
   state: string | null;
   notes: string | null;
-  status: string | null;
+  status: "PENDING" | "INVITED" | "ACTIVE" | "INACTIVE" | null;
   invited_at: string | null;
   accepted_at: string | null;
   is_active: boolean | null;
@@ -53,27 +53,40 @@ export async function getLeaderDetail(id: string) {
   return data as LeaderDetail;
 }
 
-// Atualiza SOMENTE campos preenchidos (evita apagar com vazio)
-export async function updateLeaderProfile(id: string, input: Partial<LeaderDetail>) {
-  const payload: Record<string, any> = {};
-
-  const add = (k: keyof LeaderDetail) => {
-    const v = input[k];
-    if (v === undefined || v === null) return;
-    if (typeof v === "string" && v.trim() === "") return;
-    payload[k] = v;
-  };
-
-  const fields: (keyof LeaderDetail)[] = [
-    "full_name","email","phone","birth_date","gender","cep","street","number","complement",
-    "neighborhood","city","state","notes",
+export async function updateLeaderProfile(
+  id: string,
+  values: Partial<LeaderDetail>
+) {
+  const editableLP: (keyof LeaderDetail)[] = [
+    "email","phone","birth_date","gender","cep","street","number",
+    "complement","neighborhood","city","state","notes",
   ];
-  fields.forEach(add);
 
-  if (Object.keys(payload).length === 0) return; // nada pra salvar
+  const lpPayload: Record<string, any> = {};
+  for (const k of editableLP) {
+    if (k in values) {
+      const v = (values as any)[k];
+      if (v !== undefined) lpPayload[k] = v === "" ? null : v;
+    }
+  }
 
-  const { error } = await supabase.from("leader_profiles").update(payload).eq("id", id);
-  if (error) throw error;
+  if (Object.keys(lpPayload).length > 0) {
+    const { error } = await supabase
+      .from("leader_profiles")
+      .update(lpPayload)
+      .eq("id", id);
+    if (error) throw new Error(`leader_profiles: ${error.message}`);
+  }
+
+  if ("full_name" in values && values.full_name !== undefined) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: values.full_name || null })
+      .eq("id", id);
+    if (error) throw new Error(`profiles: ${error.message}`);
+  }
+
+  return true;
 }
 
 // Reenviar convite: reutilize a função invite_leader (ela detecta usuário existente e manda recovery)
