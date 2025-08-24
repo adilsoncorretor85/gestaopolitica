@@ -219,6 +219,11 @@ export default function LideresPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           {tab === 'ACTIVE' ? 'Contato' : 'Convidado em'}
                         </th>
+                        {tab === 'ACTIVE' && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Meta
+                          </th>
+                        )}
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
@@ -268,6 +273,17 @@ export default function LideresPage() {
                               </div>
                             )}
                           </td>
+                          {tab === 'ACTIVE' && (
+                            <td className="px-6 py-4">
+                              {leader.goal ? (
+                                <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                                  {leader.goal} contatos
+                                </span>
+                              ) : (
+                                <span className="text-sm text-gray-400">Sem meta</span>
+                              )}
+                            </td>
+                          )}
                           <td className="px-6 py-4">
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                               leader.status === 'ACTIVE' 

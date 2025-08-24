@@ -3,9 +3,10 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
-import { getLeaderCounters } from '@/lib/dashboard';
+import { getLeaderCounters, getGoalSummary, setOrgDefaultGoal, type GoalSummary } from '@/lib/dashboard';
 import { listPeople } from '@/services/people';
-import { Users, UserCheck, Target, TrendingUp, Calendar, MapPin } from 'lucide-react';
+import { Users, UserCheck, Target, TrendingUp, Calendar, MapPin, Settings, X } from 'lucide-react';
+import Modal from '@/components/Modal';
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,11 +19,18 @@ export default function DashboardPage() {
     totalPeople: 0,
     confirmedVotes: 0,
     probableVotes: 0,
-    defaultGoal: 120
+    effectiveTotalGoal: 120
   });
+  const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(null);
   const [topLeaders, setTopLeaders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  
+  // Modal de edição de meta
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [newGoal, setNewGoal] = useState<number>(120);
+  const [applyToAllLeaders, setApplyToAllLeaders] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -33,8 +41,11 @@ export default function DashboardPage() {
       setLoading(true);
       setError('');
       
-      // Carregar contadores de líderes
-      const { active: activeLeaders, pending: pendingLeaders } = await getLeaderCounters();
+      // Carregar contadores de líderes e metas
+      const [leaderCounters, goalData] = await Promise.all([
+        getLeaderCounters(),
+        getGoalSummary()
+      ]);
       
       // Carregar pessoas
       const peopleResult = await listPeople({
@@ -47,13 +58,16 @@ export default function DashboardPage() {
       const probableVotes = people.filter(p => p.vote_status === 'PROVAVEL').length;
 
       setStats({
-        activeLeaders,
-        pendingLeaders,
+        activeLeaders: leaderCounters.active,
+        pendingLeaders: leaderCounters.pending,
         totalPeople: people.length,
         confirmedVotes,
         probableVotes,
-        defaultGoal: 120
+        effectiveTotalGoal: goalData.effective_total_goal
       });
+
+      setGoalSummary(goalData);
+      setNewGoal(goalData.default_org_goal);
 
       // Top líderes por número de pessoas cadastradas (apenas para admin)
       if (isAdminUser) {
@@ -68,12 +82,42 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSaveGoal = async () => {
+    try {
+      setSavingGoal(true);
+      
+      // 1. Atualizar meta da organização
+      await setOrgDefaultGoal(newGoal);
+      
+      // 2. Se checkbox marcado, aplicar para todos os líderes
+      if (applyToAllLeaders) {
+        const { error } = await supabase
+          .from('leader_profiles')
+          .update({ goal: newGoal })
+          .in('status', ['ACTIVE', 'INVITED', 'PENDING']);
+        
+        if (error) throw error;
+      }
+      
+      // 3. Recarregar dados
+      await loadStats();
+      setGoalModalOpen(false);
+      setApplyToAllLeaders(false);
+      
+      alert('Meta atualizada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar meta:', error);
+      alert(`Erro ao salvar meta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setSavingGoal(false);
+    }
+  };
   // Se houver erro de tabela não existir, mostrar tela de configuração
   if (error && error.includes('does not exist')) {
     return <DatabaseStatus error={error} />;
   }
 
-  const progressoMeta = Math.round((stats.totalPeople / stats.defaultGoal) * 100);
+  const progressoMeta = Math.round((stats.totalPeople / stats.effectiveTotalGoal) * 100);
   
   const estatisticasCards = [
     // Mostrar card de lideranças apenas para ADMIN
@@ -89,7 +133,7 @@ export default function DashboardPage() {
       valor: stats.totalPeople,
       icon: UserCheck,
       cor: 'bg-green-500',
-      descricao: `Meta: ${stats.defaultGoal}`
+      descricao: `Meta: ${stats.effectiveTotalGoal}`
     },
     {
       titulo: 'Votos Confirmados',
@@ -98,12 +142,21 @@ export default function DashboardPage() {
       cor: 'bg-emerald-500',
       descricao: `${stats.probableVotes} prováveis`
     },
+    // Card de Meta Geral (apenas para ADMIN)
+    ...(isAdminUser && goalSummary ? [{
+      titulo: 'Meta Geral',
+      valor: goalSummary.effective_total_goal,
+      icon: Settings,
+      cor: 'bg-purple-500',
+      descricao: `Org: ${goalSummary.default_org_goal} | Líderes: ${goalSummary.total_leaders_goal}`,
+      editable: true
+    }] : []),
     {
       titulo: 'Progresso da Meta',
       valor: `${progressoMeta}%`,
       icon: TrendingUp,
       cor: 'bg-purple-500',
-      descricao: `${stats.totalPeople}/${stats.defaultGoal}`
+      descricao: `${stats.totalPeople}/${stats.effectiveTotalGoal}`
     }
   ];
 
@@ -190,7 +243,7 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Contatos Realizados</span>
-                  <span>{stats.totalPeople} / {stats.defaultGoal}</span>
+                  <span>{stats.totalPeople} / {stats.effectiveTotalGoal}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <div 

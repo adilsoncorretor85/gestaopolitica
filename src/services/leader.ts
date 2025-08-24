@@ -6,6 +6,7 @@ export type LeaderListItem = {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  goal: number | null;
   status: "INVITED" | "PENDING" | "ACTIVE" | "INACTIVE" | null;
   invited_at: string | null;
   accepted_at: string | null;
@@ -28,6 +29,7 @@ export type LeaderDetail = {
   city: string | null;
   state: string | null;
   notes: string | null;
+  goal: number | null;
   status: "PENDING" | "INVITED" | "ACTIVE" | "INACTIVE" | null;
   invited_at: string | null;
   accepted_at: string | null;
@@ -37,19 +39,43 @@ export type LeaderDetail = {
 export async function listLeaders() {
   const { data, error } = await supabase
     .from("app_leaders_list")
-    .select("id, full_name, email, phone, status, invited_at, accepted_at, is_active, is_pending")
+    .select(`
+      id, full_name, email, phone, status, invited_at, accepted_at, is_active, is_pending,
+      goal:leader_profiles!inner(goal)
+    `)
     .order("invited_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
-  return (data ?? []) as LeaderListItem[];
+  
+  // Processar dados para incluir goal
+  const processedData = (data ?? []).map(leader => ({
+    ...leader,
+    goal: leader.goal?.goal || null
+  }));
+  
+  return processedData as LeaderListItem[];
 }
 
 export async function getLeaderDetail(id: string) {
   const { data, error } = await supabase
     .from("app_leader_detail")
-    .select("*")
+    .select(`
+      *,
+      goal:leader_profiles!inner(goal)
+    `)
     .eq("id", id)
     .single();
   if (error) throw error;
+  
+  // Se não conseguir buscar goal da view, buscar diretamente
+  if (!data.goal) {
+    const { data: goalData } = await supabase
+      .from("leader_profiles")
+      .select("goal")
+      .eq("id", id)
+      .single();
+    data.goal = goalData?.goal || null;
+  }
+  
   return data as LeaderDetail;
 }
 
@@ -59,7 +85,7 @@ export async function updateLeaderProfile(
 ) {
   const editableLP: (keyof LeaderDetail)[] = [
     "email","phone","birth_date","gender","cep","street","number",
-    "complement","neighborhood","city","state","notes",
+    "complement","neighborhood","city","state","notes","goal",
   ];
 
   const lpPayload: Record<string, any> = {};

@@ -16,6 +16,7 @@ const leaderSchema = z.object({
   phone: z.string().optional(),
   birth_date: z.string().optional(),
   gender: z.enum(['M', 'F', 'O']).optional(),
+  goal: z.number().min(0, 'Meta deve ser maior ou igual a 0').optional(),
   cep: z.string().optional(),
   street: z.string().optional(),
   number: z.string().optional(),
@@ -68,6 +69,7 @@ export default function LideresFormPage() {
       setValue('phone', data.phone || '');
       setValue('birth_date', data.birth_date || '');
       setValue('gender', data.gender);
+      setValue('goal', data.goal || undefined);
       setValue('cep', data.cep || '');
       setValue('street', data.street || '');
       setValue('number', data.number || '');
@@ -280,6 +282,22 @@ export default function LideresFormPage() {
                         <option value="F">Feminino</option>
                         <option value="O">Outro</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Meta do líder
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        {...register('goal', { valueAsNumber: true })}
+                        placeholder="Meta de contatos"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      {errors.goal && (
+                        <p className="text-red-500 text-sm mt-1">{errors.goal.message}</p>
+                      )}
                     </div>
                   </div>
                 </div>
