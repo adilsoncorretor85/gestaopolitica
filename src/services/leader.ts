@@ -134,20 +134,11 @@ export async function resendInvite(email: string, full_name?: string) {
       email, 
       full_name: full_name || '',
       appUrl: window.location.origin 
-    },
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-
-  if (error) throw error;
-  if (data?.ok === false) throw new Error(data?.error || 'Falha ao reenviar convite.');
-
-  return data;
-}
-
-export async function deactivateLeader(id: string) {
-}
 // --- BANIR (desativar) via Edge Function
-export async function deactivateLeader(id: string, reason = "Desativação manual pelo admin") {
+export async function deactivateLeader(
+  id: string,
+  reason = "Desativação manual pelo admin"
+) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Você não está autenticado.");
 
@@ -157,7 +148,6 @@ export async function deactivateLeader(id: string, reason = "Desativação manua
   });
 
   if (error) {
-    // Supabase Functions retorna { error } no client quando HTTP não é 2xx
     throw new Error(error.message || "Falha ao desativar líder (Edge Function).");
   }
   if (!data?.ok) {
