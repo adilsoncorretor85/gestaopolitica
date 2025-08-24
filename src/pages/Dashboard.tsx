@@ -10,7 +10,7 @@ import { Users, UserCheck, Target, TrendingUp, Calendar, MapPin } from 'lucide-r
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin: isAdminUser } = useAuth();
   
   const [stats, setStats] = useState({
     activeLeaders: 0,
@@ -56,7 +56,7 @@ export default function DashboardPage() {
       });
 
       // Top líderes por número de pessoas cadastradas (apenas para admin)
-      if (isAdmin) {
+      if (isAdminUser) {
         // TODO: Implementar top líderes quando necessário
         setTopLeaders([]);
       }
@@ -76,13 +76,14 @@ export default function DashboardPage() {
   const progressoMeta = Math.round((stats.totalPeople / stats.defaultGoal) * 100);
   
   const estatisticasCards = [
-    {
+    // Mostrar card de lideranças apenas para ADMIN
+    ...(isAdminUser ? [{
       titulo: 'Total de Lideranças',
       valor: stats.activeLeaders,
       icon: Users,
       cor: 'bg-blue-500',
       descricao: `${stats.pendingLeaders} pendentes`
-    },
+    }] : []),
     {
       titulo: 'Total de Contatos',
       valor: stats.totalPeople,
@@ -163,7 +164,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Cards de Estatísticas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isAdminUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
               {estatisticasCards.map((card, index) => {
                 const Icon = card.icon;
                 return (
@@ -207,7 +208,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Lideranças - Apenas para Admin */}
-              {isAdmin && topLeaders.length > 0 && (
+              {isAdminUser && topLeaders.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 5 Lideranças</h3>
                   <div className="space-y-4">
