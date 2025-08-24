@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
 import { getLeaderDetail, updateLeaderProfile, inviteLeader, deactivateLeader, type LeaderDetail } from '@/services/leader';
+import { getLeaderDetail, updateLeaderProfile, inviteLeader, deactivateLeader, reactivateLeader, type LeaderDetail } from '@/services/leader';
 import { toggleUserBan } from '@/services/admin';
 import { fetchCep } from '@/lib/viacep';
 import { ArrowLeft, Search, Loader2 } from 'lucide-react';
@@ -157,15 +158,7 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
-      // Atualiza o status no leader_profiles
-      await updateLeaderProfile(id, { status: 'INACTIVE' });
-      
-      // Bane o usuário no auth
-      await toggleUserBan({
-        user_id: id,
-        ban: true,
-        reason: 'Desativado pelo administrador',
-      });
+      await deactivateLeader(id, 'Desativado pelo administrador');
       
       alert('Líder desativado com sucesso.');
       navigate('/lideres');
@@ -183,15 +176,7 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
-      // Atualiza o status no leader_profiles
-      await updateLeaderProfile(id, { status: 'ACTIVE' });
-      
-      // Remove o ban do usuário no auth
-      await toggleUserBan({
-        user_id: id,
-        ban: false,
-        reason: 'Reativado pelo administrador',
-      });
+      await reactivateLeader(id, 'Reativado pelo administrador');
       
       alert('Líder reativado com sucesso.');
       navigate('/lideres');

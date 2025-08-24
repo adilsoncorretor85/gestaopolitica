@@ -14,7 +14,7 @@ export default function LideresPage() {
   const { profile, isAdmin } = useAuth();
   const navigate = useNavigate();
   
-  const [tab, setTab] = useState<'ACTIVE' | 'PENDING'>('ACTIVE');
+  const [tab, setTab] = useState<'ACTIVE' | 'PENDING' | 'INACTIVE'>('ACTIVE');
   const [rows, setRows] = useState<LeaderListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -28,6 +28,7 @@ export default function LideresPage() {
       const filtered = data.filter(leader => {
         if (tab === 'ACTIVE') return leader.is_active;
         if (tab === 'PENDING') return leader.is_pending;
+        if (tab === 'INACTIVE') return leader.status === 'INACTIVE';
         return false;
       });
       setRows(filtered);
@@ -177,6 +178,16 @@ export default function LideresPage() {
                   >
                     Pendentes
                   </button>
+                  <button
+                    onClick={() => setTab('INACTIVE')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                      tab === 'INACTIVE'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Desativados
+                  </button>
                 </nav>
               </div>
 
@@ -196,7 +207,7 @@ export default function LideresPage() {
                         Os líderes aparecerão aqui após aceitarem o convite
                       </p>
                     </>
-                  ) : (
+                  ) : tab === 'PENDING' ? (
                     <>
                       <Clock className="mx-auto h-12 w-12 text-gray-400" />
                       <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -204,6 +215,16 @@ export default function LideresPage() {
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         Convites enviados aparecerão aqui até serem aceitos
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
+                        Nenhum líder desativado
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Líderes desativados aparecerão aqui
                       </p>
                     </>
                   )}
@@ -214,12 +235,12 @@ export default function LideresPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {tab === 'ACTIVE' ? 'Líder' : 'Nome/Email'}
+                          {tab === 'ACTIVE' ? 'Líder' : tab === 'INACTIVE' ? 'Líder Desativado' : 'Nome/Email'}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {tab === 'ACTIVE' ? 'Contato' : 'Convidado em'}
+                          {tab === 'ACTIVE' ? 'Contato' : tab === 'INACTIVE' ? 'Desativado em' : 'Convidado em'}
                         </th>
-                        {tab === 'ACTIVE' && (
+                        {(tab === 'ACTIVE' || tab === 'INACTIVE') && (
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Meta
                           </th>
@@ -238,10 +259,13 @@ export default function LideresPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-3">
                               <div className={`p-2 rounded-lg ${
-                                tab === 'ACTIVE' ? 'bg-green-100' : 'bg-yellow-100'
+                                tab === 'ACTIVE' ? 'bg-green-100' : 
+                                tab === 'INACTIVE' ? 'bg-red-100' : 'bg-yellow-100'
                               }`}>
                                 {tab === 'ACTIVE' ? (
                                   <Users className="h-4 w-4 text-green-600" />
+                                ) : tab === 'INACTIVE' ? (
+                                  <Shield className="h-4 w-4 text-red-600" />
                                 ) : (
                                   <Clock className="h-4 w-4 text-yellow-600" />
                                 )}
@@ -264,6 +288,13 @@ export default function LideresPage() {
                                   <span className="text-sm text-gray-900">{leader.email}</span>
                                 </div>
                               </div>
+                            ) : tab === 'INACTIVE' ? (
+                              <div className="text-sm text-gray-900">
+                                {leader.updated_at 
+                                  ? new Date(leader.updated_at).toLocaleDateString('pt-BR')
+                                  : 'Data não disponível'
+                                }
+                              </div>
                             ) : (
                               <div className="text-sm text-gray-900">
                                 {leader.invited_at 
@@ -273,7 +304,7 @@ export default function LideresPage() {
                               </div>
                             )}
                           </td>
-                          {tab === 'ACTIVE' && (
+                          {(tab === 'ACTIVE' || tab === 'INACTIVE') && (
                             <td className="px-6 py-4">
                               {leader.goal ? (
                                 <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
@@ -303,6 +334,16 @@ export default function LideresPage() {
                                   to={`/lideres/${leader.id}`}
                                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                                   title="Editar"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Link>
+                              </div>
+                            ) : tab === 'INACTIVE' ? (
+                              <div className="flex items-center justify-end space-x-2">
+                                <Link
+                                  to={`/lideres/${leader.id}`}
+                                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                  title="Ver detalhes"
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Link>

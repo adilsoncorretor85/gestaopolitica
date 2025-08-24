@@ -145,6 +145,7 @@ export async function resendInvite(email: string, full_name?: string) {
 }
 
 export async function deactivateLeader(id: string) {
+}
 // --- BANIR (desativar) via Edge Function
 export async function deactivateLeader(id: string, reason = "Desativação manual pelo admin") {
   const { data: { session } } = await supabase.auth.getSession();
