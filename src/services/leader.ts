@@ -134,6 +134,10 @@ export async function resendInvite(email: string, full_name?: string) {
       email, 
       full_name: full_name || '',
       appUrl: window.location.origin 
+    }
+  }
+  )
+}
 // --- BANIR (desativar) via Edge Function
 export async function deactivateLeader(
   id: string,
