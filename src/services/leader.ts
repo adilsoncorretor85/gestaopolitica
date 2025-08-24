@@ -145,15 +145,43 @@ export async function resendInvite(email: string, full_name?: string) {
 }
 
 export async function deactivateLeader(id: string) {
-  const { error } = await supabase
-    .from("leader_profiles")
-    .update({ status: "INACTIVE" })
-    .eq("id", id);
+// --- BANIR (desativar) via Edge Function
+export async function deactivateLeader(id: string, reason = "Desativação manual pelo admin") {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Você não está autenticado.");
+
+  const { data, error } = await supabase.functions.invoke("admin_ban_user", {
+    body: { userId: id, action: "ban", reason },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
 
   if (error) {
-    // jogue o erro pra cima pra UI mostrar; ajuda muito no debug
-    throw new Error(error.message || "Falha ao desativar líder");
+    // Supabase Functions retorna { error } no client quando HTTP não é 2xx
+    throw new Error(error.message || "Falha ao desativar líder (Edge Function).");
   }
+  if (!data?.ok) {
+    throw new Error(data?.error || "Falha ao desativar líder (resposta da função).");
+  }
+  return true;
+}
+
+// --- DESBANIR (reativar) via Edge Function
+export async function reactivateLeader(id: string, reason = "Reativação manual pelo admin") {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Você não está autenticado.");
+
+  const { data, error } = await supabase.functions.invoke("admin_ban_user", {
+    body: { userId: id, action: "unban", reason },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Falha ao reativar líder (Edge Function).");
+  }
+  if (!data?.ok) {
+    throw new Error(data?.error || "Falha ao reativar líder (resposta da função).");
+  }
+  return true;
 }
 
 // Funções antigas para compatibilidade
