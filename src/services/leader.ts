@@ -39,42 +39,20 @@ export type LeaderDetail = {
 export async function listLeaders() {
   const { data, error } = await supabase
     .from("app_leaders_list")
-    .select(`
-      id, full_name, email, phone, status, invited_at, accepted_at, is_active, is_pending,
-      goal:leader_profiles!inner(goal)
-    `)
+    .select("id, full_name, email, phone, status, invited_at, accepted_at, is_active, is_pending, goal")
     .order("invited_at", { ascending: false, nullsFirst: false });
   if (error) throw error;
   
-  // Processar dados para incluir goal
-  const processedData = (data ?? []).map(leader => ({
-    ...leader,
-    goal: leader.goal?.goal || null
-  }));
-  
-  return processedData as LeaderListItem[];
+  return (data ?? []) as LeaderListItem[];
 }
 
 export async function getLeaderDetail(id: string) {
   const { data, error } = await supabase
-    .from("app_leader_detail")
-    .select(`
-      *,
-      goal:leader_profiles!inner(goal)
-    `)
+    .from("app_leader_detail") 
+    .select("id, full_name, email, phone, birth_date, gender, cep, street, number, complement, neighborhood, city, state, notes, status, invited_at, accepted_at, is_active, goal")
     .eq("id", id)
     .single();
   if (error) throw error;
-  
-  // Se não conseguir buscar goal da view, buscar diretamente
-  if (!data.goal) {
-    const { data: goalData } = await supabase
-      .from("leader_profiles")
-      .select("goal")
-      .eq("id", id)
-      .single();
-    data.goal = goalData?.goal || null;
-  }
   
   return data as LeaderDetail;
 }
