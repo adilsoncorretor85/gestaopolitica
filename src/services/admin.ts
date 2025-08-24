@@ -8,6 +8,33 @@ export type LeaderRow = {
   invited_at: string | null;
 };
 
+type ToggleBanInput = {
+  user_id: string;
+  ban: boolean;                 // true = banir, false = desbanir
+  until?: number | string;      // dias (número) OU ISO string (ex: "2030-01-01T00:00:00.000Z")
+  reason?: string;
+  mirrorLeaderStatus?: "ACTIVE" | "INACTIVE" | null; // opcional: espelhar em leader_profiles
+};
+
+export async function toggleUserBan(input: ToggleBanInput) {
+  const payload = {
+    user_id: input.user_id,
+    ban: input.ban,
+    until: input.until ?? undefined,
+    reason: input.reason ?? null,
+    set_leader_status: input.mirrorLeaderStatus ?? null,
+  };
+
+  const { data, error } = await supabase.functions.invoke("admin_ban_user", {
+    body: payload,
+  });
+
+  if (error || !data?.ok) {
+    throw new Error(data?.error || error?.message || "Falha ao bloquear/desbloquear usuário");
+  }
+  return data as { ok: true; user_id: string; banned_until: string | null };
+}
+
 export async function fetchLeaders(status?: "PENDING" | "ACTIVE" | "INACTIVE") {
   let q = supabase
     .from("app_leaders_list")
