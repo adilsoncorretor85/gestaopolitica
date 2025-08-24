@@ -158,7 +158,7 @@ export default function LideresFormPage() {
       navigate('/lideres');
     } catch (error) {
       console.error('Erro ao desativar líder:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao desativar líder');
+      alert(`Erro ao desativar líder: ${error instanceof Error ? error.message : error}`);
     } finally {
       setSaving(false);
     }

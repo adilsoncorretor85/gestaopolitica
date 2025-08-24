@@ -144,13 +144,16 @@ export async function resendInvite(email: string, full_name?: string) {
   return data;
 }
 
-// Manter funções antigas para compatibilidade
 export async function deactivateLeader(id: string) {
   const { error } = await supabase
-    .from('leader_profiles')
-    .update({ status: 'INACTIVE' })
-    .eq('id', id)
-  if (error) throw error
+    .from("leader_profiles")
+    .update({ status: "INACTIVE" })
+    .eq("id", id);
+
+  if (error) {
+    // jogue o erro pra cima pra UI mostrar; ajuda muito no debug
+    throw new Error(error.message || "Falha ao desativar líder");
+  }
 }
 
 // Funções antigas para compatibilidade
