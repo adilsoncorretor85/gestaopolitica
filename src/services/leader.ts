@@ -89,56 +89,58 @@ export async function updateLeaderProfile(
   return true;
 }
 
-// Reenviar convite: reutilize a função invite_leader (ela detecta usuário existente e manda recovery)
-export async function resendInvite(email: string, full_name: string) {
-  const token = (await supabase.auth.getSession()).data.session?.access_token;
-  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite_leader`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token ?? ""}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ email, full_name, appUrl: window.location.origin }),
+export async function inviteLeader(payload: {
+  full_name: string;
+  email: string;
+  phone?: string;
+  birth_date?: string;
+  gender?: string;
+  cep?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  notes?: string;
+  appUrl?: string;
+}) {
+  // 1) Garante sessão
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Você não está autenticado.');
+
+  // 2) Chama a edge function COM o Bearer token
+  const { data, error } = await supabase.functions.invoke('invite_leader', {
+    body: { ...payload, appUrl: payload.appUrl || window.location.origin },
+    headers: { Authorization: `Bearer ${session.access_token}` },
   });
-  if (!res.ok) throw new Error((await res.json()).error ?? "Falha ao reenviar convite");
-  return res.json();
+
+  if (error) throw error;
+  if (data?.ok === false) throw new Error(data?.error || 'Falha ao enviar convite.');
+
+  return data; // { ok, acceptUrl, status, userId, message }
+}
+
+export async function resendInvite(email: string, full_name?: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Você não está autenticado.');
+
+  const { data, error } = await supabase.functions.invoke('invite_leader', {
+    body: { 
+      email, 
+      full_name: full_name || '',
+      appUrl: window.location.origin 
+    },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (error) throw error;
+  if (data?.ok === false) throw new Error(data?.error || 'Falha ao reenviar convite.');
+
+  return data;
 }
 
 // Manter funções antigas para compatibilidade
-export async function inviteLeader(data: {
-  full_name: string
-  email: string
-  phone?: string
-  birth_date?: string | null
-  gender?: string | null
-  cep?: string | null
-  street?: string | null
-  number?: string | null
-  complement?: string | null
-  neighborhood?: string | null
-  city?: string | null
-  state?: string | null
-  notes?: string | null
-}) {
-  const payload = {
-    ...data,
-    redirectTo: `${window.location.origin}/convite`,
-  }
-  const token = (await supabase.auth.getSession()).data.session?.access_token;
-  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite_leader`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token ?? ""}`,
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error((await res.json()).error ?? "Falha ao enviar convite");
-  return res.json();
-}
-
 export async function deactivateLeader(id: string) {
   const { error } = await supabase
     .from('leader_profiles')

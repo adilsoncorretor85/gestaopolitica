@@ -126,12 +126,13 @@ export default function LideresFormPage() {
         // Invite new leader
         try {
           const result = await inviteLeader(data);
-          const statusMessage = result.status === 'USER_EXISTS' 
-            ? 'Usuário já existe no sistema. Link de recuperação enviado.'
-            : 'Novo convite enviado com sucesso!';
-          alert(`${statusMessage}\n\n${result.message}\n\nLink: ${result.acceptUrl}`);
+          alert(result?.message || 'Convite enviado com sucesso!');
+          if (result?.acceptUrl) {
+            console.log('Link de convite:', result.acceptUrl);
+          }
         } catch (e: any) {
-          alert(`Erro ao enviar convite: ${e?.message ?? String(e)}`);
+          console.error('inviteLeader error', e);
+          alert(`Erro ao enviar convite: ${e?.message || e}`);
           return;
         }
       }

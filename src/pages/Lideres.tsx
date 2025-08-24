@@ -49,22 +49,18 @@ export default function LideresPage() {
   const handleReinvite = async (leader: LeaderListItem) => {
     try {
       setActionLoading(`reinvite-${leader.email}`);
-      const result = await resendInvite(leader.email, leader.full_name || undefined);
+      const result = await resendInvite(leader.email!, leader.full_name || '');
       
-      if (result.sent) {
-        alert('E-mail de convite reenviado com sucesso!');
-      } else if (result.link) {
-        const message = `Convite criado. Link para copiar:\n\n${result.link}`;
-        alert(message);
-      } else {
-        alert('Convite processado com sucesso!');
+      alert(result?.message || 'Convite reenviado com sucesso!');
+      if (result?.acceptUrl) {
+        console.log('Link de convite:', result.acceptUrl);
       }
       
       // Recarregar a lista
       load();
     } catch (error) {
-      console.error('Erro ao reenviar convite:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao reenviar convite');
+      console.error('resendInvite error', error);
+      alert(`Erro ao reenviar convite: ${error instanceof Error ? error.message : error}`);
     } finally {
       setActionLoading(null);
     }
