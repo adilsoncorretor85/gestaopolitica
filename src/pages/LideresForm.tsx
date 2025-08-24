@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
 import { getLeaderDetail, updateLeaderProfile, inviteLeader, deactivateLeader, type LeaderDetail } from '@/services/leader';
+import { toggleUserBan } from '@/services/admin';
 import { fetchCep } from '@/lib/viacep';
 import { ArrowLeft, Search, Loader2 } from 'lucide-react';
 
@@ -39,6 +40,7 @@ export default function LideresFormPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchingCep, setSearchingCep] = useState(false);
+  const [leaderData, setLeaderData] = useState<LeaderDetail | null>(null);
 
   const {
     register,
@@ -64,6 +66,7 @@ export default function LideresFormPage() {
     try {
       setLoading(true);
       const data = await getLeaderDetail(id);
+      setLeaderData(data);
       setValue('full_name', data.full_name || '');
       setValue('email', data.email || '');
       setValue('phone', data.phone || '');
@@ -149,16 +152,52 @@ export default function LideresFormPage() {
   };
 
   const handleDeactivate = async () => {
-    if (!id || !confirm('Desativar este líder?')) return;
+    if (!id || !confirm('Desativar este líder? Ele não conseguirá mais fazer login.')) return;
     
     try {
       setSaving(true);
-      await deactivateLeader(id);
-      alert('Líder desativado com sucesso!');
+      
+      // Atualiza o status no leader_profiles
+      await updateLeaderProfile(id, { status: 'INACTIVE' });
+      
+      // Bane o usuário no auth
+      await toggleUserBan({
+        user_id: id,
+        ban: true,
+        reason: 'Desativado pelo administrador',
+      });
+      
+      alert('Líder desativado com sucesso.');
       navigate('/lideres');
     } catch (error) {
       console.error('Erro ao desativar líder:', error);
       alert(`Erro ao desativar líder: ${error instanceof Error ? error.message : error}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!id || !confirm('Reativar este líder? Ele poderá fazer login novamente.')) return;
+    
+    try {
+      setSaving(true);
+      
+      // Atualiza o status no leader_profiles
+      await updateLeaderProfile(id, { status: 'ACTIVE' });
+      
+      // Remove o ban do usuário no auth
+      await toggleUserBan({
+        user_id: id,
+        ban: false,
+        reason: 'Reativado pelo administrador',
+      });
+      
+      alert('Líder reativado com sucesso.');
+      navigate('/lideres');
+    } catch (error) {
+      console.error('Erro ao reativar líder:', error);
+      alert(`Erro ao reativar líder: ${error instanceof Error ? error.message : error}`);
     } finally {
       setSaving(false);
     }
@@ -417,14 +456,38 @@ export default function LideresFormPage() {
                   >
                     Cancelar
                   </Link>
-                  {id && (
+                  {id && leaderData && (
+                    <>
+                      {leaderData.status === 'ACTIVE' ? (
+                        <button
+                          type="button"
+                          onClick={handleDeactivate}
+                          disabled={saving}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        >
+                          Desativar Líder
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleReactivate}
+                          disabled={saving}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                        >
+                          Reativar Líder
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {!id && (
                     <button
                       type="button"
-                      onClick={handleDeactivate}
+                      onClick={() => {}} // placeholder for new leader actions if needed
                       disabled={saving}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      className="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50"
+                      style={{ display: 'none' }} // hide for now
                     >
-                      Desativar Líder
+                      Ação Adicional
                     </button>
                   )}
                   <button
