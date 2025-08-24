@@ -148,7 +148,7 @@ export default function DashboardPage() {
       valor: goalSummary.effective_total_goal,
       icon: Settings,
       cor: 'bg-purple-500',
-      descricao: `Org: ${goalSummary.default_org_goal} | Líderes: ${goalSummary.total_leaders_goal}`,
+      descricao: `Líderes: ${goalSummary.total_leaders_goal}`,
       editable: true
     }] : []),
     {
