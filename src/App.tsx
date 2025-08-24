@@ -103,15 +103,6 @@ export default function App() {
             }
           />
           
-          <Route
-            path="/auditoria"
-            element={
-              <ProtectedAdmin>
-                <Auditoria />
-              </ProtectedAdmin>
-            }
-          />
-          
           <Route path="/convite/:token" element={<ConviteAccept />} />
           <Route path="/convite" element={<Convite />} />
           

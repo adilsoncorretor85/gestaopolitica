@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Shield, FileText, X } from 'lucide-react';
+import { Home, Users, Shield, X } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 
 interface SidebarProps {
@@ -18,7 +18,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
     { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: Home },
     { id: 'pessoas', label: 'Pessoas', to: '/pessoas', icon: Users },
     { id: 'lideres', label: 'Líderes', to: '/lideres', icon: Shield, onlyAdmin: true },
-    { id: 'auditoria', label: 'Auditoria', to: '/auditoria', icon: FileText, onlyAdmin: true },
   ];
 
   const visibleItems = menuItems.filter(item => !item.onlyAdmin || isAdmin);
