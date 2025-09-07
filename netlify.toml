@@ -1,0 +1,9 @@
+[build]
+  command = "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --frozen-lockfile && pnpm build"
+  publish = "dist"
+
+# SPA fallback: manda tudo pro index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
