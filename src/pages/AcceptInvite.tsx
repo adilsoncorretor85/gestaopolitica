@@ -32,11 +32,11 @@ export default function AcceptInvite() {
         }
 
         // Troca o token do link por uma sessão válida
-        const { data, error } = await supabase.auth.getUser(accessToken);
-        if (error || !data.user) {
+        const { data, error } = await supabase?.auth.getUser(accessToken) || { data: null, error: null };
+        if (error || !data?.user) {
           setError("Não foi possível validar o convite.");
         } else {
-          setEmail(data.user.email ?? null);
+          setEmail(data?.user?.email ?? null);
         }
       } catch (e: any) {
         setError(e.message ?? "Erro ao validar convite.");
@@ -61,11 +61,11 @@ export default function AcceptInvite() {
     setSaving(true);
     try {
       // Define a senha do usuário convidado
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await supabase?.auth.updateUser({ password }) || { error: null };
       if (error) throw error;
 
       // Opcional: encerra a sessão e manda para o login
-      await supabase.auth.signOut();
+      await supabase?.auth.signOut();
       navigate("/login?ok=invite");
     } catch (e: any) {
       setError(e.message ?? "Falha ao criar a conta.");

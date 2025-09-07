@@ -13,7 +13,7 @@ export default function DefinirSenha() {
 
   useEffect(() => {
     // garante que existe sessão (veio do convite)
-    supabase.auth.getUser().then(({ data, error }) => {
+    supabase?.auth.getUser().then(({ data, error }) => {
       if (!data.user || error) {
         navigate('/login', { replace: true });
       } else {
@@ -39,20 +39,20 @@ export default function DefinirSenha() {
     setLoading(true);
     try {
       // 1) define a senha do usuário autenticado
-      const { error: upErr } = await supabase.auth.updateUser({ password });
+      const { error: upErr } = await supabase?.auth.updateUser({ password }) || { error: null };
       if (upErr) throw upErr;
 
       // 2) marca o convite como aceito (se sua tabela tiver essas colunas)
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
       if (user?.email) {
         await supabase
-          .from('invite_tokens')
+          ?.from('invite_tokens')
           .update({ accepted_at: new Date().toISOString() })
           .eq('email', user.email)
           .is('accepted_at', null);
 
         await supabase
-          .from('leader_profiles')
+          ?.from('leader_profiles')
           .update({ status: 'ACTIVE' })
           .eq('id', user.id);
       }

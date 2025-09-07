@@ -23,7 +23,7 @@ export type InviteLeaderInput = {
 export async function inviteLeader(input: InviteLeaderInput) {
   const appUrl = window.location.origin;
 
-  const { data, error } = await supabase.functions.invoke("invite_leader", {
+  const { data, error } = await (supabase as any)?.functions.invoke("invite_leader", {
     body: { ...input, appUrl },
   });
 
@@ -71,7 +71,7 @@ export interface InviteToken {
 }
 
 export async function getInviteToken(token: string) {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('invite_tokens')
     .select('*')
     .eq('token', token)

@@ -1,6 +1,24 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL!;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+// Em Vite, use import.meta.env (NÃO use process.env)
+const env = (import.meta as any).env ?? import.meta.env;
 
-export const supabase = createClient(url, anon);
+const url  = env?.VITE_SUPABASE_URL as string | undefined;
+const anon = env?.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+// Logs de diagnóstico removidos por segurança
+
+if (!url || !anon) {
+  console.error('ENV faltando: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env na RAIZ do projeto.');
+}
+
+export const supabase: SupabaseClient | null =
+  url && anon ? createClient(url, anon) : null;
+
+// Função helper para garantir que o cliente Supabase existe
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabase) {
+    throw new Error('Supabase client não foi inicializado. Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+  }
+  return supabase;
+}

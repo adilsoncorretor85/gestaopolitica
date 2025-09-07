@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export type LeaderRow = {
   id: string;
@@ -17,6 +17,8 @@ type ToggleBanInput = {
 };
 
 export async function toggleUserBan(input: ToggleBanInput) {
+  if (!getSupabaseClient()) throw new Error('Supabase não configurado');
+
   const payload = {
     user_id: input.user_id,
     ban: input.ban,
@@ -25,7 +27,7 @@ export async function toggleUserBan(input: ToggleBanInput) {
     set_leader_status: input.mirrorLeaderStatus ?? null,
   };
 
-  const { data, error } = await supabase.functions.invoke("admin_ban_user", {
+  const { data, error } = await getSupabaseClient().functions.invoke("admin_ban_user", {
     body: payload,
   });
 
@@ -36,7 +38,9 @@ export async function toggleUserBan(input: ToggleBanInput) {
 }
 
 export async function fetchLeaders(status?: "PENDING" | "ACTIVE" | "INACTIVE") {
-  let q = supabase
+  if (!getSupabaseClient()) throw new Error('Supabase não configurado');
+
+  let q = getSupabaseClient()
     .from("app_leaders_list")
     .select("id,email,full_name,status,invited_at")
     .order("invited_at", { ascending: false });
@@ -49,17 +53,17 @@ export async function fetchLeaders(status?: "PENDING" | "ACTIVE" | "INACTIVE") {
 }
 
 export async function countPendingLeaders() {
-  const { count, error } = await supabase
-    .from("app_leaders_list")
+  const { count, error } = await (getSupabaseClient() as any)
+    ?.from("app_leaders_list")
     .select("id", { head: true, count: "exact" })
-    .eq("status", "PENDING");
+    .eq("status", "PENDING") || { count: 0, error: null };
 
   if (error) throw error;
   return count ?? 0;
 }
 
 export async function countActiveLeaders() {
-  const { count, error } = await supabase
+  const { count, error } = await getSupabaseClient()
     .from("app_leaders_list")
     .select("id", { head: true, count: "exact" })
     .eq("status", "ACTIVE");
@@ -82,7 +86,7 @@ export async function reinviteLeader(payload: {
   email: string;
   phone?: string;
 }) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await (getSupabaseClient() as any)?.auth.getSession() || { data: { session: null } };
   if (!session?.access_token) throw new Error('Sem sessão');
 
   const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite_leader`, {
@@ -99,12 +103,12 @@ export async function reinviteLeader(payload: {
   return json;
 }
 
-export async function countLeaders(profile?: any) {
-  return await supabase.from("profiles").select("*", { count:"exact", head:false }).eq("role","LEADER");
+export async function countLeaders(_profile?: any) {
+  return await (getSupabaseClient() as any)?.from("profiles").select("*", { count:"exact", head:false }).eq("role","LEADER");
 }
 
 export async function countPeople(profile?: any) {
-  let query = supabase.from("people").select("*", { count:"exact", head:false });
+  let query = (getSupabaseClient() as any)?.from("people").select("*", { count:"exact", head:false });
   
   // Se for LEADER, filtrar apenas seus próprios registros
   if (profile && profile.role === 'LEADER') {
@@ -115,7 +119,7 @@ export async function countPeople(profile?: any) {
 }
 
 export async function countVotes(kind: "CONFIRMADO" | "PROVAVEL", profile?: any) {
-  let query = supabase.from("people").select("*", { count:"exact", head:false }).eq("vote_status", kind);
+  let query = (getSupabaseClient() as any)?.from("people").select("*", { count:"exact", head:false }).eq("vote_status", kind);
   
   // Se for LEADER, filtrar apenas seus próprios registros
   if (profile && profile.role === 'LEADER') {
@@ -126,18 +130,18 @@ export async function countVotes(kind: "CONFIRMADO" | "PROVAVEL", profile?: any)
 }
 
 export async function getDefaultGoal() {
-  return await supabase.from("org_settings").select("default_goal").eq("id",1).single();
+  return await (getSupabaseClient() as any)?.from("org_settings").select("default_goal").eq("id",1).single();
 }
 
 export async function listLeaderStats() {
   // Admin only (controle na UI)
-  return await supabase.from("v_leader_stats").select("*").order("total_people", { ascending:false }).limit(5);
+  return await (getSupabaseClient() as any)?.from("v_leader_stats").select("*").order("total_people", { ascending:false }).limit(5);
 }
 
 export async function setRole(userId: string, role: "ADMIN"|"LEADER") {
-  return await supabase.from("profiles").update({ role }).eq("id", userId);
+  return await (getSupabaseClient() as any)?.from("profiles").update({ role }).eq("id", userId);
 }
 
 export async function upsertLeaderGoal(leaderId: string, goal: number) {
-  return await supabase.from("leader_targets").upsert({ leader_id: leaderId, goal }).select().single();
+  return await (getSupabaseClient() as any)?.from("leader_targets").upsert({ leader_id: leaderId, goal }).select().single();
 }

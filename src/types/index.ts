@@ -46,3 +46,58 @@ export interface PeopleFilters {
   page?: number;
   pageSize?: number;
 }
+
+// Tipos temporários para compatibilidade
+export interface Contato {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  // Propriedades adicionais para compatibilidade
+  nome: string;
+  telefone: string;
+  endereco: string;
+  bairro: string;
+  zona: string;
+  secao: string;
+  liderancaId: string;
+  liderancaNome: string;
+  compromissoVoto: 'confirmado' | 'provavel' | 'incerto' | 'contrario';
+  observacoes?: string;
+  dataCadastro: string;
+}
+
+export interface Lideranca {
+  id: string;
+  name: string;
+  role: string;
+  organization: string;
+  // Propriedades adicionais para compatibilidade
+  nome: string;
+  telefone: string;
+  email?: string;
+  endereco: string;
+  bairro: string;
+  zona: string;
+  secao: string;
+  metaContatos: number;
+  contatosAtingidos: number;
+  status: 'ativo' | 'inativo';
+  observacoes?: string;
+  dataCadastro: string;
+}
+
+export interface Metrica {
+  title: string;
+  value: number;
+  change: number;
+  changeType: 'increase' | 'decrease';
+  // Propriedades adicionais para compatibilidade
+  totalLiderancas: number;
+  liderancasAtivas: number;
+  totalContatos: number;
+  votosConfirmados: number;
+  votosProvaveis: number;
+  metaTotalContatos: number;
+}

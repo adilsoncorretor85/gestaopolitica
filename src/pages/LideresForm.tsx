@@ -1,15 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import MapPicker from '@/components/MapPicker';
+import AddressAutocomplete, { type AddressParts } from '@/components/AddressAutocomplete';
 import useAuth from '@/hooks/useAuth';
-import { getLeaderDetail, updateLeaderProfile, inviteLeader, deactivateLeader, type LeaderDetail } from '@/services/leader';
+import { getLeaderDetail, updateLeaderProfile, inviteLeader, type LeaderDetail } from '@/services/leader';
 import { toggleUserBan } from '@/services/admin';
-import { fetchCep } from '@/lib/viacep';
-import { ArrowLeft, Search, Loader2 } from 'lucide-react';
+import { fetchAddressByCep } from '@/services/viacep';
+import { geocodeAddress } from '@/services/geocoding';
+// HOTFIX: Imports de leadership comentados temporariamente
+// import { listLeadershipCatalog, createProfileLeadership, getRoleRequirements } from '@/services/leadership';
+import { ArrowLeft, Loader2, MapPin, Crown } from 'lucide-react';
+
+// Funções utilitárias para CEP
+function onlyDigits(s: string) { return (s || '').replace(/\D/g, ''); }
+function maskCep(s: string) {
+  const d = onlyDigits(s).slice(0,8);
+  return d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
+}
 
 const leaderSchema = z.object({
   full_name: z.string().min(1, 'Nome é obrigatório'),
@@ -39,8 +51,26 @@ export default function LideresFormPage() {
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [searchingCep, setSearchingCep] = useState(false);
+  const [loadingCep, setLoadingCep] = useState(false);
+  const [errorCep, setErrorCep] = useState<string | null>(null);
+  const [openMap, setOpenMap] = useState(false);
+  const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
   const [leaderData, setLeaderData] = useState<LeaderDetail | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Estados para liderança - HOTFIX: Comentados temporariamente
+  /*
+  const [leadershipCatalog, setLeadershipCatalog] = useState<LeadershipCatalog>([]);
+  const [leadershipData, setLeadershipData] = useState({
+    role_code: '' as LeadershipRoleCode | '',
+    organization: '',
+    title: '',
+    level: null as number | null,
+    reach_scope: null as 'FAMILIA' | 'BAIRRO' | 'CIDADE' | 'REGIAO' | 'ONLINE' | null,
+    reach_size: null as number | null,
+    extra: {} as Record<string, any>
+  });
+  */
 
   const {
     register,
@@ -52,13 +82,50 @@ export default function LideresFormPage() {
     resolver: zodResolver(leaderSchema)
   });
 
-  const cepValue = watch('cep');
 
   useEffect(() => {
     if (id) {
       loadLeader();
     }
+    // HOTFIX: Comentado temporariamente
+    // loadLeadershipCatalog();
   }, [id]);
+
+  // HOTFIX: Função comentada temporariamente
+  /*
+  const loadLeadershipCatalog = async () => {
+    try {
+      const catalog = await listLeadershipCatalog();
+      setLeadershipCatalog(catalog);
+    } catch (error) {
+      console.error('Erro ao carregar catálogo de lideranças:', error);
+    }
+  };
+  */
+
+  // HOTFIX: Funções comentadas temporariamente
+  /*
+  const getFieldLabel = (field: string) => {
+    const labels: Record<string, string> = {
+      business_sector: 'Ramo de atividade',
+      public_area: 'Área de atuação',
+      status: 'Status',
+      office: 'Cargo'
+    };
+    return labels[field] || field;
+  };
+
+  const getGroupName = (group: string) => {
+    const groups: Record<string, string> = {
+      INSTITUCIONAL: 'Institucional',
+      SOCIAL: 'Social',
+      POLITICA: 'Política',
+      MIDIATICA: 'Midática',
+      INFORMAL: 'Informal'
+    };
+    return groups[group] || group;
+  };
+  */
 
   const loadLeader = async () => {
     if (!id) return;
@@ -71,7 +138,7 @@ export default function LideresFormPage() {
       setValue('email', data.email || '');
       setValue('phone', data.phone || '');
       setValue('birth_date', data.birth_date || '');
-      setValue('gender', data.gender);
+      setValue('gender', data.gender || undefined);
       setValue('goal', data.goal || undefined);
       setValue('cep', data.cep || '');
       setValue('street', data.street || '');
@@ -81,6 +148,11 @@ export default function LideresFormPage() {
       setValue('city', data.city || '');
       setValue('state', data.state || '');
       setValue('notes', data.notes || '');
+      
+      // Carregar coordenadas se existirem
+      if (data.latitude && data.longitude) {
+        setCoords({ lat: data.latitude, lng: data.longitude });
+      }
     } catch (error) {
       console.error('Erro ao carregar líder:', error);
       alert('Erro ao carregar líder');
@@ -89,28 +161,59 @@ export default function LideresFormPage() {
     }
   };
 
-  const handleCepSearch = async () => {
-    if (!cepValue) return;
-    
-    try {
-      setSearchingCep(true);
-      const result = await fetchCep(cepValue);
-      if (result) {
-        setValue('street', result.street);
-        setValue('neighborhood', result.neighborhood);
-        setValue('city', result.city);
-        setValue('state', result.state);
-        setValue('cep', result.cep);
-      } else {
-        alert('CEP não encontrado');
-      }
-    } catch (error) {
-      console.error('Erro ao buscar CEP:', error);
-      alert('Erro ao buscar CEP');
-    } finally {
-      setSearchingCep(false);
+  async function tryGeocodeFromForm() {
+    const rua = watch('street');
+    const numero = watch('number');
+    const bairro = watch('neighborhood');
+    const cidade = watch('city');
+    const estado = watch('state');
+    const cep = watch('cep');
+
+    if (!rua || !cidade || !estado) return;
+    const c = await geocodeAddress({ street: rua, number: numero, neighborhood: bairro, city: cidade, state: estado, cep });
+    if (c) setCoords(c);
+  }
+
+  // Handler para quando um endereço é selecionado no autocomplete
+  function handleAddressSelect(parts: AddressParts) {
+    if (parts.street) setValue('street', parts.street);
+    if (parts.number) setValue('number', parts.number);
+    if (parts.neighborhood) setValue('neighborhood', parts.neighborhood);
+    if (parts.city) setValue('city', parts.city);
+    if (parts.state) setValue('state', parts.state);
+    if (parts.cep) setValue('cep', parts.cep);
+
+    // Se temos coordenadas, atualizar
+    if (parts.latitude && parts.longitude) {
+      setCoords({ lat: parts.latitude, lng: parts.longitude });
     }
-  };
+  }
+
+  async function handleCepChange(v: string) {
+    setErrorCep(null);
+    setValue('cep', maskCep(v));
+    const d = onlyDigits(v);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (d.length !== 8) return;
+      setLoadingCep(true);
+      const adr = await fetchAddressByCep(d).catch(() => null);
+      setLoadingCep(false);
+
+      if (!adr) { setErrorCep('CEP não encontrado'); return; }
+
+      if (!watch('street')) setValue('street', adr.street);
+      if (!watch('neighborhood')) setValue('neighborhood', adr.neighborhood);
+      if (!watch('city')) setValue('city', adr.city);
+      if (!watch('state')) setValue('state', adr.state);
+
+      // Se já houver número, geocodifica de imediato
+      if (watch('number')) {
+        await tryGeocodeFromForm();
+      }
+    }, 400);
+  }
 
   const onSubmit = async (data: LeaderFormData) => {
     if (!isAdmin) return;
@@ -118,10 +221,17 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
+      const payload = {
+        ...data,
+        cep: onlyDigits(data.cep || ''),
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
+      };
+      
       if (id) {
         // Update existing leader
         try {
-          await updateLeaderProfile(id, data);
+          await updateLeaderProfile(id, payload);
           alert('Líder atualizado com sucesso!');
         } catch (e: any) {
           alert(`Erro ao salvar líder: ${e?.message ?? String(e)}`);
@@ -130,11 +240,34 @@ export default function LideresFormPage() {
       } else {
         // Invite new leader
         try {
-          const result = await inviteLeader(data);
+          const result = await inviteLeader(payload);
           alert(result?.message || 'Convite enviado com sucesso!');
           if (result?.acceptUrl) {
             console.log('Link de convite:', result.acceptUrl);
           }
+          
+          // Se foi preenchida uma liderança, criar após o convite
+          // HOTFIX: Comentado temporariamente para estabilização
+          /*
+          if (leadershipData.role_code && result?.userId) {
+            try {
+              await createProfileLeadership({
+                profile_id: result.userId, // ID do leader_profiles criado
+                role_code: leadershipData.role_code,
+                organization: leadershipData.organization || null,
+                title: leadershipData.title || null,
+                level: leadershipData.level,
+                reach_scope: leadershipData.reach_scope,
+                reach_size: leadershipData.reach_size,
+                extra: leadershipData.extra
+              });
+              console.log('Liderança criada com sucesso');
+            } catch (leadershipError: any) {
+              console.error('Erro ao criar liderança:', leadershipError);
+              // Não falha o convite por causa da liderança
+            }
+          }
+          */
         } catch (e: any) {
           console.error('inviteLeader error', e);
           alert(`Erro ao enviar convite: ${e?.message || e}`);
@@ -205,24 +338,24 @@ export default function LideresFormPage() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Acesso restrito a administradores</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Acesso restrito a administradores</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Carregando...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header 
-        profile={profile}
+        profile={profile as any}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
@@ -240,30 +373,30 @@ export default function LideresFormPage() {
             <div className="mb-6">
               <Link
                 to="/lideres"
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+                className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Voltar para lista</span>
               </Link>
               
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {id ? 'Editar Líder' : 'Convidar Líder'}
               </h1>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 {/* Dados Básicos */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Dados Básicos</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Dados Básicos</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Nome Completo *
                       </label>
                       <input
                         {...register('full_name')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       {errors.full_name && (
                         <p className="text-red-500 text-sm mt-1">{errors.full_name.message}</p>
@@ -271,50 +404,50 @@ export default function LideresFormPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Email *
                       </label>
                       <input
                         type="email"
                         {...register('email')}
                         disabled={!!id} // Disable email editing for existing leaders
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600"
                       />
                       {errors.email && (
-                        <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">{errors.email.message}</p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Telefone
                       </label>
                       <input
                         type="tel"
                         {...register('phone')}
                         placeholder="(11) 99999-9999"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Data de Nascimento
                       </label>
                       <input
                         type="date"
                         {...register('birth_date')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Sexo
                       </label>
                       <select
                         {...register('gender')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">Selecione</option>
                         <option value="M">Masculino</option>
@@ -324,7 +457,7 @@ export default function LideresFormPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Meta do líder
                       </label>
                       <input
@@ -332,7 +465,7 @@ export default function LideresFormPage() {
                         min="0"
                         {...register('goal', { valueAsNumber: true })}
                         placeholder="Meta de contatos"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                       {errors.goal && (
                         <p className="text-red-500 text-sm mt-1">{errors.goal.message}</p>
@@ -343,107 +476,317 @@ export default function LideresFormPage() {
 
                 {/* Endereço */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Endereço</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Endereço</h3>
+                  
+                  {/* Autocomplete de Endereço */}
+                  <AddressAutocomplete
+                    label="Endereço (autocomplete)"
+                    placeholder="Digite o endereço completo..."
+                    onSelect={handleAddressSelect}
+                    className="mb-6"
+                  />
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         CEP
                       </label>
-                      <div className="flex space-x-2">
-                        <input
-                          {...register('cep')}
-                          placeholder="00000-000"
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleCepSearch}
-                          disabled={searchingCep || !cepValue}
-                          className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center"
-                        >
-                          {searchingCep ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Search className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
+                      <input
+                        value={watch('cep') || ''}
+                        onChange={(e) => handleCepChange(e.target.value)}
+                        placeholder="00000-000"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      {loadingCep && (
+                        <p className="text-sm text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Buscando endereço...
+                        </p>
+                      )}
+                      {errorCep && (
+                        <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errorCep}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Rua
                       </label>
                       <input
                         {...register('street')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Número
                       </label>
                       <input
-                        {...register('number')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        value={watch('number') || ''}
+                        onChange={async (e) => {
+                          setValue('number', e.target.value);
+                          // se já tem CEP válido (8) e rua/cidade/UF, geocodifica depois de breve debounce
+                          if (onlyDigits(watch('cep') || '').length === 8) {
+                            if (debounceRef.current) clearTimeout(debounceRef.current);
+                            debounceRef.current = setTimeout(tryGeocodeFromForm, 300);
+                          }
+                        }}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Complemento
                       </label>
                       <input
                         {...register('complement')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Bairro
                       </label>
                       <input
                         {...register('neighborhood')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Cidade
                       </label>
                       <input
                         {...register('city')}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Estado
                       </label>
                       <input
                         {...register('state')}
                         placeholder="SP"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
+                {/* Liderança (opcional) - apenas para convites */}
+                {false && (
+                  <div>
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Crown className="h-5 w-5 text-violet-500" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">Liderança (opcional)</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Papel */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Papel
+                        </label>
+                        <select
+                          value=""
+                          onChange={() => {}}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Selecione um papel (opcional)</option>
+                          <option value="">Funcionalidade temporariamente desabilitada</option>
+                        </select>
+                      </div>
+
+                      {/* Organização */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Organização
+                        </label>
+                        <input
+                          type="text"
+                          value=""
+                          onChange={() => {}}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Nome da organização"
+                        />
+                      </div>
+
+                      {/* Cargo */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Cargo
+                        </label>
+                        <input
+                          type="text"
+                          value=""
+                          onChange={() => {}}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Título do cargo"
+                        />
+                      </div>
+
+                      {/* Nível */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Nível (1-5)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value=""
+                          onChange={() => {}}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="1-5"
+                        />
+                      </div>
+
+                      {/* Alcance */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Alcance
+                        </label>
+                        <select
+                          value=""
+                          onChange={() => {}}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Selecione o alcance</option>
+                          <option value="FAMILIA">Família</option>
+                          <option value="BAIRRO">Bairro</option>
+                          <option value="CIDADE">Cidade</option>
+                          <option value="REGIAO">Região</option>
+                          <option value="ONLINE">Online</option>
+                        </select>
+                      </div>
+
+                      {/* Tamanho do alcance */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Tamanho do Alcance
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value=""
+                          onChange={() => {}}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Número de pessoas"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Campos extras dinâmicos - TEMPORARIAMENTE DESABILITADOS */}
+                    {false && (
+                      <div className="mt-4 space-y-4">
+                        {/* {[].map((req) => (
+                          <div key={req}>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Campo *
+                            </label>
+                            {req === 'business_sector' && (
+                              <input
+                                type="text"
+                                value={leadershipData.extra?.[req] || ''}
+                                onChange={(e) => setLeadershipData(prev => ({
+                                  ...prev,
+                                  extra: { ...prev.extra, [req]: e.target.value }
+                                }))}
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Ex: Tecnologia, Saúde, Educação"
+                                required
+                              />
+                            )}
+                            {req === 'public_area' && (
+                              <input
+                                type="text"
+                                value={leadershipData.extra?.[req] || ''}
+                                onChange={(e) => setLeadershipData(prev => ({
+                                  ...prev,
+                                  extra: { ...prev.extra, [req]: e.target.value }
+                                }))}
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Ex: Saúde, Educação, Segurança"
+                                required
+                              />
+                            )}
+                            {req === 'status' && (
+                              <select
+                                value={leadershipData.extra?.[req] || ''}
+                                onChange={(e) => setLeadershipData(prev => ({
+                                  ...prev,
+                                  extra: { ...prev.extra, [req]: e.target.value }
+                                }))}
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                required
+                              >
+                                <option value="">Selecione o status</option>
+                                <option value="EM MANDATO">Em Mandato</option>
+                                <option value="SUPLENTE">Suplente</option>
+                                <option value="EX">Ex</option>
+                                <option value="PRE-CANDIDATO">Pré-candidato</option>
+                              </select>
+                            )}
+                            {req === 'office' && (
+                              <div className="space-y-2">
+                                <select
+                                  value={leadershipData.extra?.[req] || ''}
+                                  onChange={(e) => setLeadershipData(prev => ({
+                                    ...prev,
+                                    extra: { ...prev.extra, [req]: e.target.value }
+                                  }))}
+                                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  required
+                                >
+                                  <option value="">Selecione o cargo</option>
+                                  <option value="VEREADOR">Vereador</option>
+                                  <option value="PREFEITO">Prefeito</option>
+                                  <option value="DEPUTADO ESTADUAL">Deputado Estadual</option>
+                                  <option value="DEPUTADO FEDERAL">Deputado Federal</option>
+                                  <option value="SENADOR">Senador</option>
+                                  <option value="OUTRO">Outro</option>
+                                </select>
+                                {leadershipData.extra?.[req] === 'OUTRO' && (
+                                  <input
+                                    type="text"
+                                    value={leadershipData.extra?.office_other || ''}
+                                    onChange={(e) => setLeadershipData(prev => ({
+                                      ...prev,
+                                      extra: { ...prev.extra, office_other: e.target.value }
+                                    }))}
+                                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Especifique o cargo"
+                                    required
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))} */}
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                          Funcionalidade temporariamente desabilitada
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Observações */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Observações
                   </label>
                   <textarea
                     {...register('notes')}
                     rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Informações adicionais sobre o líder..."
                   />
                 </div>
@@ -452,7 +795,7 @@ export default function LideresFormPage() {
                 <div className="flex justify-end space-x-3 pt-4">
                   <Link
                     to="/lideres"
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     Cancelar
                   </Link>
@@ -504,6 +847,38 @@ export default function LideresFormPage() {
                     </span>
                   </button>
                 </div>
+
+                {/* Botão Definir no mapa */}
+                <div className="mt-4 flex gap-2 items-center">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMap(true)}
+                    className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 inline-flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Definir no mapa
+                  </button>
+                  {coords && (
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Marcado: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                    </span>
+                  )}
+                </div>
+
+                <MapPicker
+                  open={openMap}
+                  onClose={() => setOpenMap(false)}
+                  initialCoords={coords}
+                  initialAddress={{
+                    street: watch('street'),
+                    number: watch('number'),
+                    neighborhood: watch('neighborhood'),
+                    city: watch('city'),
+                    state: watch('state'),
+                    cep: watch('cep')
+                  }}
+                  onConfirm={(c) => setCoords(c)}
+                />
               </form>
             </div>
           </div>

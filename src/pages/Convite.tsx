@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Vote } from "lucide-react";
 
 function useInviteHash() {
@@ -37,14 +37,14 @@ export default function Convite() {
           throw new Error("Tipo de link inválido.");
         }
 
-        const { error: sErr } = await supabase.auth.setSession({
+        const { error: sErr } = await getSupabaseClient().auth.setSession({
           access_token,
           refresh_token,
         });
         if (sErr) throw sErr;
 
         // Pegar email do usuário
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getSupabaseClient().auth.getUser();
         if (user?.email) {
           setUserEmail(user.email);
         }
@@ -69,19 +69,19 @@ export default function Convite() {
       if (pwd.length < 6) throw new Error("A senha precisa ter ao menos 6 caracteres.");
       if (pwd !== pwd2) throw new Error("As senhas não conferem.");
 
-      const { error: uErr } = await supabase.auth.updateUser({ password: pwd });
+      const { error: uErr } = await getSupabaseClient().auth.updateUser({ password: pwd });
       if (uErr) throw uErr;
 
       // Marcar convite como aceito e ativar líder
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getSupabaseClient().auth.getUser();
       if (user?.email) {
-        await supabase
+        await getSupabaseClient()
           .from('invite_tokens')
           .update({ accepted_at: new Date().toISOString() })
           .eq('email', user.email)
           .is('accepted_at', null);
 
-        await supabase
+        await getSupabaseClient()
           .from('leader_profiles')
           .update({ status: 'ACTIVE' })
           .eq('id', user.id);

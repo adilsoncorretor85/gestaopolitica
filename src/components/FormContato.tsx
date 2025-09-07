@@ -33,7 +33,7 @@ const FormContato: React.FC<FormContatoProps> = ({ contato, liderancas, onSave, 
         zona: contato.zona,
         secao: contato.secao,
         liderancaId: contato.liderancaId,
-        compromissoVoto: contato.compromissoVoto,
+        compromissoVoto: contato.compromissoVoto as any,
         observacoes: contato.observacoes || '',
       });
     }
@@ -41,7 +41,7 @@ const FormContato: React.FC<FormContatoProps> = ({ contato, liderancas, onSave, 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData as any);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

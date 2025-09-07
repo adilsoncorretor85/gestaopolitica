@@ -5,6 +5,10 @@ import { Metrica } from '../types';
 
 const Dashboard: React.FC = () => {
   const metricas: Metrica = {
+    title: 'Dashboard',
+    value: 0,
+    change: 0,
+    changeType: 'increase',
     totalLiderancas: liderancas.length,
     liderancasAtivas: liderancas.filter(l => l.status === 'ativo').length,
     totalContatos: contatos.length,

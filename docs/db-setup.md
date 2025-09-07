@@ -55,7 +55,7 @@ create table if not exists public.people (
   email text, facebook text, instagram text,
   cep text, street text, number text, complement text,
   neighborhood text, city text, state text,
-  notes text, consent boolean default false,
+  notes text,
   contacted_at timestamptz,
   vote_status text check (vote_status in ('CONFIRMADO','PROVAVEL','INDEFINIDO')) default 'INDEFINIDO',
   created_at timestamptz default now(),

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Plus, Search, Filter, Phone, Mail, MapPin, Target, Edit2, Eye } from 'lucide-react';
+import { Users, Plus, Search, Filter, Phone, Mail, MapPin, Edit2 } from 'lucide-react';
 import { liderancas as initialLiderancas } from '../data/mockData';
 import { Lideranca } from '../types';
 import Modal from './Modal';

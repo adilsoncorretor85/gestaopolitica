@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
-import { getLeaderCounters, getGoalSummary, setOrgDefaultGoal, type GoalSummary } from '@/lib/dashboard';
+import { getLeaderCounters, getGoalSummary, type GoalSummary } from '@/lib/dashboard';
 import { listPeople } from '@/services/people';
-import { Users, UserCheck, Target, TrendingUp, Calendar, MapPin, Settings, X } from 'lucide-react';
-import Modal from '@/components/Modal';
+import { getElectionSettings, formatCountdown } from '@/services/election';
+import { Users, UserCheck, Target, TrendingUp, Calendar, Settings } from 'lucide-react';
+
+// Função para formatar números com separadores de milhares
+const formatNumber = (num: number | string): string => {
+  if (typeof num === 'string') return num;
+  return num.toLocaleString('pt-BR');
+};
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,15 +32,28 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   
-  // Modal de edição de meta
-  const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const [newGoal, setNewGoal] = useState<number>(120);
-  const [applyToAllLeaders, setApplyToAllLeaders] = useState(false);
-  const [savingGoal, setSavingGoal] = useState(false);
+  
+  // Estados para eleição
+  const [countdownText, setCountdownText] = useState<string>("");
+  const [electionLabel, setElectionLabel] = useState<string>("");
 
   useEffect(() => {
     loadStats();
+    loadElectionSettings();
   }, []);
+
+  const loadElectionSettings = async () => {
+    try {
+      const settings = await getElectionSettings();
+      if (settings?.election_date) {
+        const countdown = formatCountdown(settings.election_date);
+        setCountdownText(countdown.text);
+        setElectionLabel(`${settings.election_name} • ${new Date(settings.election_date).toLocaleDateString("pt-BR")}`);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações de eleição:', error);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -67,7 +86,6 @@ export default function DashboardPage() {
       });
 
       setGoalSummary(goalData);
-      setNewGoal(goalData.default_org_goal);
 
       // Top líderes por número de pessoas cadastradas (apenas para admin)
       if (isAdminUser) {
@@ -82,36 +100,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSaveGoal = async () => {
-    try {
-      setSavingGoal(true);
-      
-      // 1. Atualizar meta da organização
-      await setOrgDefaultGoal(newGoal);
-      
-      // 2. Se checkbox marcado, aplicar para todos os líderes
-      if (applyToAllLeaders) {
-        const { error } = await supabase
-          .from('leader_profiles')
-          .update({ goal: newGoal })
-          .in('status', ['ACTIVE', 'INVITED', 'PENDING']);
-        
-        if (error) throw error;
-      }
-      
-      // 3. Recarregar dados
-      await loadStats();
-      setGoalModalOpen(false);
-      setApplyToAllLeaders(false);
-      
-      alert('Meta atualizada com sucesso!');
-    } catch (error) {
-      console.error('Erro ao salvar meta:', error);
-      alert(`Erro ao salvar meta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setSavingGoal(false);
-    }
-  };
   // Se houver erro de tabela não existir, mostrar tela de configuração
   if (error && error.includes('does not exist')) {
     return <DatabaseStatus error={error} />;
@@ -157,14 +145,23 @@ export default function DashboardPage() {
       icon: TrendingUp,
       cor: 'bg-purple-500',
       descricao: `${stats.totalPeople}/${stats.effectiveTotalGoal}`
+    },
+    // Card de contagem regressiva
+    {
+      titulo: 'Contagem regressiva',
+      valor: countdownText || "—",
+      icon: Calendar,
+      cor: 'bg-orange-500',
+      descricao: countdownText.includes("Hoje") ? "É hoje!" : "para a eleição",
+      extraInfo: electionLabel
     }
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header 
-          profile={profile}
+          profile={profile as any}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
         />
@@ -179,7 +176,7 @@ export default function DashboardPage() {
           
           <main className="flex-1 overflow-x-hidden">
             <div className="p-6 flex items-center justify-center">
-              <p className="text-gray-500">Carregando estatísticas...</p>
+              <p className="text-gray-500 dark:text-gray-400">Carregando estatísticas...</p>
             </div>
           </main>
         </div>
@@ -188,9 +185,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header 
-        profile={profile}
+        profile={profile as any}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
@@ -207,26 +204,29 @@ export default function DashboardPage() {
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-gray-600">Visão geral da campanha política</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                <p className="text-gray-600 dark:text-gray-400">Visão geral da campanha política</p>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>Última atualização: hoje</span>
               </div>
             </div>
 
             {/* Cards de Estatísticas */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isAdminUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isAdminUser ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
               {estatisticasCards.map((card, index) => {
                 const Icon = card.icon;
                 return (
-                  <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                  <div key={index} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">{card.titulo}</p>
-                        <p className="text-2xl font-bold text-gray-900 mt-1">{card.valor}</p>
-                        <p className="text-xs text-gray-500 mt-1">{card.descricao}</p>
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.titulo}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatNumber(card.valor)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{card.descricao}</p>
+                        {card.extraInfo && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{card.extraInfo}</p>
+                        )}
                       </div>
                       <div className={`p-3 rounded-lg ${card.cor}`}>
                         <Icon className="h-6 w-6 text-white" />
@@ -238,20 +238,20 @@ export default function DashboardPage() {
             </div>
 
             {/* Gráfico de Progresso */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Progresso da Meta de Contatos</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Progresso da Meta de Contatos</h3>
               <div className="space-y-4">
-                <div className="flex justify-between text-sm text-gray-600">
+                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                   <span>Contatos Realizados</span>
-                  <span>{stats.totalPeople} / {stats.effectiveTotalGoal}</span>
+                  <span>{formatNumber(stats.totalPeople)} / {formatNumber(stats.effectiveTotalGoal)}</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div 
                     className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-700"
                     style={{ width: `${Math.min(progressoMeta, 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                   <span>0%</span>
                   <span className="font-medium">{progressoMeta}%</span>
                   <span>100%</span>
@@ -262,27 +262,27 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Lideranças - Apenas para Admin */}
               {isAdminUser && topLeaders.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 5 Lideranças</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top 5 Lideranças</h3>
                   <div className="space-y-4">
                     {topLeaders.map((leader, index) => (
-                      <div key={leader.leader_id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                      <div key={leader.leader_id} className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="flex-shrink-0">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-blue-600">#{index + 1}</span>
+                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">#{index + 1}</span>
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {leader.leader_name}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">
-                            {leader.total_people} contatos
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatNumber(leader.total_people)} contatos
                           </p>
-                          <p className="text-xs text-green-600">
-                            {leader.confirmed_votes} confirmados
+                          <p className="text-xs text-green-600 dark:text-green-400">
+                            {formatNumber(leader.confirmed_votes)} confirmados
                           </p>
                         </div>
                       </div>
@@ -292,8 +292,8 @@ export default function DashboardPage() {
               )}
 
               {/* Distribuição de Votos */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribuição de Votos</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Distribuição de Votos</h3>
                 <div className="space-y-3">
                   {[
                     { label: 'Confirmados', valor: stats.confirmedVotes, cor: 'bg-green-500' },
@@ -303,9 +303,9 @@ export default function DashboardPage() {
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className={`w-3 h-3 rounded-full ${item.cor}`} />
-                        <span className="text-sm text-gray-700">{item.label}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{item.valor}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{formatNumber(item.valor)}</span>
                     </div>
                   ))}
                 </div>

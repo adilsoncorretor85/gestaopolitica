@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Person, PersonWithProfile } from '@/types'
+import { PersonWithProfile } from '@/types'
 import { getPeople } from '@/lib/people'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

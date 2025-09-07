@@ -24,9 +24,10 @@ export default function AppLayout({ children, profile }: AppLayoutProps) {
       <div className="flex">
         <div className="md:w-64 flex-shrink-0">
           <Sidebar 
-            profile={profile}
             isOpen={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
+            activeTab=""
+            setActiveTab={() => {}}
           />
         </div>
         

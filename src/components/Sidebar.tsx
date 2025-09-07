@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Shield, X } from 'lucide-react';
+import { Home, Users, Shield, X, MapPin, BarChart3 } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 
 interface SidebarProps {
@@ -18,6 +18,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
     { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: Home },
     { id: 'pessoas', label: 'Pessoas', to: '/pessoas', icon: Users },
     { id: 'lideres', label: 'Líderes', to: '/lideres', icon: Shield, onlyAdmin: true },
+    { id: 'projecao', label: 'Projeção', to: '/projecao', icon: BarChart3, onlyAdmin: true },
+    { id: 'mapa', label: 'Mapa', to: '/mapa', icon: MapPin },
   ];
 
   const visibleItems = menuItems.filter(item => !item.onlyAdmin || isAdmin);
@@ -42,15 +44,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
       
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 z-50 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0 md:shadow-none md:border-r md:border-gray-200
+        fixed top-0 left-0 z-50 h-full w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-all duration-300 ease-in-out
+        md:relative md:translate-x-0 md:shadow-none md:border-r md:border-gray-200 dark:md:border-gray-700
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 md:hidden">
-          <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 md:hidden">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menu</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-gray-400 hover:text-gray-500"
+            className="p-1 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
           >
             <X className="h-6 w-6" />
           </button>
@@ -67,8 +69,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
                 onClick={() => handleNavigation(item.id)}
                 className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium mb-1 transition-colors ${
                   isActive
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <Icon className="h-5 w-5" />

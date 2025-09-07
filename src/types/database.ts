@@ -32,6 +32,68 @@ export interface Database {
           updated_at?: string
         }
       }
+      leader_profiles: {
+        Row: {
+          id: string
+          email: string
+          phone: string | null
+          birth_date: string | null
+          gender: string | null
+          cep: string | null
+          street: string | null
+          number: string | null
+          complement: string | null
+          neighborhood: string | null
+          city: string | null
+          state: string | null
+          notes: string | null
+          status: string
+          latitude: number | null
+          longitude: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          email: string
+          phone?: string | null
+          birth_date?: string | null
+          gender?: string | null
+          cep?: string | null
+          street?: string | null
+          number?: string | null
+          complement?: string | null
+          neighborhood?: string | null
+          city?: string | null
+          state?: string | null
+          notes?: string | null
+          status?: string
+          latitude?: number | null
+          longitude?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          phone?: string | null
+          birth_date?: string | null
+          gender?: string | null
+          cep?: string | null
+          street?: string | null
+          number?: string | null
+          complement?: string | null
+          neighborhood?: string | null
+          city?: string | null
+          state?: string | null
+          notes?: string | null
+          status?: string
+          latitude?: number | null
+          longitude?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       people: {
         Row: {
           id: string
@@ -49,7 +111,8 @@ export interface Database {
           city: string | null
           state: string | null
           notes: string | null
-          consent: boolean
+          latitude: number | null
+          longitude: number | null
           created_at: string
           updated_at: string
         }
@@ -69,7 +132,8 @@ export interface Database {
           city?: string | null
           state?: string | null
           notes?: string | null
-          consent?: boolean
+          latitude?: number | null
+          longitude?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -89,7 +153,8 @@ export interface Database {
           city?: string | null
           state?: string | null
           notes?: string | null
-          consent?: boolean
+          latitude?: number | null
+          longitude?: number | null
           created_at?: string
           updated_at?: string
         }

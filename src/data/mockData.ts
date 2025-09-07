@@ -3,6 +3,9 @@ import { Lideranca, Contato } from '../types';
 export const liderancas: Lideranca[] = [
   {
     id: '1',
+    name: 'Maria Santos Silva',
+    role: 'Líder',
+    organization: 'Partido XYZ',
     nome: 'Maria Santos Silva',
     telefone: '(11) 99999-1234',
     email: 'maria.santos@email.com',
@@ -18,6 +21,9 @@ export const liderancas: Lideranca[] = [
   },
   {
     id: '2',
+    name: 'João Carlos Pereira',
+    role: 'Líder',
+    organization: 'Partido ABC',
     nome: 'João Carlos Pereira',
     telefone: '(11) 98888-5678',
     email: 'joao.carlos@email.com',
@@ -33,6 +39,9 @@ export const liderancas: Lideranca[] = [
   },
   {
     id: '3',
+    name: 'Ana Paula Costa',
+    role: 'Líder',
+    organization: 'Partido DEF',
     nome: 'Ana Paula Costa',
     telefone: '(11) 97777-9012',
     endereco: 'Rua do Comércio, 789',
@@ -50,9 +59,12 @@ export const liderancas: Lideranca[] = [
 export const contatos: Contato[] = [
   {
     id: '1',
+    name: 'Pedro Henrique Oliveira',
+    phone: '(11) 96666-1111',
+    email: 'pedro.henrique@email.com',
+    address: 'Rua das Palmeiras, 321',
     nome: 'Pedro Henrique Oliveira',
     telefone: '(11) 96666-1111',
-    email: 'pedro.oliveira@email.com',
     endereco: 'Rua A, 100',
     bairro: 'Centro',
     zona: '001',
@@ -65,6 +77,10 @@ export const contatos: Contato[] = [
   },
   {
     id: '2',
+    name: 'Carla Fernandes',
+    phone: '(11) 95555-2222',
+    email: 'carla.fernandes@email.com',
+    address: 'Av. das Rosas, 654',
     nome: 'Carla Fernandes',
     telefone: '(11) 95555-2222',
     endereco: 'Rua B, 200',
@@ -79,6 +95,10 @@ export const contatos: Contato[] = [
   },
   {
     id: '3',
+    name: 'Roberto Silva Junior',
+    phone: '(11) 94444-3333',
+    email: 'roberto.silva@email.com',
+    address: 'Rua dos Lírios, 987',
     nome: 'Roberto Silva Junior',
     telefone: '(11) 94444-3333',
     endereco: 'Av. Principal, 500',

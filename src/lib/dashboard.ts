@@ -7,6 +7,8 @@ export type GoalSummary = {
 };
 
 export async function getGoalSummary(): Promise<GoalSummary> {
+  if (!supabase) throw new Error('Supabase não configurado');
+
   try {
     // Tenta buscar da view app_goal_summary
     const { data, error } = await supabase
@@ -39,6 +41,8 @@ export async function getGoalSummary(): Promise<GoalSummary> {
 }
 
 export async function setOrgDefaultGoal(newGoal: number) {
+  if (!supabase) throw new Error('Supabase não configurado');
+
   const { error } = await supabase
     .from("org_settings")
     .update({ default_goal: newGoal })
@@ -48,6 +52,8 @@ export async function setOrgDefaultGoal(newGoal: number) {
 }
 
 export async function getLeaderCounters() {
+  if (!supabase) throw new Error('Supabase não configurado');
+
   const [pendingQ, activeQ] = await Promise.all([
     supabase.from("app_leaders_list").select("*", { count: "exact", head: true }).eq("is_pending", true),
     supabase.from("app_leaders_list").select("*", { count: "exact", head: true }).eq("is_active", true),

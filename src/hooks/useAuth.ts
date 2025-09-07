@@ -24,6 +24,14 @@ export default function useAuth(): UseAuth {
   const load = useCallback(async () => {
     setLoading(true);
 
+    if (!supabase) {
+      console.error('Supabase não configurado. Verifique o .env e reinicie o Vite.');
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
     // sessão atual
     const { data: sessionData } = await supabase.auth.getSession();
     const currentUser = sessionData.session?.user ?? null;
@@ -49,6 +57,8 @@ export default function useAuth(): UseAuth {
   useEffect(() => {
     // carrega inicialmente
     load();
+
+    if (!supabase) return;
 
     // reage a mudanças de auth
     const { data: sub } = supabase.auth.onAuthStateChange(() => {

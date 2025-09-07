@@ -34,7 +34,7 @@ const FormLideranca: React.FC<FormLiderancaProps> = ({ lideranca, onSave, onCanc
         secao: lideranca.secao,
         metaContatos: lideranca.metaContatos,
         contatosAtingidos: lideranca.contatosAtingidos,
-        status: lideranca.status,
+        status: lideranca.status as any,
         observacoes: lideranca.observacoes || '',
       });
     }
@@ -42,7 +42,7 @@ const FormLideranca: React.FC<FormLiderancaProps> = ({ lideranca, onSave, onCanc
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    onSave(formData as any);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

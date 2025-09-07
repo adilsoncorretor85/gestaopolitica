@@ -1,18 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import DefinirSenha from "@/pages/DefinirSenha";
 import Pessoas from "@/pages/Pessoas";
 import PessoasForm from "@/pages/PessoasForm";
+import Mapa from "@/pages/Mapa";
 import Lideres from "@/pages/Lideres";
 import LideresForm from "@/pages/LideresForm";
+import Projecao from "@/pages/Projecao";
 import ConviteAccept from "@/pages/ConviteAccept";
-import AcceptInvite from "@/pages/AcceptInvite";
 import Convite from "@/pages/Convite";
-import Auditoria from "@/pages/Auditoria";
 import ProtectedAdmin from "@/components/ProtectedAdmin";
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
@@ -20,6 +21,12 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
+    if (!supabase) {
+      console.error('Supabase não configurado. Verifique o .env e reinicie o Vite.');
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
@@ -31,13 +38,14 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   }, []);
 
   if (loading) return <div>Carregando…</div>;
+  if (!supabase) return <div>Erro: Supabase não configurado. Verifique o .env e reinicie o Vite.</div>;
   if (!session) return <Navigate to="/login" replace />;
   return children;
 }
 
 export default function App() {
   return (
-    <>
+    <ThemeProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -79,6 +87,15 @@ export default function App() {
           />
           
           <Route
+            path="/mapa"
+            element={
+              <ProtectedRoute>
+                <Mapa />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
             path="/lideres"
             element={
               <ProtectedAdmin>
@@ -103,6 +120,15 @@ export default function App() {
             }
           />
           
+          <Route
+            path="/projecao"
+            element={
+              <ProtectedAdmin>
+                <Projecao />
+              </ProtectedAdmin>
+            }
+          />
+          
           <Route path="/convite/:token" element={<ConviteAccept />} />
           <Route path="/convite" element={<Convite />} />
           
@@ -115,6 +141,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
-    </>
+    </ThemeProvider>
   );
 }

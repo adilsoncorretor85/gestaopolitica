@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,14 +56,14 @@ export default function ConviteAcceptPage() {
     }
   };
 
-  const onSubmit = async (data: AcceptInviteFormData) => {
+  const onSubmit = async (_data: AcceptInviteFormData) => {
     if (!token) return;
     
     try {
       setAccepting(true);
       setError('');
       
-      await acceptInvite(token, data.password);
+      await acceptInvite({ token });
       
       // Marcar líder como ativo após aceitar convite
       await marcarLeaderAtivoSeLogado();
@@ -81,12 +81,12 @@ export default function ConviteAcceptPage() {
 
   const marcarLeaderAtivoSeLogado = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
       if (user?.id) {
-        await supabase.from('leader_profiles')
+        await supabase?.from('leader_profiles')
           .update({ status: 'ACTIVE' })
           .eq('id', user.id);
-        await supabase.from('profiles')
+        await supabase?.from('profiles')
           .update({ role: 'LEADER' })
           .eq('id', user.id);
       }

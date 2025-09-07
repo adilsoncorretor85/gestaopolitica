@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { PersonInsert, PersonUpdate, PeopleFilters, PaginatedResponse, PersonWithProfile } from '@/types';
 import { logAudit } from './audit';
 import { getCurrentProfile } from './auth';
 
 export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedResponse<PersonWithProfile>> {
-  const supabase = createClient();
+  if (!supabase) throw new Error('Supabase não configurado');
   const profile = await getCurrentProfile();
   
   if (!profile) {
@@ -68,7 +68,7 @@ export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedR
 }
 
 export async function createPerson(personData: PersonInsert) {
-  const supabase = createClient();
+  if (!supabase) throw new Error('Supabase não configurado');
   const profile = await getCurrentProfile();
   
   if (!profile) {
@@ -106,7 +106,7 @@ export async function createPerson(personData: PersonInsert) {
 }
 
 export async function updatePerson(id: string, personData: PersonUpdate) {
-  const supabase = createClient();
+  if (!supabase) throw new Error('Supabase não configurado');
   const profile = await getCurrentProfile();
   
   if (!profile) {
@@ -140,7 +140,7 @@ export async function updatePerson(id: string, personData: PersonUpdate) {
 }
 
 export async function deletePerson(id: string) {
-  const supabase = createClient();
+  if (!supabase) throw new Error('Supabase não configurado');
   const profile = await getCurrentProfile();
   
   if (!profile) {
@@ -179,7 +179,7 @@ export async function deletePerson(id: string) {
 }
 
 export async function getPerson(id: string) {
-  const supabase = createClient();
+  if (!supabase) throw new Error('Supabase não configurado');
   
   const { data, error } = await supabase
     .from('people')

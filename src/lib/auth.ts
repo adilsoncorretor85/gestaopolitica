@@ -2,6 +2,11 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export async function getCurrentProfile() {
+  if (!supabase) {
+    console.error('Supabase não configurado');
+    return null;
+  }
+
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
   if (!user) return null;
