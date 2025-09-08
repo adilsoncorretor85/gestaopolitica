@@ -7,6 +7,7 @@ import Drawer from '@/components/Drawer';
 import useAuth from '@/hooks/useAuth';
 import { listPeople, deletePerson, updatePerson, type Person } from '@/services/people';
 import { listLeaders, type LeaderRow } from '@/services/admin';
+import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 import { Plus, Search, Phone, MapPin, Edit2, Trash2, ExternalLink, Mail, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function PessoasPage() {
@@ -425,13 +426,18 @@ export default function PessoasPage() {
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
 
-                <input
-                  type="text"
-                  placeholder="Estado"
+                <select
                   value={stateFilter}
                   onChange={(e) => setStateFilter(e.target.value)}
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                >
+                  <option value="">Todos os estados</option>
+                  {ESTADOS_BRASIL.map((estado) => (
+                    <option key={estado.sigla} value={estado.sigla}>
+                      {estado.sigla} - {estado.nome}
+                    </option>
+                  ))}
+                </select>
 
                 {isAdmin && (
                   <select
