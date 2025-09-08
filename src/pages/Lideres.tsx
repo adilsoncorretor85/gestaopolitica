@@ -40,6 +40,7 @@ export default function LideresPage() {
       });
       setRows(filtered);
       console.log(`Líderes ${tab}:`, data);
+      console.log('Status dos líderes:', data.map(l => ({ name: l.full_name, status: l.status, is_pending: l.is_pending, is_active: l.is_active })));
     } catch (error) {
       console.error('Erro ao carregar líderes:', error);
       setError(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -314,10 +315,13 @@ export default function LideresPage() {
                                 ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300'
                                 : leader.status === 'PENDING'
                                 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300'
+                                : leader.status === 'INVITED'
+                                ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300'
                                 : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300'
                             }`}>
                               {leader.status === 'ACTIVE' ? 'Ativo' : 
-                               leader.status === 'PENDING' ? 'Pendente' : 'Inativo'}
+                               leader.status === 'PENDING' ? 'Pendente' : 
+                               leader.status === 'INVITED' ? 'Convidado' : 'Inativo'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
