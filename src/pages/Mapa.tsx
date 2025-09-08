@@ -273,7 +273,8 @@ export default function Mapa() {
         cities.sort((a, b) => a.localeCompare(b, "pt-BR"));
         setCityOptions(cities);
 
-        if (selectedCity !== "__all__" && !cities.includes(selectedCity)) {
+        // Só reseta a cidade se não foi aplicada pelo auto-filtro
+        if (selectedCity !== "__all__" && !cities.includes(selectedCity) && overrode) {
           setSelectedCity("__all__");
           setSelectedNeighborhood("__all__");
         }

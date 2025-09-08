@@ -24,6 +24,7 @@ export async function getCurrentElection(supabase: SupabaseClient) {
     .limit(1)
     .maybeSingle();
   if (error) throw error;
+  console.log('getCurrentElection - data:', data);
   return data as ElectionSettings | null;
 }
 
