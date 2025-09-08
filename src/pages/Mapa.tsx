@@ -6,6 +6,9 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
 import { useElection } from '@/contexts/ElectionContext';
+import { useElection as useElectionStore } from '@/stores/useElection';
+import { getActiveElection } from '@/services/election';
+import { geocodeAddress } from '@/lib/geocode';
 import { Profile } from '@/types';
 
 // Declaração de tipos para Google Maps
@@ -94,6 +97,7 @@ export default function Mapa() {
   const [activeTab, setActiveTab] = useState('mapa');
   const { profile: authProfile, isAdmin } = useAuth();
   const { defaultFilters } = useElection();
+  const { election, setElection, hasAppliedMapLock, setHasAppliedMapLock } = useElectionStore();
   
   // Converter o profile do useAuth para o tipo esperado pelo Header
   const profile: Profile | undefined = authProfile ? {
@@ -132,6 +136,18 @@ export default function Mapa() {
   // InfoWindow único
   const infoRef = useRef<any>(null);
 
+  // Buscar eleição ativa uma vez (se não estiver no store)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!election) {
+        const data = await getActiveElection(supabase);
+        if (mounted) setElection(data);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [election, setElection, supabase]);
+
   // Aplicar filtros padrão da eleição
   useEffect(() => {
     console.log('Mapa - defaultFilters:', defaultFilters, 'overrode:', overrode);
@@ -149,6 +165,58 @@ export default function Mapa() {
       setFiltersApplied(true);
     }
   }, [defaultFilters, overrode]);
+
+  // Centralização/zoom (apenas 1x por navegação)
+  useEffect(() => {
+    if (!election || !mapRef.current || hasAppliedMapLock) return;
+
+    const doLock = async () => {
+      const g = window.google;
+      if (!g || !g.maps) return;
+
+      let address = 'Brasil';
+      let targetZoom: number | null = null;
+
+      switch (election.election_type) {
+        case 'MUNICIPAL':
+          if (election.city && election.uf) {
+            address = `${election.city}, ${election.uf}, Brasil`;
+            targetZoom = 11; // cidade
+          }
+          break;
+        case 'ESTADUAL':
+          if (election.uf) {
+            address = `${election.uf}, Brasil`;
+            targetZoom = 6; // estado
+          }
+          break;
+        case 'FEDERAL':
+        default:
+          address = 'Brasil';
+          targetZoom = 4; // país
+          break;
+      }
+
+      const bounds = await geocodeAddress(g, address);
+
+      const map = mapRef.current!;
+      if (bounds) {
+        map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+        if (targetZoom !== null) {
+          // aguarda o fitBounds aplicar e depois ajusta o zoom alvo
+          setTimeout(() => map.setZoom(targetZoom!), 300);
+        }
+      } else if (targetZoom !== null) {
+        // fallback: apenas seta zoom/centro padrão (Brasil)
+        map.setZoom(targetZoom);
+      }
+
+      // Travou no primeiro load – usuário pode mudar depois
+      setHasAppliedMapLock(true);
+    };
+
+    void doLock();
+  }, [election, hasAppliedMapLock, setHasAppliedMapLock]);
 
   // Cria o mapa UMA vez
   useLayoutEffect(() => {
