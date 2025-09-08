@@ -30,36 +30,156 @@ const leaderIcon = (_g: typeof google) =>
   });
 
 const personInfoHtml = (person: any) => `
-  <div class="p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]">
-    <h3 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">${person.full_name}</h3>
-    <div class="mt-2 space-y-1 text-sm">
-      ${person.whatsapp ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">WhatsApp:</strong> ${person.whatsapp}</p>` : ''}
-      ${person.city ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Cidade:</strong> ${person.city}</p>` : ''}
-      ${person.neighborhood ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Bairro:</strong> ${person.neighborhood}</p>` : ''}
-      ${person.state ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">UF:</strong> ${person.state}</p>` : ''}
-      ${person.vote_status ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Status do voto:</strong> ${person.vote_status}</p>` : ''}
-      ${person.leader_name ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Líder:</strong> ${person.leader_name}</p>` : ''}
+  <style>
+    .map-popup {
+      background: white;
+      color: #111827;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e5e7eb;
+      min-width: 280px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .map-popup.dark {
+      background: #1f2937;
+      color: #f9fafb;
+      border-color: #374151;
+    }
+    .map-popup h3 {
+      font-weight: 600;
+      font-size: 1.125rem;
+      margin: 0 0 8px 0;
+      color: inherit;
+    }
+    .map-popup p {
+      margin: 4px 0;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .map-popup.dark p {
+      color: #d1d5db;
+    }
+    .map-popup strong {
+      color: inherit;
+      font-weight: 600;
+    }
+    .map-popup .edit-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 12px;
+    }
+    .map-popup.dark .edit-btn {
+      border-top-color: #374151;
+    }
+    .map-popup .edit-btn:hover {
+      background: #1d4ed8;
+    }
+  </style>
+  <div class="map-popup" id="popup-${person.id}">
+    <h3>${person.full_name}</h3>
+    <div>
+      ${person.whatsapp ? `<p><strong>WhatsApp:</strong> ${person.whatsapp}</p>` : ''}
+      ${person.city ? `<p><strong>Cidade:</strong> ${person.city}</p>` : ''}
+      ${person.neighborhood ? `<p><strong>Bairro:</strong> ${person.neighborhood}</p>` : ''}
+      ${person.state ? `<p><strong>UF:</strong> ${person.state}</p>` : ''}
+      ${person.vote_status ? `<p><strong>Status do voto:</strong> ${person.vote_status}</p>` : ''}
+      ${person.leader_name ? `<p><strong>Líder:</strong> ${person.leader_name}</p>` : ''}
     </div>
-    <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
-      <a href="/pessoas/${person.id}" class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">Editar</a>
-    </div>
+    <a href="/pessoas/${person.id}" class="edit-btn">Editar</a>
   </div>
+  <script>
+    // Detectar modo dark e aplicar classe
+    const popup = document.getElementById('popup-${person.id}');
+    if (document.documentElement.classList.contains('dark') || 
+        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      popup.classList.add('dark');
+    }
+  </script>
 `;
 
 const leaderInfoHtml = (leader: any) => `
-  <div class="p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]">
-    <h3 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">${leader.name}</h3>
-    <div class="mt-2 space-y-1 text-sm">
-      ${leader.email ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Email:</strong> ${leader.email}</p>` : ''}
-      ${leader.phone ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Telefone:</strong> ${leader.phone}</p>` : ''}
-      ${leader.city ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Cidade:</strong> ${leader.city}</p>` : ''}
-      ${leader.neighborhood ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Bairro:</strong> ${leader.neighborhood}</p>` : ''}
-      ${leader.state ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">UF:</strong> ${leader.state}</p>` : ''}
+  <style>
+    .map-popup {
+      background: white;
+      color: #111827;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e5e7eb;
+      min-width: 280px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .map-popup.dark {
+      background: #1f2937;
+      color: #f9fafb;
+      border-color: #374151;
+    }
+    .map-popup h3 {
+      font-weight: 600;
+      font-size: 1.125rem;
+      margin: 0 0 8px 0;
+      color: inherit;
+    }
+    .map-popup p {
+      margin: 4px 0;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .map-popup.dark p {
+      color: #d1d5db;
+    }
+    .map-popup strong {
+      color: inherit;
+      font-weight: 600;
+    }
+    .map-popup .edit-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      background: #2563eb;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 12px;
+    }
+    .map-popup.dark .edit-btn {
+      border-top-color: #374151;
+    }
+    .map-popup .edit-btn:hover {
+      background: #1d4ed8;
+    }
+  </style>
+  <div class="map-popup" id="popup-leader-${leader.id}">
+    <h3>${leader.name}</h3>
+    <div>
+      ${leader.email ? `<p><strong>Email:</strong> ${leader.email}</p>` : ''}
+      ${leader.phone ? `<p><strong>Telefone:</strong> ${leader.phone}</p>` : ''}
+      ${leader.city ? `<p><strong>Cidade:</strong> ${leader.city}</p>` : ''}
+      ${leader.neighborhood ? `<p><strong>Bairro:</strong> ${leader.neighborhood}</p>` : ''}
+      ${leader.state ? `<p><strong>UF:</strong> ${leader.state}</p>` : ''}
     </div>
-    <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
-      <a href="/lideres/${leader.id}" class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">Editar</a>
-    </div>
+    <a href="/lideres/${leader.id}" class="edit-btn">Editar</a>
   </div>
+  <script>
+    // Detectar modo dark e aplicar classe
+    const popup = document.getElementById('popup-leader-${leader.id}');
+    if (document.documentElement.classList.contains('dark') || 
+        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      popup.classList.add('dark');
+    }
+  </script>
 `;
 
 export default function Mapa() {
