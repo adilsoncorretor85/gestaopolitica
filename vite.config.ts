@@ -13,6 +13,7 @@ export default defineConfig({
   build: {
     sourcemap: false,              // não publique .map em prod
     minify: 'esbuild',
+    chunkSizeWarningLimit: 1000, // Aumentar limite para 1MB
   },
   esbuild: {
     drop: ['console', 'debugger'], // remove console.* e debugger
