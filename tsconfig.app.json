@@ -30,5 +30,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src", "src/vite-env.d.ts"],
-  "exclude": ["supabase/functions/**/*", "dist", "src/**/*.js", "src/**/*.d.ts"]
+  "exclude": ["supabase/functions/**/*", "dist", "src/**/*.js"]
 }

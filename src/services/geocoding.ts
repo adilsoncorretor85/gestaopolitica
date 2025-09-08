@@ -1,4 +1,6 @@
 // src/services/geocoding.ts
+/// <reference types="vite/client" />
+
 export type Coordinates = { lat: number; lng: number };
 
 export async function geocodeAddress(input: {
