@@ -29,18 +29,25 @@ export function ElectionProvider({
   }, [supabase]);
 
   const defaultFilters = useMemo<Filters>(() => {
+    console.log('ElectionContext - election:', election);
     if (!election?.election_level) return {};
     if (election.election_level === 'MUNICIPAL') {
       // Municipal: filtra por cidade específica
-      return { state: election.scope_state ?? undefined, city: election.scope_city ?? undefined };
+      const filters = { state: election.scope_state ?? undefined, city: election.scope_city ?? undefined };
+      console.log('ElectionContext - MUNICIPAL filters:', filters);
+      return filters;
     }
     if (election.election_level === 'ESTADUAL') {
       // Estadual: filtra por estado (permite meta por cidade)
-      return { state: election.scope_state ?? undefined };
+      const filters = { state: election.scope_state ?? undefined };
+      console.log('ElectionContext - ESTADUAL filters:', filters);
+      return filters;
     }
     if (election.election_level === 'FEDERAL') {
       // Federal: filtra por estado (sem meta por cidade)
-      return { state: election.scope_state ?? undefined };
+      const filters = { state: election.scope_state ?? undefined };
+      console.log('ElectionContext - FEDERAL filters:', filters);
+      return filters;
     }
     return {};
   }, [election]);

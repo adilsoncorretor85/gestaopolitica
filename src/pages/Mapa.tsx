@@ -133,9 +133,16 @@ export default function Mapa() {
 
   // Aplicar filtros padrão da eleição
   useEffect(() => {
+    console.log('Mapa - defaultFilters:', defaultFilters, 'overrode:', overrode);
     if (!overrode && defaultFilters) {
-      if (defaultFilters.state) setSelectedUF(defaultFilters.state);
-      if (defaultFilters.city) setSelectedCity(defaultFilters.city);
+      if (defaultFilters.state) {
+        console.log('Aplicando filtro de estado:', defaultFilters.state);
+        setSelectedUF(defaultFilters.state);
+      }
+      if (defaultFilters.city) {
+        console.log('Aplicando filtro de cidade:', defaultFilters.city);
+        setSelectedCity(defaultFilters.city);
+      }
     }
   }, [defaultFilters, overrode]);
 

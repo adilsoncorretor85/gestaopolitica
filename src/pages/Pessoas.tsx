@@ -44,9 +44,16 @@ export default function PessoasPage() {
 
   // Aplicar filtros padrão da eleição
   useEffect(() => {
+    console.log('Pessoas - defaultFilters:', defaultFilters, 'overrode:', overrode);
     if (!overrode && defaultFilters) {
-      if (defaultFilters.state) setStateFilter(defaultFilters.state);
-      if (defaultFilters.city) setCityFilter(defaultFilters.city);
+      if (defaultFilters.state) {
+        console.log('Aplicando filtro de estado:', defaultFilters.state);
+        setStateFilter(defaultFilters.state);
+      }
+      if (defaultFilters.city) {
+        console.log('Aplicando filtro de cidade:', defaultFilters.city);
+        setCityFilter(defaultFilters.city);
+      }
     }
   }, [defaultFilters, overrode]);
 
