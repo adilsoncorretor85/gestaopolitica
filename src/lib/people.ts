@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { PersonInsert, PersonUpdate, PeopleFilters, PaginatedResponse, PersonWithProfile } from '@/types';
 import { logAudit } from './audit';
 import { getCurrentProfile } from './auth';
+import { searchPeople } from '@/services/searchPeople';
 
 export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedResponse<PersonWithProfile>> {
   if (!supabase) throw new Error('Supabase não configurado');
@@ -23,17 +24,67 @@ export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedR
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Se há busca por texto, usar FTS
+  if (search && search.trim()) {
+    const ftsResults = await searchPeople(supabase, search, pageSize, from);
+    
+    // Buscar dados completos das pessoas encontradas
+    if (ftsResults.length > 0) {
+      const ids = ftsResults.map(r => r.id);
+      let query = supabase.from('people').select(`
+        *,
+        owner:profiles(*)
+      `, { count: 'exact' })
+        .in('id', ids);
+
+      if (city) query = query.eq('city', city);
+      if (state) query = query.eq('state', state);
+
+      // Se for LEADER, só pode ver seus próprios contatos
+      if (profile.role === 'LEADER') {
+        query = query.eq('owner_id', profile.id);
+      } else if (ownerId && profile.role === 'ADMIN') {
+        query = query.eq('owner_id', ownerId);
+      }
+
+      const { data, error, count } = await query;
+      
+      if (error) {
+        throw error;
+      }
+
+      // Ordenar pelos resultados do FTS (por rank)
+      const sortedData = data ? data.sort((a, b) => {
+        const aRank = ftsResults.find(r => r.id === a.id)?.rank || 0;
+        const bRank = ftsResults.find(r => r.id === b.id)?.rank || 0;
+        return bRank - aRank; // Maior rank primeiro
+      }) : [];
+
+      return {
+        data: sortedData as PersonWithProfile[] || [],
+        count: count || 0,
+        page,
+        pageSize,
+        totalPages: Math.ceil((count || 0) / pageSize),
+      };
+    } else {
+      return {
+        data: [],
+        count: 0,
+        page,
+        pageSize,
+        totalPages: 0,
+      };
+    }
+  }
+
+  // Busca normal sem texto (listagem padrão)
   let query = supabase
     .from('people')
     .select(`
       *,
       owner:profiles(*)
     `, { count: 'exact' });
-
-  // Filtros
-  if (search) {
-    query = query.ilike('full_name', `%${search}%`);
-  }
 
   if (city) {
     query = query.eq('city', city);
