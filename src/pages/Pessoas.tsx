@@ -30,6 +30,7 @@ export default function PessoasPage() {
   const [sortBy, setSortBy] = useState<'full_name' | 'created_at' | 'city' | 'state'>('full_name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [overrode, setOverrode] = useState(false);
+  const [filtersApplied, setFiltersApplied] = useState(false);
   
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -54,12 +55,17 @@ export default function PessoasPage() {
         console.log('Aplicando filtro de cidade:', defaultFilters.city);
         setCityFilter(defaultFilters.city);
       }
+      setFiltersApplied(true);
+    } else if (overrode) {
+      setFiltersApplied(true);
     }
   }, [defaultFilters, overrode]);
 
   useEffect(() => {
-    loadData();
-  }, [search, cityFilter, stateFilter, leaderFilter, page, sortBy, sortOrder]);
+    if (filtersApplied) {
+      loadData();
+    }
+  }, [search, cityFilter, stateFilter, leaderFilter, page, sortBy, sortOrder, filtersApplied]);
 
   useEffect(() => {
     if (isAdmin) {

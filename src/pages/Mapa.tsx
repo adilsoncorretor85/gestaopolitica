@@ -124,6 +124,7 @@ export default function Mapa() {
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>("__all__");
   const [selectedVoteStatus, setSelectedVoteStatus] = useState<string>("__all__");
   const [overrode, setOverrode] = useState(false);
+  const [filtersApplied, setFiltersApplied] = useState(false);
 
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [nbOptions, setNbOptions] = useState<string[]>([]);
@@ -143,6 +144,9 @@ export default function Mapa() {
         console.log('Aplicando filtro de cidade:', defaultFilters.city);
         setSelectedCity(defaultFilters.city);
       }
+      setFiltersApplied(true);
+    } else if (overrode) {
+      setFiltersApplied(true);
     }
   }, [defaultFilters, overrode]);
 
@@ -214,7 +218,7 @@ export default function Mapa() {
   useEffect(() => {
     const g = gRef.current;
     const map = mapRef.current;
-    if (!g || !map) return;
+    if (!g || !map || !filtersApplied) return;
 
     let cancelled = false;
     if (!infoRef.current) infoRef.current = new g.maps.InfoWindow();
@@ -400,6 +404,7 @@ export default function Mapa() {
     selectedCity,
     selectedNeighborhood,
     selectedVoteStatus,
+    filtersApplied,
   ]);
 
   const total = totals.people + totals.leaders;
