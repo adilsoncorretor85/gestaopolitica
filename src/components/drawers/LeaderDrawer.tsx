@@ -4,6 +4,12 @@ import { getLeaderDetail, updateLeaderProfile } from '@/services/leader';
 import LeaderLeadershipModal from '@/components/modals/LeaderLeadershipModal';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '@/hooks/useAuth';
+import type { Tables } from '@/types/database';
+
+// Tipo para o líder com perfil
+type LeaderWithProfile = Tables<'leader_profiles'> & {
+  profiles?: Pick<Tables<'profiles'>, 'full_name' | 'role'>
+};
 
 type LeaderDrawerProps = {
   open: boolean;
@@ -16,7 +22,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [leader, setLeader] = useState<any>(null);
+  const [leader, setLeader] = useState<LeaderWithProfile | null>(null);
   const [showLeadership, setShowLeadership] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
@@ -73,7 +79,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
       setUpdatingStatus(true);
       
       // Update otimista - atualizar estado local imediatamente
-      setLeader((prev: any) => prev ? { ...prev, status: next } : null);
+      setLeader((prev) => prev ? { ...prev, status: next } : null);
       
       await updateLeaderProfile(leader.id, { status: next });
       
@@ -86,7 +92,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
     } catch (error) {
       console.error('Erro ao alterar status:', error);
       // Reverter mudança otimista
-      setLeader((prev: any) => prev ? { ...prev, status: leader.status } : null);
+      setLeader((prev) => prev ? { ...prev, status: leader.status } : null);
       setToast({ 
         message: 'Erro ao alterar status do líder', 
         type: 'error' 
@@ -107,7 +113,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
       await updateLeaderProfile(leader.id, { notes: newNotes });
       
       // Atualizar estado local
-      setLeader((prev: any) => prev ? { ...prev, notes: newNotes } : null);
+      setLeader((prev) => prev ? { ...prev, notes: newNotes } : null);
       setNoteDraft('');
       
       setToast({ message: 'Observação adicionada com sucesso', type: 'success' });
@@ -169,7 +175,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
     return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
   };
 
-  const formatLeadershipDisplay = (leadership: any) => {
+  const formatLeadershipDisplay = (leadership: Tables<'leaderships'> | null) => {
     if (!leadership) return null;
 
     const { role_code, organization, title, extra } = leadership;

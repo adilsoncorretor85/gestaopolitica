@@ -3,10 +3,6 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    },
-    "baseUrl": ".",
-    "paths": {
       "@/*": ["./src/*"]
     },
     "target": "ES2020",
@@ -22,6 +18,12 @@
     "moduleDetection": "force",
     "jsx": "react-jsx",
 
+    /* Build configuration */
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": false,
+    "noEmit": true,
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -29,5 +31,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["supabase/functions/**/*"]
+  "exclude": ["supabase/functions/**/*", "dist", "src/**/*.js", "src/**/*.d.ts"]
 }

@@ -100,16 +100,37 @@ Deno.serve(async (req) => {
     let acceptUrl: string
     let status: 'INVITED' | 'USER_EXISTS' = 'INVITED'
 
-    // Check if user already exists
-    // Check if user already exists by listing users and filtering by email
-    const { data: usersData, error: listUsersError } = await admin.auth.admin.listUsers()
-    
-    if (listUsersError) {
-      console.error('Error listing users:', listUsersError)
-      // Continue with invite flow - if we can't check, assume user doesn't exist
+    // Check if user already exists using optimized query
+    // Query auth.users directly using RPC or direct SQL
+    let existingUser = null
+    try {
+      // Use a more efficient approach - query auth.users table directly
+      const { data: authUsers, error: authQueryError } = await admin
+        .rpc('check_user_exists', { user_email: body.email })
+      
+      if (!authQueryError && authUsers && authUsers.length > 0) {
+        // User exists, get full user details
+        const { data: userData } = await admin.auth.admin.getUserById(authUsers[0].id)
+        existingUser = userData?.user
+      }
+    } catch (error) {
+      console.error('Error checking user existence:', error)
+      // Fallback: try to get user by email using admin API
+      try {
+        const { data: usersData, error: listUsersError } = await admin.auth.admin.listUsers({
+          page: 1,
+          perPage: 1,
+          filter: { email: body.email }
+        })
+        
+        if (!listUsersError && usersData?.users?.length > 0) {
+          existingUser = usersData.users[0]
+        }
+      } catch (fallbackError) {
+        console.error('Fallback user check failed:', fallbackError)
+        // Continue with invite flow - assume user doesn't exist
+      }
     }
-    
-    const existingUser = usersData?.users?.find(user => user.email === body.email)
 
     if (existingUser) {
       // User already exists - generate recovery link

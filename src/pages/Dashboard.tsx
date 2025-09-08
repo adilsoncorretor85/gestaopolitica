@@ -4,9 +4,18 @@ import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
 import { getLeaderCounters, getGoalSummary, type GoalSummary } from '@/lib/dashboard';
-import { listPeople } from '@/services/people';
+import { getSupabaseClient, handleSupabaseError } from '@/lib/supabaseClient';
 import { getElectionSettings, formatCountdown } from '@/services/election';
 import { Users, UserCheck, Target, TrendingUp, Calendar, Settings } from 'lucide-react';
+import type { Tables } from '@/types/database';
+
+// Tipos para o Dashboard
+type TopLeader = {
+  leader_id: string;
+  leader_name: string;
+  total_people: number;
+  confirmed_votes: number;
+};
 
 // Função para formatar números com separadores de milhares
 const formatNumber = (num: number | string): string => {
@@ -28,7 +37,7 @@ export default function DashboardPage() {
     effectiveTotalGoal: 120
   });
   const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(null);
-  const [topLeaders, setTopLeaders] = useState<any[]>([]);
+  const [topLeaders, setTopLeaders] = useState<TopLeader[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   
@@ -60,28 +69,43 @@ export default function DashboardPage() {
       setLoading(true);
       setError('');
       
+      const supabase = getSupabaseClient();
+      
       // Carregar contadores de líderes e metas
       const [leaderCounters, goalData] = await Promise.all([
         getLeaderCounters(),
         getGoalSummary()
       ]);
       
-      // Carregar pessoas
-      const peopleResult = await listPeople({
-        page: 1,
-        pageSize: 1000 // Para contar todos
-      });
-      
-      const people = peopleResult.data || [];
-      const confirmedVotes = people.filter(p => p.vote_status === 'CONFIRMADO').length;
-      const probableVotes = people.filter(p => p.vote_status === 'PROVAVEL').length;
+      // Contagem eficiente de pessoas usando count: 'exact', head: true
+      const [
+        { count: totalPeople, error: totalError },
+        { count: confirmedVotes, error: confirmedError },
+        { count: probableVotes, error: probableError }
+      ] = await Promise.all([
+        supabase
+          .from('people')
+          .select('id', { count: 'exact', head: true }),
+        supabase
+          .from('people')
+          .select('id', { count: 'exact', head: true })
+          .eq('vote_status', 'CONFIRMADO'),
+        supabase
+          .from('people')
+          .select('id', { count: 'exact', head: true })
+          .eq('vote_status', 'PROVAVEL')
+      ]);
+
+      if (totalError) throw totalError;
+      if (confirmedError) throw confirmedError;
+      if (probableError) throw probableError;
 
       setStats({
         activeLeaders: leaderCounters.active,
         pendingLeaders: leaderCounters.pending,
-        totalPeople: people.length,
-        confirmedVotes,
-        probableVotes,
+        totalPeople: totalPeople || 0,
+        confirmedVotes: confirmedVotes || 0,
+        probableVotes: probableVotes || 0,
         effectiveTotalGoal: goalData.effective_total_goal
       });
 
@@ -89,14 +113,66 @@ export default function DashboardPage() {
 
       // Top líderes por número de pessoas cadastradas (apenas para admin)
       if (isAdminUser) {
-        // TODO: Implementar top líderes quando necessário
-        setTopLeaders([]);
+        await loadTopLeaders();
       }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
-      setError(error instanceof Error ? error.message : 'Erro desconhecido');
+      setError(handleSupabaseError(error, 'carregar estatísticas'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTopLeaders = async () => {
+    try {
+      const supabase = getSupabaseClient();
+      
+      // Query otimizada para top líderes usando agregação no banco
+      const { data, error } = await supabase
+        .from('people')
+        .select(`
+          owner_id,
+          vote_status,
+          profiles!owner_id(full_name)
+        `)
+        .not('owner_id', 'is', null)
+        .limit(1000); // Limite razoável para agregação
+
+      if (error) throw error;
+
+      // Agregação no cliente (idealmente seria uma view/RPC no banco)
+      const leaderStats = new Map<string, { name: string; total: number; confirmed: number }>();
+      
+      data?.forEach(person => {
+        const leaderId = person.owner_id;
+        const leaderName = (person.profiles as any)?.full_name || 'Líder';
+        
+        if (!leaderStats.has(leaderId)) {
+          leaderStats.set(leaderId, { name: leaderName, total: 0, confirmed: 0 });
+        }
+        
+        const stats = leaderStats.get(leaderId)!;
+        stats.total++;
+        if (person.vote_status === 'CONFIRMADO') {
+          stats.confirmed++;
+        }
+      });
+
+      // Converter para array e ordenar por total de pessoas
+      const topLeadersData: TopLeader[] = Array.from(leaderStats.entries())
+        .map(([leaderId, stats]) => ({
+          leader_id: leaderId,
+          leader_name: stats.name,
+          total_people: stats.total,
+          confirmed_votes: stats.confirmed
+        }))
+        .sort((a, b) => b.total_people - a.total_people)
+        .slice(0, 5); // Top 5
+
+      setTopLeaders(topLeadersData);
+    } catch (error) {
+      console.error('Erro ao carregar top líderes:', error);
+      // Não falha o dashboard inteiro se top líderes falhar
     }
   };
 

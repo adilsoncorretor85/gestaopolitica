@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient";
+import { User, Session } from "@supabase/supabase-js";
+import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
 
 export type Profile = {
   id: string;
@@ -10,6 +10,7 @@ export type Profile = {
 
 type UseAuth = {
   user: User | null;
+  session: Session | null;
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
@@ -18,63 +19,96 @@ type UseAuth = {
 
 export default function useAuth(): UseAuth {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const load = useCallback(async () => {
     setLoading(true);
 
-    if (!supabase) {
-      console.error('Supabase não configurado. Verifique o .env e reinicie o Vite.');
+    try {
+      const supabase = getSupabaseClient();
+
+      // sessão atual
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Erro ao obter sessão:', handleSupabaseError(sessionError, 'obter sessão'));
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      const currentSession = sessionData.session;
+      const currentUser = currentSession?.user ?? null;
+      
+      setUser(currentUser);
+      setSession(currentSession);
+
+      if (currentUser) {
+        // busca o próprio perfil (RLS deve permitir SELECT do próprio id)
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, role, full_name")
+          .eq("id", currentUser.id)
+          .maybeSingle();
+
+        if (!error) {
+          setProfile((data as Profile) ?? null);
+        } else {
+          console.error('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error('Erro no useAuth:', error);
       setUser(null);
+      setSession(null);
       setProfile(null);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // sessão atual
-    const { data: sessionData } = await supabase.auth.getSession();
-    const currentUser = sessionData.session?.user ?? null;
-    setUser(currentUser);
-
-    if (currentUser) {
-      // busca o próprio perfil (RLS deve permitir SELECT do próprio id)
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, role, full_name")
-        .eq("id", currentUser.id)
-        .maybeSingle();
-
-      if (!error) setProfile((data as Profile) ?? null);
-      else setProfile(null);
-    } else {
-      setProfile(null);
-    }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     // carrega inicialmente
     load();
 
-    if (!supabase) return;
+    try {
+      const supabase = getSupabaseClient();
 
-    // reage a mudanças de auth
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      // não confie no event; sempre recarrega sessão + perfil
-      load();
-    });
+      // reage a mudanças de auth
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        // Atualiza sessão e usuário diretamente
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Recarrega perfil se necessário
+        if (session?.user) {
+          load();
+        } else {
+          setProfile(null);
+          setLoading(false);
+        }
+      });
 
-    return () => {
-      sub?.subscription?.unsubscribe?.();
-    };
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Erro ao configurar listener de auth:', error);
+    }
   }, [load]);
 
   const isAdmin = !!profile && profile.role === "ADMIN";
 
   return {
     user,
+    session,
     profile,
     loading,
     isAdmin,

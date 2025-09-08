@@ -1,8 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { AlertTriangle, ExternalLink } from 'lucide-react';
-export default function DatabaseStatus({ error }) {
-    if (!error || !error.includes('does not exist')) {
-        return null;
-    }
-    return (_jsx("div", { className: "min-h-screen bg-gray-50 flex items-center justify-center p-4", children: _jsxs("div", { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-8 max-w-md w-full text-center", children: [_jsx("div", { className: "flex justify-center mb-4", children: _jsx("div", { className: "bg-yellow-100 p-3 rounded-full", children: _jsx(AlertTriangle, { className: "h-8 w-8 text-yellow-600" }) }) }), _jsx("h2", { className: "text-xl font-bold text-gray-900 mb-2", children: "Banco n\u00E3o inicializado" }), _jsx("p", { className: "text-gray-600 mb-6", children: "As tabelas do banco de dados ainda n\u00E3o foram criadas. Execute o SQL de configura\u00E7\u00E3o no Supabase para continuar." }), _jsxs("a", { href: "/docs/db-setup.md", target: "_blank", rel: "noopener noreferrer", className: "inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors", children: [_jsx("span", { children: "Ver instru\u00E7\u00F5es" }), _jsx(ExternalLink, { className: "h-4 w-4" })] }), _jsxs("details", { className: "mt-6 text-left", children: [_jsx("summary", { className: "cursor-pointer text-sm text-gray-500 hover:text-gray-700", children: "Detalhes do erro" }), _jsx("pre", { className: "mt-2 text-xs bg-gray-100 p-2 rounded text-gray-700 overflow-auto", children: error })] })] }) }));
-}
