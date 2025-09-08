@@ -20,6 +20,9 @@ export async function getActiveElection(supabase: SupabaseClient): Promise<Elect
     .limit(1)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching active election:', error);
+    return null;
+  }
   return data as ElectionSettings | null;
 }
