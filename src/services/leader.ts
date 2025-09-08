@@ -109,6 +109,7 @@ export async function listLeaders() {
       }
       
       console.log('Query direta funcionou, dados brutos:', data);
+      console.log('Status dos líderes na query direta:', data.map((l: any) => ({ name: l.profiles?.full_name, status: l.status })));
       
       // Transformar para o formato esperado e calcular is_active/is_pending
       const transformed = (data ?? []).map((leader: any) => ({
