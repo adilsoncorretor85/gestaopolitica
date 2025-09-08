@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
         notes: body.notes,
         latitude: body.latitude,
         longitude: body.longitude,
-        status: 'INVITED', // <<< manter pendente até aceitar
+        status: 'INACTIVE', // <<< manter inativo até aceitar (será ativado no primeiro login)
       })
 
     if (leaderProfileError) {
