@@ -5,6 +5,7 @@ import { loadGoogleMaps } from '@/lib/googleMaps';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
+import { useElection } from '@/contexts/ElectionContext';
 import { Profile } from '@/types';
 
 // Declaração de tipos para Google Maps
@@ -92,6 +93,7 @@ export default function Mapa() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('mapa');
   const { profile: authProfile, isAdmin } = useAuth();
+  const { defaultFilters } = useElection();
   
   // Converter o profile do useAuth para o tipo esperado pelo Header
   const profile: Profile | undefined = authProfile ? {
@@ -121,12 +123,21 @@ export default function Mapa() {
   const [selectedCity, setSelectedCity] = useState<string>("__all__");
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>("__all__");
   const [selectedVoteStatus, setSelectedVoteStatus] = useState<string>("__all__");
+  const [overrode, setOverrode] = useState(false);
 
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [nbOptions, setNbOptions] = useState<string[]>([]);
 
   // InfoWindow único
   const infoRef = useRef<any>(null);
+
+  // Aplicar filtros padrão da eleição
+  useEffect(() => {
+    if (!overrode && defaultFilters) {
+      if (defaultFilters.state) setSelectedUF(defaultFilters.state);
+      if (defaultFilters.city) setSelectedCity(defaultFilters.city);
+    }
+  }, [defaultFilters, overrode]);
 
   // Cria o mapa UMA vez
   useLayoutEffect(() => {
@@ -424,7 +435,12 @@ export default function Mapa() {
                 <select
                   className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value={selectedUF}
-                  onChange={(e) => { setSelectedUF(e.target.value); setSelectedCity("__all__"); setSelectedNeighborhood("__all__"); }}
+                  onChange={(e) => { 
+                    setSelectedUF(e.target.value); 
+                    setSelectedCity("__all__"); 
+                    setSelectedNeighborhood("__all__"); 
+                    setOverrode(true);
+                  }}
                 >
                   <option value="__all__">Todas</option>
                   {["SC","PR","RS","SP","RJ","MG","ES","BA","PE","CE","DF","GO","MT","MS","TO","PA","AM","RO","AC","RR","AP","MA","PI","RN","PB","AL","SE"].map(uf => (
@@ -437,7 +453,11 @@ export default function Mapa() {
                 <select
                   className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value={selectedCity}
-                  onChange={(e) => { setSelectedCity(e.target.value); setSelectedNeighborhood("__all__"); }}
+                  onChange={(e) => { 
+                    setSelectedCity(e.target.value); 
+                    setSelectedNeighborhood("__all__"); 
+                    setOverrode(true);
+                  }}
                   disabled={cityOptions.length === 0}
                 >
                   <option value="__all__">Todas</option>
