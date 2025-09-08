@@ -316,7 +316,6 @@ export default function Mapa() {
       peopleMarkersRef.current = [];
       leaderMarkersRef.current = [];
 
-      const info = infoRef.current!;
 
       // Pessoas (azul)
       const pMarkers = people.map(p => {
