@@ -7,7 +7,6 @@ import { getLeaderCounters, getGoalSummary, type GoalSummary } from '@/lib/dashb
 import { getSupabaseClient, handleSupabaseError } from '@/lib/supabaseClient';
 import { getElectionSettings, formatCountdown } from '@/services/election';
 import { Users, UserCheck, Target, TrendingUp, Calendar, Settings } from 'lucide-react';
-import type { Tables } from '@/types/database';
 
 // Tipos para o Dashboard
 type TopLeader = {

@@ -113,6 +113,8 @@ export interface Database {
           notes: string | null
           latitude: number | null
           longitude: number | null
+          vote_status: string | null
+          contacted_at: string | null
           created_at: string
           updated_at: string
         }
@@ -134,6 +136,8 @@ export interface Database {
           notes?: string | null
           latitude?: number | null
           longitude?: number | null
+          vote_status?: string | null
+          contacted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -155,6 +159,8 @@ export interface Database {
           notes?: string | null
           latitude?: number | null
           longitude?: number | null
+          vote_status?: string | null
+          contacted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -203,3 +209,21 @@ export interface Database {
     }
   }
 }
+
+// Tipos auxiliares para compatibilidade
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
+export type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
+export type TablesUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
+
+// Tipos específicos para facilitar o uso
+export type Person = Tables<'people'>
+export type PersonInsert = TablesInsert<'people'>
+export type PersonUpdate = TablesUpdate<'people'>
+
+export type LeaderProfile = Tables<'leader_profiles'>
+export type LeaderProfileInsert = TablesInsert<'leader_profiles'>
+export type LeaderProfileUpdate = TablesUpdate<'leader_profiles'>
+
+export type Profile = Tables<'profiles'>
+export type ProfileInsert = TablesInsert<'profiles'>
+export type ProfileUpdate = TablesUpdate<'profiles'>

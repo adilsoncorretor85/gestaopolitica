@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getInviteToken, acceptInvite, type InviteToken } from '@/services/invite';
 import { ensureLeaderActivated } from '@/services/leadership';
-import { supabase } from '@/lib/supabaseClient';
 import { Vote, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const acceptInviteSchema = z.object({

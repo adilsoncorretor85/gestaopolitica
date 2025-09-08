@@ -1,10 +1,7 @@
 import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
-import type { Tables, TablesInsert, TablesUpdate } from '@/types/database';
+import type { Person, PersonInsert, PersonUpdate } from '@/types/database';
 
-// Usar tipos gerados do Supabase
-export type Person = Tables<'people'>;
-export type PersonInsert = TablesInsert<'people'>;
-export type PersonUpdate = TablesUpdate<'people'>;
+export type { Person, PersonInsert, PersonUpdate };
 
 export async function listPeople(params?: {
   leaderId?: string;
