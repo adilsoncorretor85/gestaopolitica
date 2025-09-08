@@ -89,7 +89,7 @@ export async function reinviteLeader(payload: {
   const { data: { session } } = await (getSupabaseClient() as any)?.auth.getSession() || { data: { session: null } };
   if (!session?.access_token) throw new Error('Sem sessão');
 
-  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite_leader`, {
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/invite_leader`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

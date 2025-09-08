@@ -13,7 +13,7 @@ export function loadGoogleMaps(): Promise<typeof google> {
 
   if (window.__gmapsPromise) return window.__gmapsPromise;
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
   if (!apiKey) {
     return Promise.reject(new Error('VITE_GOOGLE_MAPS_API_KEY ausente'));
   }

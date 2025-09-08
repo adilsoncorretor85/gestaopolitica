@@ -80,11 +80,11 @@ export default function PessoasFormPage() {
       
       setFormData({
         ...data,
-        contacted_at: data.contacted_at ? data.contacted_at.split('T')[0] : null
+        contacted_at: data?.contacted_at ? data.contacted_at.split('T')[0] : null
       });
       
       // Carregar coordenadas se existirem
-      if (data.latitude && data.longitude) {
+      if (data?.latitude && data?.longitude) {
         setCoords({ lat: data.latitude, lng: data.longitude });
       }
     } catch (error) {
@@ -113,7 +113,14 @@ export default function PessoasFormPage() {
     const cep = formData.cep;
 
     if (!street || !city || !state) return;
-    const c = await geocodeAddress({ street, number, neighborhood, city, state, cep });
+    const c = await geocodeAddress({ 
+      street: street || undefined, 
+      number: number || undefined, 
+      neighborhood: neighborhood || undefined, 
+      city: city || undefined, 
+      state: state || undefined, 
+      cep: cep || undefined 
+    });
     if (c) setCoords(c);
   }
 
@@ -182,7 +189,14 @@ export default function PessoasFormPage() {
       cep: formData.cep
     };
     
-    const g = await geocodeAddress(addr);
+    const g = await geocodeAddress({
+      street: addr.street || undefined,
+      number: addr.number || undefined,
+      neighborhood: addr.neighborhood || undefined,
+      city: addr.city || undefined,
+      state: addr.state || undefined,
+      cep: addr.cep || undefined
+    });
     setCoords(g); // Centra o mapa no provável ponto
     setOpenMap(true);
   };

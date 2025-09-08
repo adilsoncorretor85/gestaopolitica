@@ -8,7 +8,12 @@ import type { Tables } from '@/types/database';
 
 // Tipo para o líder com perfil
 type LeaderWithProfile = Tables<'leader_profiles'> & {
-  profiles?: Pick<Tables<'profiles'>, 'full_name' | 'role'>
+  profiles?: Pick<Tables<'profiles'>, 'full_name' | 'role'>;
+  full_name?: string;
+  goal?: number;
+  invited_at?: string;
+  accepted_at?: string;
+  leadership?: any;
 };
 
 type LeaderDrawerProps = {
@@ -175,7 +180,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
     return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
   };
 
-  const formatLeadershipDisplay = (leadership: Tables<'leaderships'> | null) => {
+  const formatLeadershipDisplay = (leadership: any) => {
     if (!leadership) return null;
 
     const { role_code, organization, title, extra } = leadership;

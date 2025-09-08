@@ -15,7 +15,7 @@ export async function geocodeAddress(input: {
   ].filter(Boolean);
   const addr = parts.join(', ');
 
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&region=br`;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addr)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string}&region=br`;
 
   try {
     const res = await fetch(url);
