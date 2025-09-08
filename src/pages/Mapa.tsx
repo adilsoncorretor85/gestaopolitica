@@ -9,6 +9,7 @@ import { useElection } from '@/contexts/ElectionContext';
 import { useElection as useElectionStore } from '@/stores/useElection';
 import { getActiveElection } from '@/services/election';
 import { geocodeAddress } from '@/lib/geocode';
+import { normalizeKey } from '@/lib/normalize';
 import { Profile } from '@/types';
 
 // Declaração de tipos para Google Maps
@@ -125,6 +126,7 @@ export default function Mapa() {
 
   const [selectedUF, setSelectedUF] = useState<string>("__all__");
   const [selectedCity, setSelectedCity] = useState<string>("__all__");
+  const [selectedCityKey, setSelectedCityKey] = useState<string>(""); // chave normalizada da cidade
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string>("__all__");
   const [selectedVoteStatus, setSelectedVoteStatus] = useState<string>("__all__");
   const [overrode, setOverrode] = useState(false);
@@ -159,6 +161,7 @@ export default function Mapa() {
       if (defaultFilters.city) {
         console.log('Aplicando filtro de cidade:', defaultFilters.city);
         setSelectedCity(defaultFilters.city);
+        setSelectedCityKey(normalizeKey(defaultFilters.city));
       }
       setFiltersApplied(true);
     } else if (overrode) {
@@ -170,52 +173,31 @@ export default function Mapa() {
   useEffect(() => {
     if (!election || !mapRef.current || hasAppliedMapLock) return;
 
-    const doLock = async () => {
-      const g = window.google;
-      if (!g || !g.maps) return;
+    const g = (window as any).google;
+    if (!g?.maps) return;
 
-      let address = 'Brasil';
-      let targetZoom: number | null = null;
+    const addr =
+      election.election_level === 'MUNICIPAL' && election.scope_city && election.scope_state
+        ? `${election.scope_city}, ${election.scope_state}, Brasil`
+        : election.election_level === 'ESTADUAL' && election.scope_state
+        ? `${election.scope_state}, Brasil`
+        : 'Brasil';
 
-      switch (election.election_level) {
-        case 'MUNICIPAL':
-          if (election.scope_city && election.scope_state) {
-            address = `${election.scope_city}, ${election.scope_state}, Brasil`;
-            targetZoom = 11; // cidade
-          }
-          break;
-        case 'ESTADUAL':
-          if (election.scope_state) {
-            address = `${election.scope_state}, Brasil`;
-            targetZoom = 6; // estado
-          }
-          break;
-        case 'FEDERAL':
-        default:
-          address = 'Brasil';
-          targetZoom = 4; // país
-          break;
+    const geocoder = new g.maps.Geocoder();
+    geocoder.geocode({ address: addr }, (results: any, status: any) => {
+      if (status === 'OK' && results?.[0]) {
+        const r = results[0];
+        const bounds = r.geometry.bounds ??
+          new g.maps.LatLngBounds(r.geometry.location, r.geometry.location);
+        mapRef.current!.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+        setTimeout(() => {
+          if (election.election_level === 'MUNICIPAL') mapRef.current!.setZoom(11);
+          else if (election.election_level === 'ESTADUAL') mapRef.current!.setZoom(6);
+          else mapRef.current!.setZoom(4);
+        }, 250);
       }
-
-      const bounds = await geocodeAddress(g, address);
-
-      const map = mapRef.current!;
-      if (bounds) {
-        map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
-        if (targetZoom !== null) {
-          // aguarda o fitBounds aplicar e depois ajusta o zoom alvo
-          setTimeout(() => map.setZoom(targetZoom!), 300);
-        }
-      } else if (targetZoom !== null) {
-        // fallback: apenas seta zoom/centro padrão (Brasil)
-        map.setZoom(targetZoom);
-      }
-
-      // Travou no primeiro load – usuário pode mudar depois
       setHasAppliedMapLock(true);
-    };
-
-    void doLock();
+    });
   }, [election, hasAppliedMapLock, setHasAppliedMapLock]);
 
   // Cria o mapa UMA vez
@@ -319,14 +301,18 @@ export default function Mapa() {
       }
 
       if (selectedUF !== "__all__") peopleQuery = peopleQuery.eq("state", selectedUF);
-      if (selectedCity !== "__all__") peopleQuery = peopleQuery.eq("city", selectedCity);
       if (selectedNeighborhood !== "__all__") peopleQuery = peopleQuery.eq("neighborhood", selectedNeighborhood);
       if (selectedVoteStatus !== "__all__") peopleQuery = peopleQuery.eq("vote_status", selectedVoteStatus);
 
       const { data: peopleData, error: peopleErr } = await peopleQuery;
       if (peopleErr) console.error("[MAP] erro pessoas:", peopleErr);
 
-      const people = (peopleData ?? []).map((r: any) => ({
+      // Filtro tolerante de cidade (sem mexer no banco)
+      const people = (peopleData ?? [])
+        .filter((r: any) => 
+          !selectedCityKey || normalizeKey(r.city) === selectedCityKey
+        )
+        .map((r: any) => ({
         id: r.id as string,
         full_name: r.full_name as string,
         whatsapp: r.whatsapp as string | null,
@@ -348,6 +334,7 @@ export default function Mapa() {
         // Só reseta a cidade se não foi aplicada pelo auto-filtro
         if (selectedCity !== "__all__" && !cities.includes(selectedCity) && overrode) {
           setSelectedCity("__all__");
+          setSelectedCityKey("");
           setSelectedNeighborhood("__all__");
         }
 
@@ -380,13 +367,17 @@ export default function Mapa() {
 
         if (selectedLeaderId !== "__all__") leadersQuery = leadersQuery.eq("id", selectedLeaderId);
         if (selectedUF !== "__all__") leadersQuery = leadersQuery.eq("state", selectedUF);
-        if (selectedCity !== "__all__") leadersQuery = leadersQuery.eq("city", selectedCity);
         if (selectedNeighborhood !== "__all__") leadersQuery = leadersQuery.eq("neighborhood", selectedNeighborhood);
 
         const { data: leadersRaw, error: leadersErr } = await leadersQuery;
         if (leadersErr) console.error("[MAP] erro leaders:", leadersErr);
 
-        leaders = (leadersRaw ?? []).map((r: any) => ({
+        // Filtro tolerante de cidade para líderes também
+        leaders = (leadersRaw ?? [])
+          .filter((r: any) => 
+            !selectedCityKey || normalizeKey(r.city) === selectedCityKey
+          )
+          .map((r: any) => ({
           id: r.id as string,
           name: (r.profiles?.full_name as string) ?? "Líder",
           email: r.email as string | null,
@@ -470,6 +461,7 @@ export default function Mapa() {
     selectedLeaderId,
     selectedUF,
     selectedCity,
+    selectedCityKey,
     selectedNeighborhood,
     selectedVoteStatus,
     filtersApplied,
@@ -533,16 +525,21 @@ export default function Mapa() {
                 <label className="text-sm text-slate-600 dark:text-slate-400">Cidade:</label>
                 <select
                   className="rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  value={selectedCity}
+                  value={selectedCityKey || ""}
                   onChange={(e) => { 
-                    setSelectedCity(e.target.value); 
+                    const cityKey = e.target.value;
+                    const cityName = cityKey ? cityOptions.find(c => normalizeKey(c) === cityKey) || "" : "__all__";
+                    setSelectedCityKey(cityKey);
+                    setSelectedCity(cityName);
                     setSelectedNeighborhood("__all__"); 
                     setOverrode(true);
                   }}
                   disabled={cityOptions.length === 0}
                 >
-                  <option value="__all__">Todas</option>
-                  {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">Todas</option>
+                  {cityOptions.map(c => (
+                    <option key={normalizeKey(c)} value={normalizeKey(c)}>{c}</option>
+                  ))}
                 </select>
 
                 {/* Bairro */}

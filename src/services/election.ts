@@ -51,26 +51,51 @@ export async function getElectionSettings(
   };
 }
 
+// Helper
+function daysInMonth(y: number, m: number) {
+  return new Date(y, m + 1, 0).getDate(); // m: 0-11
+}
+
+// Diferença civil (Y/M/D), ignorando hora
+function diffYMD(fromISO: string, toISO: string) {
+  const from = new Date(fromISO);
+  const to = new Date(toISO);
+
+  let y = to.getFullYear() - from.getFullYear();
+  let m = to.getMonth() - from.getMonth();
+  let d = to.getDate() - from.getDate();
+
+  if (d < 0) {
+    const pm = (to.getMonth() - 1 + 12) % 12;
+    const py = pm === 11 ? to.getFullYear() - 1 : to.getFullYear();
+    d += daysInMonth(py, pm);
+    m -= 1;
+  }
+  if (m < 0) {
+    m += 12;
+    y -= 1;
+  }
+
+  return { y, m, d };
+}
+
 /**
- * Retorna uma string pronta para exibir (ex.: "Faltam 123d 4h").
+ * Retorna uma string pronta para exibir (ex.: "Faltam 1 ano e 2 meses e 3 dias").
  * Mantém o nome esperado pelo Dashboard.
  */
-export function formatCountdown(dateISO: string, _timezone?: string): string {
-  // Obs.: se quiser considerar timezone, troque por luxon; aqui mantemos simples.
-  const now = new Date();
-  const target = new Date(dateISO);
-  const diffMs = target.getTime() - now.getTime();
-  const past = diffMs < 0;
-  const abs = Math.abs(diffMs);
+export function formatCountdown(dateISO: string): string {
+  const todayISO = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const past = new Date(dateISO).getTime() < new Date(todayISO).getTime();
 
-  const days = Math.floor(abs / (24 * 60 * 60 * 1000));
-  const hours = Math.floor((abs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-  const minutes = Math.floor((abs % (60 * 60 * 1000)) / (60 * 1000));
+  const { y, m, d } = past
+    ? diffYMD(dateISO, todayISO)  // já passou
+    : diffYMD(todayISO, dateISO); // falta
 
-  if (days > 0) return past ? `Encerrada há ${days}d ${hours}h` : `Faltam ${days}d ${hours}h`;
-  if (hours > 0) return past ? `Encerrada há ${hours}h ${minutes}m` : `Faltam ${hours}h ${minutes}m`;
-  const mins = Math.max(0, minutes);
-  return past ? `Encerrada há ${mins}m` : `Faltam ${mins}m`;
+  const p = (n: number, s: string, p: string) => (n ? `${n} ${n === 1 ? s : p}` : '');
+  const parts = [p(y,'ano','anos'), p(m,'mês','meses'), p(d,'dia','dias')].filter(Boolean);
+  const text = parts.join(' e ');
+
+  return past ? `Encerrada há ${text}` : `Faltam ${text}`;
 }
 
 /** Aliases úteis (não obrigatórios, mas ajudam em outros pontos do app) */
