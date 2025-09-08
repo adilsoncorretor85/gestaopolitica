@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ElectionProvider } from "@/contexts/ElectionContext";
 
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -46,8 +47,9 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
+      <ElectionProvider supabase={supabase}>
+        <BrowserRouter>
+          <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/definir-senha" element={<DefinirSenha />} />
@@ -139,8 +141,9 @@ export default function App() {
           <Route path="/contacts/*" element={<Navigate to="/pessoas" replace />} />
           
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </ElectionProvider>
     </ThemeProvider>
   );
 }
