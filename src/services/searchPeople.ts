@@ -27,3 +27,4 @@ export async function searchPeople(
   if (error) throw error;
   return (data ?? []) as PersonSearchRow[];
 }
+

@@ -143,3 +143,4 @@ SELECT * FROM search_people('teste', 5, 0);
 -- Reindexar se necessário
 REINDEX INDEX people_full_name_fts;
 ```
+

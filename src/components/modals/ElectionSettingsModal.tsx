@@ -20,7 +20,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
   const [timezone, setTimezone] = useState<string>('America/Sao_Paulo');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !supabase) return;
     (async () => {
       setLoading(true);
       const settings = await getCurrentElection(supabase);
@@ -36,7 +36,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
       }
       setLoading(false);
     })();
-  }, [open]);
+  }, [open, supabase]);
 
   useEffect(() => {
     if ((level === 'MUNICIPAL' || level === 'ESTADUAL') && uf) {
@@ -48,6 +48,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
   }, [level, uf]);
 
   const save = async () => {
+    if (!supabase) return;
     setLoading(true);
     try {
       const payload: Partial<ElectionSettings> = {

@@ -45,3 +45,4 @@ export function getEstadoPorNome(nome: string): EstadoBrasil | undefined {
     estado.nome.toLowerCase() === nome.toLowerCase()
   );
 }
+

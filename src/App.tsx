@@ -47,8 +47,9 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 export default function App() {
   return (
     <ThemeProvider>
-      <ElectionProvider supabase={supabase}>
-        <BrowserRouter>
+      {supabase && (
+        <ElectionProvider supabase={supabase}>
+          <BrowserRouter>
           <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
@@ -143,7 +144,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
-      </ElectionProvider>
+        </ElectionProvider>
+      )}
     </ThemeProvider>
   );
 }
