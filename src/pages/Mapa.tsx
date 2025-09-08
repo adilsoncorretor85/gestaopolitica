@@ -30,34 +30,34 @@ const leaderIcon = (_g: typeof google) =>
   });
 
 const personInfoHtml = (person: any) => `
-  <div class="p-3">
-    <h3 class="font-semibold text-lg">${person.full_name}</h3>
+  <div class="p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]">
+    <h3 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">${person.full_name}</h3>
     <div class="mt-2 space-y-1 text-sm">
-      ${person.whatsapp ? `<p><strong>WhatsApp:</strong> ${person.whatsapp}</p>` : ''}
-      ${person.city ? `<p><strong>Cidade:</strong> ${person.city}</p>` : ''}
-      ${person.neighborhood ? `<p><strong>Bairro:</strong> ${person.neighborhood}</p>` : ''}
-      ${person.state ? `<p><strong>UF:</strong> ${person.state}</p>` : ''}
-      ${person.vote_status ? `<p><strong>Status do voto:</strong> ${person.vote_status}</p>` : ''}
-      ${person.leader_name ? `<p><strong>Líder:</strong> ${person.leader_name}</p>` : ''}
+      ${person.whatsapp ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">WhatsApp:</strong> ${person.whatsapp}</p>` : ''}
+      ${person.city ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Cidade:</strong> ${person.city}</p>` : ''}
+      ${person.neighborhood ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Bairro:</strong> ${person.neighborhood}</p>` : ''}
+      ${person.state ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">UF:</strong> ${person.state}</p>` : ''}
+      ${person.vote_status ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Status do voto:</strong> ${person.vote_status}</p>` : ''}
+      ${person.leader_name ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Líder:</strong> ${person.leader_name}</p>` : ''}
     </div>
-    <div class="mt-3">
-      <a href="/pessoas/${person.id}" class="text-blue-600 hover:text-blue-800 text-sm">Editar</a>
+    <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+      <a href="/pessoas/${person.id}" class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">Editar</a>
     </div>
   </div>
 `;
 
 const leaderInfoHtml = (leader: any) => `
-  <div class="p-3">
-    <h3 class="font-semibold text-lg">${leader.name}</h3>
+  <div class="p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]">
+    <h3 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">${leader.name}</h3>
     <div class="mt-2 space-y-1 text-sm">
-      ${leader.email ? `<p><strong>Email:</strong> ${leader.email}</p>` : ''}
-      ${leader.phone ? `<p><strong>Telefone:</strong> ${leader.phone}</p>` : ''}
-      ${leader.city ? `<p><strong>Cidade:</strong> ${leader.city}</p>` : ''}
-      ${leader.neighborhood ? `<p><strong>Bairro:</strong> ${leader.neighborhood}</p>` : ''}
-      ${leader.state ? `<p><strong>UF:</strong> ${leader.state}</p>` : ''}
+      ${leader.email ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Email:</strong> ${leader.email}</p>` : ''}
+      ${leader.phone ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Telefone:</strong> ${leader.phone}</p>` : ''}
+      ${leader.city ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Cidade:</strong> ${leader.city}</p>` : ''}
+      ${leader.neighborhood ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">Bairro:</strong> ${leader.neighborhood}</p>` : ''}
+      ${leader.state ? `<p class="text-gray-700 dark:text-gray-300"><strong class="text-gray-900 dark:text-white">UF:</strong> ${leader.state}</p>` : ''}
     </div>
-    <div class="mt-3">
-      <a href="/lideres/${leader.id}" class="text-blue-600 hover:text-blue-800 text-sm">Editar</a>
+    <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+      <a href="/lideres/${leader.id}" class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">Editar</a>
     </div>
   </div>
 `;
