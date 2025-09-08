@@ -12,7 +12,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cart
 import { Plus, Target, Users, TrendingUp, MapPin, CalendarDays, Edit3, Search } from 'lucide-react';
 import { CityGoalModal, NeighborhoodGoalModal } from '@/components/ProjecaoModals';
 import ElectionSettingsModal from '@/components/modals/ElectionSettingsModal';
-import { getElectionSettings, ElectionSettings } from '@/services/election';
 import type { CityGoal, NeighborhoodGoal, CityProjection, NeighborhoodProjection } from '@/types/projecoes';
 
 // Função para formatar números com separadores de milhares
@@ -50,7 +49,6 @@ export default function Projecao() {
   
   // Estados para eleição
   const [electionOpen, setElectionOpen] = useState(false);
-  const [election, setElection] = useState<ElectionSettings | null>(null);
 
   // Proteção de rota - apenas admin
   useEffect(() => {
@@ -64,17 +62,15 @@ export default function Projecao() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [citiesRes, cityProjectionRes, , electionRes] = await Promise.all([
+        const [citiesRes, cityProjectionRes] = await Promise.all([
           listCitiesForFilter(),
           listCityProjection(),
-          listLeaders(true),
-          getElectionSettings()
+          listLeaders(true)
         ]);
         
         setCities(citiesRes ?? []);
         setCityProjections(cityProjectionRes ?? []);
         // setLeaders(leadersRes ?? []);
-        setElection(electionRes);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
         setToast({ message: 'Erro ao carregar dados. Tente novamente.', type: 'error' });
@@ -641,7 +637,10 @@ export default function Projecao() {
       <ElectionSettingsModal
         open={electionOpen}
         onClose={() => setElectionOpen(false)}
-        onSaved={(s) => setElection(s)}
+        onSaved={() => {
+          // O contexto será atualizado automaticamente
+          setElectionOpen(false);
+        }}
       />
 
       {/* Toast de Feedback */}
