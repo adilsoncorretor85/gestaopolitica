@@ -177,16 +177,16 @@ export default function Mapa() {
       let address = 'Brasil';
       let targetZoom: number | null = null;
 
-      switch (election.election_type) {
+      switch (election.election_level) {
         case 'MUNICIPAL':
-          if (election.city && election.uf) {
-            address = `${election.city}, ${election.uf}, Brasil`;
+          if (election.scope_city && election.scope_state) {
+            address = `${election.scope_city}, ${election.scope_state}, Brasil`;
             targetZoom = 11; // cidade
           }
           break;
         case 'ESTADUAL':
-          if (election.uf) {
-            address = `${election.uf}, Brasil`;
+          if (election.scope_state) {
+            address = `${election.scope_state}, Brasil`;
             targetZoom = 6; // estado
           }
           break;

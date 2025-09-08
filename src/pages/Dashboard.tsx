@@ -52,10 +52,11 @@ export default function DashboardPage() {
 
   const loadElectionSettings = async () => {
     try {
-      const settings = await getElectionSettings();
+      const supabase = getSupabaseClient();
+      const settings = await getElectionSettings(supabase);
       if (settings?.election_date) {
         const countdown = formatCountdown(settings.election_date);
-        setCountdownText(countdown.text);
+        setCountdownText(countdown);
         setElectionLabel(`${settings.election_name} • ${new Date(settings.election_date).toLocaleDateString("pt-BR")}`);
       }
     } catch (error) {
