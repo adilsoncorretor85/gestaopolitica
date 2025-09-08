@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Vote } from "lucide-react";
 import ThemeToggle from '@/components/ThemeToggle';
+import { ensureLeaderActivated } from '@/services/leadership';
 
 export default function AcceptInvite() {
   const navigate = useNavigate();
@@ -64,6 +65,9 @@ export default function AcceptInvite() {
       // Define a senha do usuário convidado
       const { error } = await supabase?.auth.updateUser({ password }) || { error: null };
       if (error) throw error;
+
+      // ✅ ativa líder quando o usuário acabou de criar senha
+      await ensureLeaderActivated();
 
       // Opcional: encerra a sessão e manda para o login
       await supabase?.auth.signOut();

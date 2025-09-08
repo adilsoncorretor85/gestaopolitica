@@ -2,6 +2,38 @@ import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { ProfileLeadership, LeadershipFormValues } from '@/types/leadership';
 import { ROLE_OPTIONS } from '@/types/leadership';
 
+/**
+ * Chama a RPC activate_leader() de forma idempotente.
+ * Protege contra chamadas duplicadas com uma flag no localStorage.
+ */
+export async function ensureLeaderActivated(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = getSupabaseClient();
+    const { data: session } = await supabase.auth.getSession();
+    const uid = session?.session?.user?.id;
+    if (!uid) return { ok: false, error: 'Sem sessão' };
+
+    // evita chamadas repetidas no mesmo browser
+    const key = `leader-activated:${uid}`;
+    if (localStorage.getItem(key) === '1') {
+      return { ok: true };
+    }
+
+    const { error } = await supabase.rpc('activate_leader');
+    if (error) {
+      // não grava a flag; vamos tentar de novo no próximo ciclo
+      console.error('[ensureLeaderActivated] RPC error:', error);
+      return { ok: false, error: error.message };
+    }
+
+    localStorage.setItem(key, '1');
+    return { ok: true };
+  } catch (err: any) {
+    console.error('[ensureLeaderActivated] unexpected error:', err);
+    return { ok: false, error: err?.message ?? 'unknown' };
+  }
+}
+
 // Função para validar UUID
 function isUuid(value: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

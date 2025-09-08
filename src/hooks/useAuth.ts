@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
+import { ensureLeaderActivated } from "@/services/leadership";
 
 export type Profile = {
   id: string;
@@ -58,17 +59,8 @@ export default function useAuth(): UseAuth {
         if (!error) {
           setProfile((data as Profile) ?? null);
           
-          // Ativar líder automaticamente se estiver pendente (RPC idempotente)
-          try {
-            const { data: activateData, error: activateError } = await supabase.rpc('activate_leader');
-            if (activateError) {
-              console.warn('[activate_leader] warning:', activateError.message);
-            } else {
-              console.log('[activate_leader] ok:', activateData);
-            }
-          } catch (e) {
-            console.warn('[activate_leader] exception:', e);
-          }
+          // ✅ ativa líder quando já logado (hard refresh, deep link, etc.)
+          ensureLeaderActivated();
         } else {
           console.error('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
           setProfile(null);
@@ -94,10 +86,16 @@ export default function useAuth(): UseAuth {
       const supabase = getSupabaseClient();
 
       // reage a mudanças de auth
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         // Atualiza sessão e usuário diretamente
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // ✅ ativa líder quando o usuário acabou de criar senha/logar
+        // eventos típicos: SIGNED_IN, USER_UPDATED
+        if (session?.user?.id && (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY' || event === 'TOKEN_REFRESHED')) {
+          ensureLeaderActivated();
+        }
         
         // Recarrega perfil se necessário
         if (session?.user) {

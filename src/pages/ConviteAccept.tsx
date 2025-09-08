@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getInviteToken, acceptInvite, type InviteToken } from '@/services/invite';
+import { ensureLeaderActivated } from '@/services/leadership';
 import { supabase } from '@/lib/supabaseClient';
 import { Vote, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
@@ -65,8 +66,8 @@ export default function ConviteAcceptPage() {
       
       await acceptInvite({ token });
       
-      // Marcar líder como ativo após aceitar convite
-      await marcarLeaderAtivoSeLogado();
+      // ✅ ativa líder quando o usuário acabou de aceitar convite
+      await ensureLeaderActivated();
       
       // Show success message and redirect
       alert('Conta criada com sucesso! Faça login para continuar.');
@@ -79,21 +80,6 @@ export default function ConviteAcceptPage() {
     }
   };
 
-  const marcarLeaderAtivoSeLogado = async () => {
-    try {
-      const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
-      if (user?.id) {
-        await supabase?.from('leader_profiles')
-          .update({ status: 'ACTIVE' })
-          .eq('id', user.id);
-        await supabase?.from('profiles')
-          .update({ role: 'LEADER' })
-          .eq('id', user.id);
-      }
-    } catch (error) {
-      console.error('Erro ao ativar líder:', error);
-    }
-  };
 
   if (loading) {
     return (

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Vote } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import { ensureLeaderActivated } from '@/services/leadership';
 
 export default function DefinirSenha() {
   const [password, setPassword] = useState('');
@@ -43,17 +44,8 @@ export default function DefinirSenha() {
       const { error: upErr } = await supabase?.auth.updateUser({ password }) || { error: null };
       if (upErr) throw upErr;
 
-      // 2) ativar líder - os triggers cuidam do resto
-      const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
-      if (user?.id) {
-        await supabase
-          ?.from('leader_profiles')
-          .update({ status: 'ACTIVE' })
-          .eq('id', user.id);
-        // Os triggers cuidam de:
-        // - accepted_at em invite_tokens (trg_mark_invite_on_activate)
-        // - accepted_at em leader_profiles (trg_set_leader_accepted_at)
-      }
+      // ✅ ativa líder quando o usuário acabou de definir senha
+      await ensureLeaderActivated();
 
       // pronto!
       navigate('/dashboard', { replace: true });
