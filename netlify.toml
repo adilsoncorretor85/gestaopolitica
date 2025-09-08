@@ -31,7 +31,7 @@
       form-action 'self';
       frame-ancestors 'none';
 
-      connect-src 'self' https://*.supabase.co https://*.supabase.in https://maps.googleapis.com;
+      connect-src 'self' https://*.supabase.co https://*.supabase.in https://maps.googleapis.com https://servicodados.ibge.gov.br;
       img-src 'self' data: https://*.googleapis.com https://*.gstatic.com;
       font-src 'self' data: https://*.gstatic.com;
       style-src 'self' 'unsafe-inline';

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import useAuth from '@/hooks/useAuth';
+import { useElection } from '@/contexts/ElectionContext';
 import {
   listCitiesForFilter, listNeighborhoodGoals, listCityProjection, listNeighborhoodProjection
 } from '@/services/projecoes';
@@ -22,6 +23,7 @@ const formatNumber = (num: number | string): string => {
 
 export default function Projecao() {
   const { profile } = useAuth();
+  const { election } = useElection();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('projecao');
@@ -354,13 +356,15 @@ export default function Projecao() {
                   <CalendarDays className="h-4 w-4" />
                   <span>Definir eleição</span>
                 </button>
-                <button
-                  onClick={() => setShowCityModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Meta Cidade</span>
-                </button>
+                {election?.election_level === 'ESTADUAL' && (
+                  <button
+                    onClick={() => setShowCityModal(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Meta Cidade</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setShowHoodModal(true)}
                   className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"

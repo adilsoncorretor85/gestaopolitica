@@ -8,12 +8,14 @@ import useAuth from '@/hooks/useAuth';
 import { listPeople, deletePerson, updatePerson, type Person } from '@/services/people';
 import { listLeaders, type LeaderRow } from '@/services/admin';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
+import { useElection } from '@/contexts/ElectionContext';
 import { Plus, Search, Phone, MapPin, Edit2, Trash2, ExternalLink, Mail, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function PessoasPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pessoas');
   const { profile, isAdmin } = useAuth();
+  const { defaultFilters } = useElection();
   
   const [people, setPeople] = useState<Person[]>([]);
   const [leaders, setLeaders] = useState<LeaderRow[]>([]);
@@ -27,6 +29,7 @@ export default function PessoasPage() {
   const [error, setError] = useState<string>('');
   const [sortBy, setSortBy] = useState<'full_name' | 'created_at' | 'city' | 'state'>('full_name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [overrode, setOverrode] = useState(false);
   
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -38,6 +41,14 @@ export default function PessoasPage() {
   const [editingNotes, setEditingNotes] = useState<'add' | 'edit' | null>(null);
   const [notesText, setNotesText] = useState('');
   const [updatingNotes, setUpdatingNotes] = useState(false);
+
+  // Aplicar filtros padrão da eleição
+  useEffect(() => {
+    if (!overrode && defaultFilters) {
+      if (defaultFilters.state) setStateFilter(defaultFilters.state);
+      if (defaultFilters.city) setCityFilter(defaultFilters.city);
+    }
+  }, [defaultFilters, overrode]);
 
   useEffect(() => {
     loadData();
@@ -422,13 +433,19 @@ export default function PessoasPage() {
                   type="text"
                   placeholder="Cidade"
                   value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
+                  onChange={(e) => {
+                    setCityFilter(e.target.value);
+                    setOverrode(true);
+                  }}
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
 
                 <select
                   value={stateFilter}
-                  onChange={(e) => setStateFilter(e.target.value)}
+                  onChange={(e) => {
+                    setStateFilter(e.target.value);
+                    setOverrode(true);
+                  }}
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Todos os estados</option>
