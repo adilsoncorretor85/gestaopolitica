@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
-import { activateLeaderIfPending } from "@/lib/auth-helpers";
 
 export type Profile = {
   id: string;
@@ -59,10 +58,17 @@ export default function useAuth(): UseAuth {
         if (!error) {
           setProfile((data as Profile) ?? null);
           
-          // Ativar líder automaticamente se estiver pendente (não bloqueia a UI)
-          activateLeaderIfPending().catch((error) => {
-            console.warn('Erro ao ativar líder automaticamente:', error);
-          });
+          // Ativar líder automaticamente se estiver pendente (RPC idempotente)
+          try {
+            const { data: activateData, error: activateError } = await supabase.rpc('activate_leader');
+            if (activateError) {
+              console.warn('[activate_leader] warning:', activateError.message);
+            } else {
+              console.log('[activate_leader] ok:', activateData);
+            }
+          } catch (e) {
+            console.warn('[activate_leader] exception:', e);
+          }
         } else {
           console.error('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
           setProfile(null);
