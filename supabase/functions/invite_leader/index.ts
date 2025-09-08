@@ -12,6 +12,7 @@ interface InviteLeaderRequest {
   phone?: string
   birth_date?: string
   gender?: 'M' | 'F' | 'O'
+  goal?: number
   cep?: string
   street?: string
   number?: string
@@ -20,6 +21,8 @@ interface InviteLeaderRequest {
   city?: string
   state?: string
   notes?: string
+  latitude?: number
+  longitude?: number
   appUrl?: string
 }
 
@@ -245,6 +248,7 @@ Deno.serve(async (req) => {
         phone: body.phone,
         birth_date: body.birth_date,
         gender: body.gender,
+        goal: body.goal,
         cep: body.cep,
         street: body.street,
         number: body.number,
@@ -253,6 +257,8 @@ Deno.serve(async (req) => {
         city: body.city,
         state: body.state,
         notes: body.notes,
+        latitude: body.latitude,
+        longitude: body.longitude,
         status: 'INVITED', // <<< manter pendente até aceitar
       })
 
