@@ -119,3 +119,8 @@ O projeto está configurado para deploy automático no Bolt Hosting.
 ## 📞 Suporte
 
 Para dúvidas ou problemas, entre em contato com o administrador do sistema.
+
+## Última Atualização
+- Sistema de filtros por eleição corrigido (Municipal/Estadual/Federal)
+- Auto-filtro aplicado em Pessoas e Mapa
+- Meta Cidade disponível apenas em eleições estaduais
