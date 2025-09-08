@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 
 /**
- * Ativa automaticamente um líder se ele estiver com status INACTIVE (convite não aceito)
+ * Ativa automaticamente um líder se ele estiver com status PENDING (convite não aceito)
  * Esta função é chamada após o login para garantir que líderes convidados
  * sejam ativados automaticamente no primeiro acesso
  */
@@ -38,43 +38,27 @@ export async function activateLeaderIfPending(): Promise<void> {
       return;
     }
 
-    // Se não está INACTIVE, não faz nada (pode ser INACTIVE por banimento ou convite não aceito)
-    if (leaderProfile.status !== 'INACTIVE') {
-      console.log('[activateLeaderIfPending] Líder não está inativo (status:', leaderProfile.status, '):', leaderProfile.email);
+    // Se não está PENDING, não faz nada (pode ser INACTIVE por banimento ou já ativo)
+    if (leaderProfile.status !== 'PENDING') {
+      console.log('[activateLeaderIfPending] Líder não está pendente (status:', leaderProfile.status, '):', leaderProfile.email);
       return;
     }
 
-    // Ativar o líder
+    // Ativar o líder - os triggers do banco cuidam do resto
     const { error: updateError } = await supabase
       ?.from('leader_profiles')
       .update({ 
-        status: 'ACTIVE',
-        updated_at: new Date().toISOString()
+        status: 'ACTIVE'
+        // Os triggers cuidam de:
+        // - accepted_at (trg_set_leader_accepted_at)
+        // - invite_tokens (trg_mark_invite_on_activate)
+        // - updated_at (update_leader_profiles_updated_at)
       })
       .eq('id', user.id) || { error: null };
 
     if (updateError) {
       console.error('[activateLeaderIfPending] Erro ao ativar líder:', updateError);
       return;
-    }
-
-    // Marcar o convite como aceito
-    if (leaderProfile.email) {
-      const { error: inviteError } = await supabase
-        ?.from('invite_tokens')
-        .update({ 
-          accepted_at: new Date().toISOString(),
-          leader_profile_id: user.id
-        })
-        .eq('email', leaderProfile.email)
-        .is('accepted_at', null) || { error: null };
-
-      if (inviteError) {
-        console.warn('[activateLeaderIfPending] Erro ao marcar convite como aceito:', inviteError);
-        // Não falha a operação por causa disso
-      } else {
-        console.log('[activateLeaderIfPending] Convite marcado como aceito para:', leaderProfile.email);
-      }
     }
 
     console.log('[activateLeaderIfPending] ✅ Líder ativado com sucesso:', leaderProfile.email);

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Vote } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function DefinirSenha() {
   const [password, setPassword] = useState('');
@@ -42,19 +43,16 @@ export default function DefinirSenha() {
       const { error: upErr } = await supabase?.auth.updateUser({ password }) || { error: null };
       if (upErr) throw upErr;
 
-      // 2) marca o convite como aceito (se sua tabela tiver essas colunas)
+      // 2) ativar líder - os triggers cuidam do resto
       const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
-      if (user?.email) {
-        await supabase
-          ?.from('invite_tokens')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('email', user.email)
-          .is('accepted_at', null);
-
+      if (user?.id) {
         await supabase
           ?.from('leader_profiles')
           .update({ status: 'ACTIVE' })
           .eq('id', user.id);
+        // Os triggers cuidam de:
+        // - accepted_at em invite_tokens (trg_mark_invite_on_activate)
+        // - accepted_at em leader_profiles (trg_set_leader_accepted_at)
       }
 
       // pronto!
@@ -68,16 +66,20 @@ export default function DefinirSenha() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        {/* Theme Toggle */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <Vote className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Crie sua senha</h1>
-          <p className="text-gray-600">Gestão Política - Vereador Wilian Tonezi</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Crie sua senha</h1>
+          <p className="text-gray-600 dark:text-gray-300">Gestão Política - Vereador Wilian Tonezi</p>
           {userEmail && (
             <p className="text-sm text-blue-600 mt-2">
               Bem-vindo, {userEmail}
@@ -93,14 +95,14 @@ export default function DefinirSenha() {
           )}
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nova Senha *
             </label>
             <input
               type="password"
               autoFocus
               placeholder="Mínimo 6 caracteres"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={6}
@@ -109,13 +111,13 @@ export default function DefinirSenha() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirmar Senha *
             </label>
             <input
               type="password"
               placeholder="Digite a senha novamente"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               minLength={6}
@@ -132,7 +134,7 @@ export default function DefinirSenha() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>Após definir sua senha, você terá acesso completo ao sistema.</p>
         </div>
       </div>

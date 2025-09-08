@@ -18,32 +18,32 @@ async function testLeaderActivation() {
   console.log('🧪 Testando ativação automática de líderes...\n');
 
   try {
-    // 1. Buscar líderes com status INACTIVE
-    console.log('1️⃣ Buscando líderes com status INACTIVE...');
-    const { data: inactiveLeaders, error: fetchError } = await supabase
+    // 1. Buscar líderes com status PENDING
+    console.log('1️⃣ Buscando líderes com status PENDING...');
+    const { data: pendingLeaders, error: fetchError } = await supabase
       .from('leader_profiles')
       .select('id, email, status, created_at')
-      .eq('status', 'INACTIVE')
+      .eq('status', 'PENDING')
       .limit(5);
 
     if (fetchError) {
-      console.error('❌ Erro ao buscar líderes inativos:', fetchError);
+      console.error('❌ Erro ao buscar líderes pendentes:', fetchError);
       return;
     }
 
-    if (!inactiveLeaders || inactiveLeaders.length === 0) {
-      console.log('ℹ️ Nenhum líder inativo encontrado para teste');
+    if (!pendingLeaders || pendingLeaders.length === 0) {
+      console.log('ℹ️ Nenhum líder pendente encontrado para teste');
       return;
     }
 
-    console.log(`✅ Encontrados ${inactiveLeaders.length} líderes inativos:`);
-    inactiveLeaders.forEach(leader => {
+    console.log(`✅ Encontrados ${pendingLeaders.length} líderes pendentes:`);
+    pendingLeaders.forEach(leader => {
       console.log(`   - ${leader.email} (ID: ${leader.id})`);
     });
 
     // 2. Verificar invite_tokens correspondentes
     console.log('\n2️⃣ Verificando invite_tokens correspondentes...');
-    for (const leader of inactiveLeaders) {
+    for (const leader of pendingLeaders) {
       const { data: inviteToken, error: tokenError } = await supabase
         .from('invite_tokens')
         .select('email, accepted_at, leader_profile_id')
@@ -61,9 +61,10 @@ async function testLeaderActivation() {
 
     // 3. Simular ativação (opcional - descomente para testar)
     console.log('\n3️⃣ Para testar a ativação automática:');
-    console.log('   - Faça login com um dos líderes inativos listados acima');
+    console.log('   - Faça login com um dos líderes pendentes listados acima');
     console.log('   - Verifique o console do navegador para logs de ativação');
     console.log('   - Verifique se o status mudou para ACTIVE no banco');
+    console.log('   - Os triggers do banco cuidam de accepted_at e invite_tokens');
 
     // 4. Verificar líderes ativos
     console.log('\n4️⃣ Verificando líderes ativos...');

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Vote } from "lucide-react";
+import ThemeToggle from '@/components/ThemeToggle';
 
 function useInviteHash() {
   return useMemo(() => {
@@ -72,19 +73,15 @@ export default function Convite() {
       const { error: uErr } = await getSupabaseClient().auth.updateUser({ password: pwd });
       if (uErr) throw uErr;
 
-      // Marcar convite como aceito e ativar líder
+      // Ativar líder - os triggers cuidam do resto
       const { data: { user } } = await getSupabaseClient().auth.getUser();
-      if (user?.email) {
-        await getSupabaseClient()
-          .from('invite_tokens')
-          .update({ accepted_at: new Date().toISOString() })
-          .eq('email', user.email)
-          .is('accepted_at', null);
-
+      if (user?.id) {
         await getSupabaseClient()
           .from('leader_profiles')
-          .update({ status: 'ACTIVE' })
-          .eq('id', user.id);
+          .update({ status: 'ACTIVE' });
+        // Os triggers cuidam de:
+        // - accepted_at em invite_tokens (trg_mark_invite_on_activate)
+        // - accepted_at em leader_profiles (trg_set_leader_accepted_at)
       }
 
       setMsg("Senha definida com sucesso! Redirecionando...");
@@ -132,16 +129,20 @@ export default function Convite() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        {/* Theme Toggle */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <Vote className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Definir Senha</h1>
-          <p className="text-gray-600">Gestão Política - Vereador Wilian Tonezi</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Definir Senha</h1>
+          <p className="text-gray-600 dark:text-gray-300">Gestão Política - Vereador Wilian Tonezi</p>
           {userEmail && (
             <p className="text-sm text-blue-600 mt-2">
               Bem-vindo, {userEmail}
@@ -161,12 +162,12 @@ export default function Convite() {
           )}
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nova Senha *
             </label>
             <input
               type="password"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Mínimo 6 caracteres"
               value={pwd}
               onChange={(e) => setPwd(e.target.value)}
@@ -176,12 +177,12 @@ export default function Convite() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirmar Senha *
             </label>
             <input
               type="password"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Digite a senha novamente"
               value={pwd2}
               onChange={(e) => setPwd2(e.target.value)}

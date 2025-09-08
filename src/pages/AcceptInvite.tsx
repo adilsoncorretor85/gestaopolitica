@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Vote } from "lucide-react";
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AcceptInvite() {
   const navigate = useNavigate();
@@ -76,14 +77,18 @@ export default function AcceptInvite() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
+          {/* Theme Toggle */}
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <Vote className="h-8 w-8 text-white animate-pulse" />
             </div>
           </div>
-          <p className="text-gray-600">Validando convite…</p>
+          <p className="text-gray-600 dark:text-gray-300">Validando convite…</p>
         </div>
       </div>
     );
@@ -91,15 +96,19 @@ export default function AcceptInvite() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 max-w-md text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 max-w-md text-center">
+          {/* Theme Toggle */}
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
           <div className="flex justify-center mb-4">
             <div className="bg-red-100 p-3 rounded-full">
               <Vote className="h-8 w-8 text-red-600" />
             </div>
           </div>
-          <h1 className="text-xl font-semibold mb-2 text-gray-900">Convite Inválido</h1>
-          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <h1 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Convite Inválido</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => (window.location.href = "/login")}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
@@ -112,16 +121,20 @@ export default function AcceptInvite() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 w-full max-w-lg">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg">
+        {/* Theme Toggle */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <Vote className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold mb-1 text-gray-900">Aceitar Convite</h1>
-          <p className="text-sm text-gray-600">Gestão Política - Vereador Wilian Tonezi</p>
+          <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Aceitar Convite</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300">Gestão Política - Vereador Wilian Tonezi</p>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -136,12 +149,12 @@ export default function AcceptInvite() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Senha *
             </label>
             <input
               type="password"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Crie uma senha (mínimo 6 caracteres)"
@@ -149,12 +162,12 @@ export default function AcceptInvite() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirmar senha *
             </label>
             <input
               type="password"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Repita a senha"
@@ -176,7 +189,7 @@ export default function AcceptInvite() {
           </button>
         </div>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>Já tem uma conta? <a href="/login" className="text-blue-600 hover:text-blue-800">Fazer login</a></p>
         </div>
       </div>
