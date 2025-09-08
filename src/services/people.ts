@@ -33,7 +33,11 @@ export async function listPeople(params?: {
           .in("id", ids);
 
         if (params?.leaderId) query = query.eq("owner_id", params.leaderId);
-        if (params?.city) query = query.ilike("city", `%${params.city}%`);
+        if (params?.city) {
+          // Usar city_norm para busca exata, fallback para city
+          const normalizedCity = params.city.toLowerCase().trim();
+          query = query.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
+        }
         if (params?.state) query = query.ilike("state", `%${params.state}%`);
 
         const { data, error, count } = await query;
@@ -61,7 +65,11 @@ export async function listPeople(params?: {
       .range((page-1)*size, page*size - 1);
 
     if (params?.leaderId) q = q.eq("owner_id", params.leaderId);
-    if (params?.city) q = q.ilike("city", `%${params.city}%`);
+    if (params?.city) {
+      // Usar city_norm para busca exata, fallback para city
+      const normalizedCity = params.city.toLowerCase().trim();
+      q = q.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
+    }
     if (params?.state) q = q.ilike("state", `%${params.state}%`);
 
     const { data, error, count } = await q;

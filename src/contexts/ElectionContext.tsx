@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getCurrentElection, type ElectionSettings } from '@/services/elections';
+import { getElectionSettings, type ElectionSettings } from '@/services/election';
 
 type Filters = { state?: string; city?: string };
 type Ctx = {
@@ -23,7 +23,7 @@ export function ElectionProvider({
 
   useEffect(() => {
     (async () => {
-      const e = await getCurrentElection(supabase);
+      const e = await getElectionSettings(supabase);
       setElection(e);
     })();
   }, [supabase]);

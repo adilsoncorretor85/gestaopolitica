@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { upsertElectionCurrent, getCurrentElection, type ElectionSettings, type ElectionLevel } from "@/services/elections";
+import { upsertElectionCurrent, getElectionSettings, type ElectionSettings, type ElectionLevel } from "@/services/election";
 import { fetchCitiesByUF, UFS } from "@/lib/br";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -23,7 +23,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
     if (!open || !supabase) return;
     (async () => {
       setLoading(true);
-      const settings = await getCurrentElection(supabase);
+      const settings = await getElectionSettings(supabase);
       if (settings) {
         setLevel(settings.election_level ?? 'MUNICIPAL');
         setUf(settings.scope_state ?? '');

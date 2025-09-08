@@ -9,6 +9,7 @@ import { listPeople, deletePerson, updatePerson, type Person } from '@/services/
 import { listLeaders, type LeaderRow } from '@/services/admin';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 import { useElection } from '@/contexts/ElectionContext';
+import { normalizeKey } from '@/lib/normalize';
 import { Plus, Search, Phone, MapPin, Edit2, Trash2, ExternalLink, Mail, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function PessoasPage() {
@@ -79,7 +80,7 @@ export default function PessoasPage() {
       setError('');
       const { data, error, count } = await listPeople({
         q: search || undefined,
-        city: cityFilter || undefined,
+        city: cityFilter ? normalizeKey(cityFilter) : undefined,
         state: stateFilter || undefined,
         leaderId: leaderFilter || undefined,
         page,
