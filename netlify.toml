@@ -7,3 +7,33 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# --- HEADERS DE SEGURANÇA ---
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # HTTPS-only e proteção contra downgrade
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+
+    # Mitigações variadas
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Permissões do navegador (só libere o que você usa)
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), fullscreen=(self)"
+
+    # CSP alinhada ao seu stack (SPA + Supabase + Google Maps)
+    # Ajuste se adicionar analytics/CDNs.
+    Content-Security-Policy = '''
+      default-src 'self';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+
+      connect-src 'self' https://*.supabase.co https://*.supabase.in https://maps.googleapis.com;
+      img-src 'self' data: https://*.googleapis.com https://*.gstatic.com;
+      font-src 'self' data: https://*.gstatic.com;
+      style-src 'self' 'unsafe-inline';
+      script-src 'self' https://maps.googleapis.com https://*.gstatic.com;
+    '''

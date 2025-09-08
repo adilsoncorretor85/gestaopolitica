@@ -22,3 +22,33 @@ export function getSupabaseClient(): SupabaseClient {
   }
   return supabase;
 }
+
+// Função helper para tratamento seguro de erros do Supabase
+export function handleSupabaseError(error: any, context: string = 'operação'): string {
+  if (!error) return 'Erro desconhecido';
+  
+  // Log detalhado apenas em desenvolvimento
+  if (import.meta.env.DEV) {
+    console.error(`[${context}] Erro Supabase:`, error);
+  }
+  
+  // Mensagens seguras para o usuário (não vazam estrutura interna)
+  if (error.code === 'PGRST301' || error.message?.includes('permission denied')) {
+    return 'Sem permissão para este recurso. Peça acesso ao administrador.';
+  }
+  
+  if (error.code === 'PGRST116' || error.message?.includes('not found')) {
+    return 'Recurso não encontrado.';
+  }
+  
+  if (error.message?.includes('network') || error.message?.includes('fetch')) {
+    return 'Erro de conexão. Verifique sua internet e tente novamente.';
+  }
+  
+  if (error.message?.includes('timeout')) {
+    return 'Operação demorou muito para responder. Tente novamente.';
+  }
+  
+  // Erro genérico para casos não mapeados
+  return 'Ocorreu um erro inesperado. Tente novamente ou contate o suporte.';
+}

@@ -9,4 +9,11 @@ export default defineConfig({
             "@": path.resolve(__dirname, "src"),
         },
     },
+    build: {
+        sourcemap: false, // não publique .map em prod
+        minify: 'esbuild',
+    },
+    esbuild: {
+        drop: ['console', 'debugger'], // remove console.* e debugger
+    },
 });

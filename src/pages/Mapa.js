@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { supabase } from '@/lib/supabaseClient';
 import { loadGoogleMaps } from '@/lib/googleMaps';
 import Header from '@/components/Header';
@@ -21,37 +22,20 @@ const leaderIcon = (_g) => ({
     scale: 1.3,
     anchor: new google.maps.Point(12, 12),
 });
-const personInfoHtml = (person) => `
-  <div class="p-3">
-    <h3 class="font-semibold text-lg">${person.full_name}</h3>
-    <div class="mt-2 space-y-1 text-sm">
-      ${person.whatsapp ? `<p><strong>WhatsApp:</strong> ${person.whatsapp}</p>` : ''}
-      ${person.city ? `<p><strong>Cidade:</strong> ${person.city}</p>` : ''}
-      ${person.neighborhood ? `<p><strong>Bairro:</strong> ${person.neighborhood}</p>` : ''}
-      ${person.state ? `<p><strong>UF:</strong> ${person.state}</p>` : ''}
-      ${person.vote_status ? `<p><strong>Status do voto:</strong> ${person.vote_status}</p>` : ''}
-      ${person.leader_name ? `<p><strong>Líder:</strong> ${person.leader_name}</p>` : ''}
-    </div>
-    <div class="mt-3">
-      <a href="/pessoas/${person.id}" class="text-blue-600 hover:text-blue-800 text-sm">Editar</a>
-    </div>
-  </div>
-`;
-const leaderInfoHtml = (leader) => `
-  <div class="p-3">
-    <h3 class="font-semibold text-lg">${leader.name}</h3>
-    <div class="mt-2 space-y-1 text-sm">
-      ${leader.email ? `<p><strong>Email:</strong> ${leader.email}</p>` : ''}
-      ${leader.phone ? `<p><strong>Telefone:</strong> ${leader.phone}</p>` : ''}
-      ${leader.city ? `<p><strong>Cidade:</strong> ${leader.city}</p>` : ''}
-      ${leader.neighborhood ? `<p><strong>Bairro:</strong> ${leader.neighborhood}</p>` : ''}
-      ${leader.state ? `<p><strong>UF:</strong> ${leader.state}</p>` : ''}
-    </div>
-    <div class="mt-3">
-      <a href="/lideres/${leader.id}" class="text-blue-600 hover:text-blue-800 text-sm">Editar</a>
-    </div>
-  </div>
-`;
+// Componente React para popup de pessoa
+const PersonPopup = ({ person }) => (_jsxs("div", { className: "p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]", children: [_jsx("h3", { className: "font-semibold text-lg text-gray-900 dark:text-white mb-2", children: person.full_name }), _jsxs("div", { className: "mt-2 space-y-1 text-sm", children: [person.whatsapp && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "WhatsApp:" }), " ", person.whatsapp] }), person.city && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Cidade:" }), " ", person.city] }), person.neighborhood && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Bairro:" }), " ", person.neighborhood] }), person.state && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "UF:" }), " ", person.state] }), person.vote_status && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Status do voto:" }), " ", person.vote_status] }), person.leader_name && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "L\u00EDder:" }), " ", person.leader_name] })] }), _jsx("div", { className: "mt-3 pt-2 border-t border-gray-200 dark:border-gray-600", children: _jsx("a", { href: `/pessoas/${person.id}`, className: "inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors", children: "Editar" }) })] }));
+// Componente React para popup de líder
+const LeaderPopup = ({ leader }) => (_jsxs("div", { className: "p-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]", children: [_jsx("h3", { className: "font-semibold text-lg text-gray-900 dark:text-white mb-2", children: leader.name }), _jsxs("div", { className: "mt-2 space-y-1 text-sm", children: [leader.email && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Email:" }), " ", leader.email] }), leader.phone && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Telefone:" }), " ", leader.phone] }), leader.city && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Cidade:" }), " ", leader.city] }), leader.neighborhood && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "Bairro:" }), " ", leader.neighborhood] }), leader.state && _jsxs("p", { className: "text-gray-700 dark:text-gray-300", children: [_jsx("strong", { className: "text-gray-900 dark:text-white", children: "UF:" }), " ", leader.state] })] }), _jsx("div", { className: "mt-3 pt-2 border-t border-gray-200 dark:border-gray-600", children: _jsx("a", { href: `/lideres/${leader.id}`, className: "inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors", children: "Editar" }) })] }));
+// Função para criar InfoWindow com React
+const createReactInfoWindow = (g, content) => {
+    const div = document.createElement('div');
+    const root = createRoot(div);
+    root.render(content);
+    const infoWindow = new g.maps.InfoWindow({
+        content: div,
+    });
+    return infoWindow;
+};
 export default function Mapa() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('mapa');
@@ -257,7 +241,6 @@ export default function Mapa() {
             leaderMarkersRef.current.forEach(m => m.setMap(null));
             peopleMarkersRef.current = [];
             leaderMarkersRef.current = [];
-            const info = infoRef.current;
             // Pessoas (azul)
             const pMarkers = people.map(p => {
                 const marker = new g.maps.Marker({
@@ -267,8 +250,8 @@ export default function Mapa() {
                     map,
                 });
                 marker.addListener("click", () => {
-                    info.setContent(personInfoHtml(p));
-                    info.open({ anchor: marker, map });
+                    const reactInfoWindow = createReactInfoWindow(g, _jsx(PersonPopup, { person: p }));
+                    reactInfoWindow.open({ anchor: marker, map });
                 });
                 return marker;
             });
@@ -282,8 +265,8 @@ export default function Mapa() {
                     map,
                 });
                 marker.addListener("click", () => {
-                    info.setContent(leaderInfoHtml(l));
-                    info.open({ anchor: marker, map });
+                    const reactInfoWindow = createReactInfoWindow(g, _jsx(LeaderPopup, { leader: l }));
+                    reactInfoWindow.open({ anchor: marker, map });
                 });
                 return marker;
             });
