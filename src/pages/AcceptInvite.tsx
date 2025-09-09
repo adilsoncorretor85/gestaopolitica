@@ -48,25 +48,18 @@ export default function AcceptInvite() {
     })();
 
     // Configurar listener para aceitar convite após SIGNED_IN
-    const token = new URLSearchParams(window.location.search).get('token');
-    
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (evt) => {
-      if (evt === 'SIGNED_IN' && token) {
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_IN') {
         try {
-          const { data, error } = await supabase?.rpc('accept_leader_invite', { p_token: token });
+          const { error } = await supabase?.rpc('finalize_leader_accept');
           if (error) {
-            console.error('Erro ao aceitar convite:', error);
+            console.error('finalize_leader_accept error', error);
             setError('Falha ao aceitar convite: ' + error.message);
             return;
           }
-          
-          if (data?.success) {
-            console.log('Convite aceito com sucesso');
-            // O redirecionamento para dashboard será feito pela lógica existente
-          } else {
-            console.error('Erro ao aceitar convite:', data?.error);
-            setError('Falha ao aceitar convite: ' + (data?.error || 'Erro desconhecido'));
-          }
+          // Sucesso -> redireciona para dashboard
+          console.log('Convite aceito com sucesso');
+          navigate('/dashboard');
         } catch (e: any) {
           console.error('Erro ao aceitar convite:', e);
           setError('Falha ao aceitar convite: ' + e.message);

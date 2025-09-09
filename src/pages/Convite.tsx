@@ -73,15 +73,11 @@ export default function Convite() {
       const { error: uErr } = await getSupabaseClient().auth.updateUser({ password: pwd });
       if (uErr) throw uErr;
 
-      // Ativar líder - os triggers cuidam do resto
-      const { data: { user } } = await getSupabaseClient().auth.getUser();
-      if (user?.id) {
-        await getSupabaseClient()
-          .from('leader_profiles')
-          .update({ status: 'ACTIVE' });
-        // Os triggers cuidam de:
-        // - accepted_at em invite_tokens (trg_mark_invite_on_activate)
-        // - accepted_at em leader_profiles (trg_set_leader_accepted_at)
+      // Finalizar aceite do convite usando a RPC
+      const { error: finalizeError } = await getSupabaseClient().rpc('finalize_leader_accept');
+      if (finalizeError) {
+        console.error('finalize_leader_accept error:', finalizeError);
+        throw new Error('Erro ao finalizar aceite do convite: ' + finalizeError.message);
       }
 
       setMsg("Senha definida com sucesso! Redirecionando...");
