@@ -273,6 +273,7 @@ export async function inviteLeader(payload: {
   city?: string;
   state?: string;
   notes?: string;
+  goal?: number;
   latitude?: number | null;
   longitude?: number | null;
   appUrl?: string;

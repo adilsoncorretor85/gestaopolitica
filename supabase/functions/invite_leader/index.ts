@@ -240,6 +240,13 @@ Deno.serve(async (req) => {
     }
 
     // Upsert leader_profiles
+    console.log('Dados recebidos para leader_profiles:', {
+      goal: body.goal,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      email: body.email
+    });
+    
     const { error: leaderProfileError } = await admin
       .from('leader_profiles')
       .upsert({
