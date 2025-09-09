@@ -13,7 +13,7 @@ Sistema de gestão política para organização de lideranças e contatos eleito
 
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Backend**: Supabase (Database + Auth + Edge Functions)
-- **Hospedagem**: Bolt Hosting
+- **Hospedagem**: Netlify
 
 ## ⚙️ Configuração
 
@@ -114,9 +114,13 @@ npm run build
 
 ## 🚀 Deploy
 
-O projeto está configurado para deploy automático no Bolt Hosting.
+O projeto está configurado para deploy automático no Netlify através do arquivo `netlify.toml`.
 
 ## 📞 Suporte
+
+**Responsável pelo Sistema:**
+- **Nome**: Adilson Martins
+- **CPF**: 479.975.834-47
 
 Para dúvidas ou problemas, entre em contato com o administrador do sistema.
 
