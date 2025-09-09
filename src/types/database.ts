@@ -194,6 +194,178 @@ export interface Database {
           created_at?: string
         }
       }
+      election_settings: {
+        Row: {
+          id: string
+          election_name: string
+          election_date: string
+          timezone: string
+          election_type: string
+          uf: string | null
+          city: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          election_name: string
+          election_date: string
+          timezone?: string
+          election_type: string
+          uf?: string | null
+          city?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          election_name?: string
+          election_date?: string
+          timezone?: string
+          election_type?: string
+          uf?: string | null
+          city?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      city_goals: {
+        Row: {
+          id: string
+          city: string
+          state: string
+          goal_total: number
+          deadline: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          city: string
+          state: string
+          goal_total: number
+          deadline?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          city?: string
+          state?: string
+          goal_total?: number
+          deadline?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      neighborhood_goals: {
+        Row: {
+          id: string
+          city: string
+          state: string
+          neighborhood: string
+          goal_total: number
+          city_goal_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          city: string
+          state: string
+          neighborhood: string
+          goal_total: number
+          city_goal_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          city?: string
+          state?: string
+          neighborhood?: string
+          goal_total?: number
+          city_goal_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      leader_areas: {
+        Row: {
+          id: string
+          leader_id: string
+          city: string
+          state: string
+          neighborhood: string | null
+          target: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          leader_id: string
+          city: string
+          state: string
+          neighborhood?: string | null
+          target?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          leader_id?: string
+          city?: string
+          state?: string
+          neighborhood?: string | null
+          target?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      profile_leaderships: {
+        Row: {
+          id: string
+          profile_id: string
+          role_code: string
+          level: number | null
+          reach_scope: 'FAMILIA' | 'BAIRRO' | 'CIDADE' | 'REGIAO' | 'ONLINE' | null
+          reach_size: number | null
+          organization: string | null
+          title: string | null
+          extra: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          role_code: string
+          level?: number | null
+          reach_scope?: 'FAMILIA' | 'BAIRRO' | 'CIDADE' | 'REGIAO' | 'ONLINE' | null
+          reach_size?: number | null
+          organization?: string | null
+          title?: string | null
+          extra?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          role_code?: string
+          level?: number | null
+          reach_scope?: 'FAMILIA' | 'BAIRRO' | 'CIDADE' | 'REGIAO' | 'ONLINE' | null
+          reach_size?: number | null
+          organization?: string | null
+          title?: string | null
+          extra?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -227,3 +399,23 @@ export type LeaderProfileUpdate = TablesUpdate<'leader_profiles'>
 export type Profile = Tables<'profiles'>
 export type ProfileInsert = TablesInsert<'profiles'>
 export type ProfileUpdate = TablesUpdate<'profiles'>
+
+export type ElectionSettings = Tables<'election_settings'>
+export type ElectionSettingsInsert = TablesInsert<'election_settings'>
+export type ElectionSettingsUpdate = TablesUpdate<'election_settings'>
+
+export type CityGoal = Tables<'city_goals'>
+export type CityGoalInsert = TablesInsert<'city_goals'>
+export type CityGoalUpdate = TablesUpdate<'city_goals'>
+
+export type NeighborhoodGoal = Tables<'neighborhood_goals'>
+export type NeighborhoodGoalInsert = TablesInsert<'neighborhood_goals'>
+export type NeighborhoodGoalUpdate = TablesUpdate<'neighborhood_goals'>
+
+export type LeaderArea = Tables<'leader_areas'>
+export type LeaderAreaInsert = TablesInsert<'leader_areas'>
+export type LeaderAreaUpdate = TablesUpdate<'leader_areas'>
+
+export type ProfileLeadership = Tables<'profile_leaderships'>
+export type ProfileLeadershipInsert = TablesInsert<'profile_leaderships'>
+export type ProfileLeadershipUpdate = TablesUpdate<'profile_leaderships'>

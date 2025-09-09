@@ -180,7 +180,7 @@ O projeto está configurado para deploy automático no Netlify através do arqui
 
 **Responsável pelo Sistema:**
 - **Nome**: Adilson Martins
-- **CPF**: 479.975.834-47
+- **Whatsapp** 47-99758-3447
 
 Para dúvidas ou problemas, entre em contato com o administrador do sistema.
 

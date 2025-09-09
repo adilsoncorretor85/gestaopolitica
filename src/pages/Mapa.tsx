@@ -192,7 +192,7 @@ export default function Mapa() {
         mapRef.current!.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
         setTimeout(() => {
           if (election.election_level === 'MUNICIPAL') mapRef.current!.setZoom(11);
-          else if (election.election_level === 'ESTADUAL') mapRef.current!.setZoom(6);
+          else if (election.election_level === 'ESTADUAL') mapRef.current!.setZoom(8);
           else mapRef.current!.setZoom(4);
         }, 250);
       }

@@ -73,16 +73,16 @@ export async function listLeaders() {
         status,
         city, state, neighborhood,
         goal,
-        invited_at,
-        accepted_at,
+        email,
+        phone,
+        created_at,
+        updated_at,
         profiles!inner(
           id,
-          full_name,
-          email,
-          phone
+          full_name
         )
       `)
-      .order("invited_at", { ascending: false, nullsFirst: false });
+      .order("created_at", { ascending: false });
     
     if (error) {
       console.error('Erro na query direta:', error);
@@ -96,12 +96,12 @@ export async function listLeaders() {
       id: leader.id, // leader_profiles.id
       profile_id: leader.profiles.id, // profiles.id (para usar no modal de liderança)
       full_name: leader.profiles.full_name || null,
-      email: leader.profiles.email || null,
-      phone: leader.profiles.phone || null,
+      email: leader.email || null,
+      phone: leader.phone || null,
       goal: leader.goal,
       status: leader.status,
-      invited_at: leader.invited_at,
-      accepted_at: leader.accepted_at,
+      invited_at: null, // Não existe na tabela atual
+      accepted_at: null, // Não existe na tabela atual
       is_active: leader.status === 'ACTIVE',
       is_pending: leader.status === 'PENDING',
       city: leader.city || null,
