@@ -41,6 +41,11 @@ export function handleSupabaseError(error: any, context: string = 'operação'):
     return 'Recurso não encontrado.';
   }
   
+  // Tratamento específico para erros de duplicação/constraint
+  if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+    return 'DUPLICATE_ENTRY'; // Código especial para tratamento específico
+  }
+  
   if (error.message?.includes('network') || error.message?.includes('fetch')) {
     return 'Erro de conexão. Verifique sua internet e tente novamente.';
   }

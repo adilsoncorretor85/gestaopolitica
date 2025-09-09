@@ -22,7 +22,7 @@ const formatNumber = (num: number | string): string => {
 
 export default function Projecao() {
   const { profile } = useAuth();
-  const { election } = useElection();
+  const { election, setElection } = useElection();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('projecao');
@@ -637,8 +637,9 @@ export default function Projecao() {
       <ElectionSettingsModal
         open={electionOpen}
         onClose={() => setElectionOpen(false)}
-        onSaved={() => {
-          // O contexto será atualizado automaticamente
+        onSaved={(savedSettings) => {
+          // Atualizar o contexto manualmente
+          setElection(savedSettings);
           setElectionOpen(false);
         }}
       />

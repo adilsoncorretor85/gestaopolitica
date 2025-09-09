@@ -106,6 +106,61 @@ export async function getPerson(id: string): Promise<{ data: Person | null; erro
   }
 }
 
+// Função para verificar se pessoa já existe e buscar informações do líder
+async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ exists: boolean; ownerName?: string; ownerRole?: string }> {
+  try {
+    const supabase = getSupabaseClient();
+    
+    // Normalizar números para busca
+    const normalizedWhatsapp = whatsapp?.replace(/\D/g, '') || '';
+    const normalizedPhone = phone?.replace(/\D/g, '') || '';
+    
+    if (!normalizedWhatsapp && !normalizedPhone) {
+      return { exists: false };
+    }
+    
+    // Buscar pessoa existente com informações do owner
+    const query = supabase
+      .from("people")
+      .select(`
+        id,
+        whatsapp,
+        phone,
+        owner:profiles!owner_id(
+          id,
+          full_name,
+          role
+        )
+      `);
+    
+    if (normalizedWhatsapp) {
+      query.eq('whatsapp', normalizedWhatsapp);
+    } else if (normalizedPhone) {
+      query.eq('phone', normalizedPhone);
+    }
+    
+    const { data, error } = await query.limit(1).single();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Erro ao verificar pessoa existente:', error);
+      return { exists: false };
+    }
+    
+    if (data && data.owner) {
+      return {
+        exists: true,
+        ownerName: data.owner.full_name,
+        ownerRole: data.owner.role
+      };
+    }
+    
+    return { exists: false };
+  } catch (error) {
+    console.error('Erro na verificação de pessoa existente:', error);
+    return { exists: false };
+  }
+}
+
 export async function createPerson(p: PersonInsert): Promise<{ data: Person | null; error: string | null }> {
   try {
     const supabase = getSupabaseClient();
@@ -130,7 +185,21 @@ export async function createPerson(p: PersonInsert): Promise<{ data: Person | nu
       .single();
     
     if (error) {
-      throw new Error(handleSupabaseError(error, 'criar pessoa'));
+      const errorMessage = handleSupabaseError(error, 'criar pessoa');
+      
+      // Se for erro de duplicação, buscar informações do líder que já cadastrou
+      if (errorMessage === 'DUPLICATE_ENTRY') {
+        const existingInfo = await checkExistingPerson(p.whatsapp || '', p.phone || '');
+        
+        if (existingInfo.exists && existingInfo.ownerName) {
+          const roleText = existingInfo.ownerRole === 'ADMIN' ? 'administrador' : 'líder';
+          throw new Error(`Esta pessoa já foi cadastrada pelo ${roleText} ${existingInfo.ownerName}.`);
+        } else {
+          throw new Error('Esta pessoa já foi cadastrada por outro usuário.');
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
     
     return { data, error: null };

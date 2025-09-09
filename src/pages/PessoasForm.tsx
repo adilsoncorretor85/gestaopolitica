@@ -235,7 +235,8 @@ export default function PessoasFormPage() {
       navigate('/pessoas');
     } catch (error) {
       console.error('Erro ao salvar pessoa:', error);
-      alert('Erro ao salvar pessoa');
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar pessoa';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }

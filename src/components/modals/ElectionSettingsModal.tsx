@@ -12,6 +12,7 @@ type Props = {
 export default function ElectionSettingsModal({ open, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [level, setLevel] = useState<ElectionLevel>('MUNICIPAL');
+  
   const [uf, setUf] = useState<string>('');
   const [city, setCity] = useState<{ ibge: number; name: string } | null>(null);
   const [cities, setCities] = useState<{ ibge: number; name: string }[]>([]);
@@ -49,6 +50,32 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
 
   const save = async () => {
     if (!supabase) return;
+    
+    // Validações antes de salvar
+    if (!name.trim()) {
+      alert("Por favor, informe o nome da eleição.");
+      return;
+    }
+    
+    if (!date) {
+      alert("Por favor, informe a data da eleição.");
+      return;
+    }
+    
+    if (level === 'MUNICIPAL' || level === 'ESTADUAL') {
+      if (!uf) {
+        alert("Por favor, selecione o estado (UF).");
+        return;
+      }
+    }
+    
+    if (level === 'MUNICIPAL') {
+      if (!city) {
+        alert("Para eleições municipais, é obrigatório selecionar o município.");
+        return;
+      }
+    }
+    
     setLoading(true);
     try {
       const payload: Partial<ElectionSettings> = {
@@ -64,7 +91,12 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
       onSaved?.(saved);
       onClose();
     } catch (e: any) {
-      alert("Falha ao salvar configurações: " + e.message);
+      // Melhorar mensagem de erro para constraint violations
+      let errorMessage = e.message;
+      if (errorMessage.includes('es_scope_chk')) {
+        errorMessage = "Erro de validação: Para eleições municipais é obrigatório informar estado e município. Para eleições estaduais é obrigatório informar o estado.";
+      }
+      alert("Falha ao salvar configurações: " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -131,7 +163,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
           {(level === 'MUNICIPAL' || level === 'ESTADUAL') && (
             <div>
               <label className="mb-1 block text-sm text-gray-600 dark:text-gray-300">
-                UF
+                UF <span className="text-red-500">*</span>
               </label>
               <select 
                 value={uf} 
@@ -148,7 +180,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
           {level === 'MUNICIPAL' && (
             <div>
               <label className="mb-1 block text-sm text-gray-600 dark:text-gray-300">
-                Município
+                Município <span className="text-red-500">*</span>
               </label>
               <select
                 value={city?.name ?? ''}
