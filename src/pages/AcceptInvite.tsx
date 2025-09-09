@@ -25,20 +25,30 @@ export default function AcceptInvite() {
   useEffect(() => {
     (async () => {
       try {
-        const type = params.get("type");
-        const accessToken = params.get("access_token");
-        if (type !== "invite" || !accessToken) {
-          setError("Link de convite inválido ou expirado.");
-          setChecking(false);
-          return;
-        }
-
-        // Troca o token do link por uma sessão válida
-        const { data, error } = await supabase?.auth.getUser(accessToken) || { data: null, error: null };
-        if (error || !data?.user) {
-          setError("Não foi possível validar o convite.");
+        // Ler tanto o HASH (#) quanto a QUERY (?)
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        const hashType = hashParams.get('type');
+        const hashAccessToken = hashParams.get('access_token');
+        const hashRefreshToken = hashParams.get('refresh_token');
+        
+        const queryType = queryParams.get('type');
+        const queryCode = queryParams.get('code');
+        
+        if (hashType === 'invite' && hashAccessToken && hashRefreshToken) {
+          // Fluxo de convite via hash
+          await supabase.auth.setSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+          });
+          setEmail((await supabase.auth.getUser()).data.user?.email ?? null);
+        } else if (queryType === 'recovery' && queryCode) {
+          // Fluxo de recovery via query
+          await supabase.auth.exchangeCodeForSession(window.location.href);
+          setEmail((await supabase.auth.getUser()).data.user?.email ?? null);
         } else {
-          setEmail(data?.user?.email ?? null);
+          setError('Link de convite inválido ou expirado.');
         }
       } catch (e: any) {
         setError(e.message ?? "Erro ao validar convite.");
@@ -46,27 +56,7 @@ export default function AcceptInvite() {
         setChecking(false);
       }
     })();
-
-    // Configurar listener para aceitar convite após SIGNED_IN
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
-        try {
-          // O RPC activate_leader será chamado automaticamente quando a senha for definida
-          // Não precisamos fazer nada aqui, apenas redirecionar
-          console.log('Convite aceito com sucesso');
-          navigate('/dashboard');
-        } catch (e: any) {
-          console.error('Erro ao aceitar convite:', e);
-          setError('Falha ao aceitar convite: ' + e.message);
-        }
-      }
-    }) || { data: { subscription: null } };
-
-    // Cleanup do listener
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [params]);
+  }, []);
 
   async function handleCreate() {
     setError(null);
@@ -82,13 +72,10 @@ export default function AcceptInvite() {
 
     setSaving(true);
     try {
-      // Usar a função finalizeInvite que chama o RPC activate_leader
       await finalizeInvite(password);
-      
-      // Sucesso -> redireciona para dashboard
       navigate('/dashboard');
     } catch (e: any) {
-      setError(e.message ?? "Falha ao criar a conta.");
+      setError(e.message);
     } finally {
       setSaving(false);
     }

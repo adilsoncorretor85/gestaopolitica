@@ -13,7 +13,6 @@ import Mapa from "@/pages/Mapa";
 import Lideres from "@/pages/Lideres";
 import LideresForm from "@/pages/LideresForm";
 import Projecao from "@/pages/Projecao";
-import ConviteAccept from "@/pages/ConviteAccept";
 import Convite from "@/pages/Convite";
 import ProtectedAdmin from "@/components/ProtectedAdmin";
 
@@ -132,7 +131,6 @@ export default function App() {
             }
           />
           
-          <Route path="/convite/:token" element={<ConviteAccept />} />
           <Route path="/convite" element={<Convite />} />
           
           {/* Redirects for compatibility */}
