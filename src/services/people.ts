@@ -169,7 +169,7 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
     if (normalizedWhatsapp) {
       query.eq('whatsapp', normalizedWhatsapp);
     } else if (normalizedPhone) {
-      query.eq('phone', normalizedPhone);
+      query.eq('whatsapp', normalizedPhone); // Usar whatsapp em vez de phone
     }
     
     const { data, error } = await query.limit(1).single();
@@ -182,8 +182,8 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
     if (data && data.owner) {
       return {
         exists: true,
-        ownerName: data.owner.full_name,
-        ownerRole: data.owner.role
+        ownerName: data.owner?.[0]?.full_name || data.owner.full_name,
+        ownerRole: data.owner?.[0]?.role || data.owner.role
       };
     }
     
