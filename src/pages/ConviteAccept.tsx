@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getInviteToken, acceptInvite, type InviteToken } from '@/services/invite';
-import { ensureLeaderActivated } from '@/services/leadership';
 import { Vote, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const acceptInviteSchema = z.object({
@@ -56,20 +55,16 @@ export default function ConviteAcceptPage() {
     }
   };
 
-  const onSubmit = async (_data: AcceptInviteFormData) => {
+  const onSubmit = async (data: AcceptInviteFormData) => {
     if (!token) return;
     
     try {
       setAccepting(true);
       setError('');
       
-      await acceptInvite({ token });
-      
-      // ✅ ativa líder quando o usuário acabou de aceitar convite
-      await ensureLeaderActivated();
-      
-      // Show success message and redirect
-      alert('Conta criada com sucesso! Faça login para continuar.');
+      // Este fluxo não é mais usado - o fluxo principal é via /convite
+      // Manter apenas para compatibilidade
+      alert('Este fluxo foi descontinuado. Use o link do email para aceitar o convite.');
       navigate('/login');
     } catch (error) {
       console.error('Erro ao aceitar convite:', error);

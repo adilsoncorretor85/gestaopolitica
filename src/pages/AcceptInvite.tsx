@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Vote } from "lucide-react";
 import ThemeToggle from '@/components/ThemeToggle';
-import { ensureLeaderActivated } from '@/services/leadership';
 
 export default function AcceptInvite() {
   const navigate = useNavigate();
@@ -51,12 +50,19 @@ export default function AcceptInvite() {
     const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_IN') {
         try {
-          const { error } = await supabase?.rpc('finalize_leader_accept');
+          const { data: finalizeResult, error } = await supabase?.rpc('finalize_leader_accept');
           if (error) {
             console.error('finalize_leader_accept error', error);
             setError('Falha ao aceitar convite: ' + error.message);
             return;
           }
+          
+          if (finalizeResult?.error) {
+            console.error('finalize_leader_accept result error', finalizeResult.error);
+            setError('Falha ao aceitar convite: ' + finalizeResult.error);
+            return;
+          }
+          
           // Sucesso -> redireciona para dashboard
           console.log('Convite aceito com sucesso');
           navigate('/dashboard');
@@ -91,12 +97,8 @@ export default function AcceptInvite() {
       const { error } = await supabase?.auth.updateUser({ password }) || { error: null };
       if (error) throw error;
 
-      // ✅ ativa líder quando o usuário acabou de criar senha
-      await ensureLeaderActivated();
-
-      // Opcional: encerra a sessão e manda para o login
-      await supabase?.auth.signOut();
-      navigate("/login?ok=invite");
+      // O líder será ativado automaticamente pelo listener onAuthStateChange
+      // após a definição da senha
     } catch (e: any) {
       setError(e.message ?? "Falha ao criar a conta.");
     } finally {

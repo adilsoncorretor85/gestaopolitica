@@ -74,10 +74,14 @@ export default function Convite() {
       if (uErr) throw uErr;
 
       // Finalizar aceite do convite usando a RPC
-      const { error: finalizeError } = await getSupabaseClient().rpc('finalize_leader_accept');
+      const { data: finalizeResult, error: finalizeError } = await getSupabaseClient().rpc('finalize_leader_accept');
       if (finalizeError) {
         console.error('finalize_leader_accept error:', finalizeError);
         throw new Error('Erro ao finalizar aceite do convite: ' + finalizeError.message);
+      }
+
+      if (finalizeResult?.error) {
+        throw new Error(finalizeResult.error);
       }
 
       setMsg("Senha definida com sucesso! Redirecionando...");
