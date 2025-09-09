@@ -1,5 +1,5 @@
--- Função RPC para finalizar aceite de convite de líder
--- Esta função é chamada após o usuário definir sua senha no fluxo de convite
+-- Corrigir função RPC para aceitação de convite de líder
+-- Resolve o problema de RLS que impede usuários de atualizar seu próprio status
 
 CREATE OR REPLACE FUNCTION finalize_leader_accept()
 RETURNS JSON
@@ -37,7 +37,7 @@ BEGIN
   LIMIT 1;
 
   -- Atualizar o perfil do líder para ACTIVE
-  -- Usar SECURITY DEFINER para contornar RLS
+  -- SECURITY DEFINER permite contornar RLS
   UPDATE leader_profiles
   SET 
     status = 'ACTIVE',
@@ -65,7 +65,7 @@ EXCEPTION
   WHEN OTHERS THEN
     -- Em caso de erro, retorna informações seguras
     RETURN json_build_object(
-      'error', 'Erro interno ao finalizar aceite do convite',
+      'error', 'Erro interno ao finalizar aceite do convite: ' || SQLERRM,
       'code', SQLSTATE
     );
 END;

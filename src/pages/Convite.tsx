@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getSupabaseClient } from "@/lib/supabaseClient";
 import { Vote } from "lucide-react";
 import ThemeToggle from '@/components/ThemeToggle';
+import { finalizeInvite } from "@/services/invite";
 
 function useInviteHash() {
   return useMemo(() => {
@@ -70,19 +71,8 @@ export default function Convite() {
       if (pwd.length < 6) throw new Error("A senha precisa ter ao menos 6 caracteres.");
       if (pwd !== pwd2) throw new Error("As senhas não conferem.");
 
-      const { error: uErr } = await getSupabaseClient().auth.updateUser({ password: pwd });
-      if (uErr) throw uErr;
-
-      // Finalizar aceite do convite usando a RPC
-      const { data: finalizeResult, error: finalizeError } = await getSupabaseClient().rpc('finalize_leader_accept');
-      if (finalizeError) {
-        console.error('finalize_leader_accept error:', finalizeError);
-        throw new Error('Erro ao finalizar aceite do convite: ' + finalizeError.message);
-      }
-
-      if (finalizeResult?.error) {
-        throw new Error(finalizeResult.error);
-      }
+      // Usar a função finalizeInvite que chama o RPC activate_leader
+      await finalizeInvite(pwd);
 
       setMsg("Senha definida com sucesso! Redirecionando...");
       setTimeout(() => nav("/dashboard"), 1200);

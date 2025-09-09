@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { Vote } from "lucide-react";
 import ThemeToggle from '@/components/ThemeToggle';
+import { finalizeInvite } from '@/services/invite';
 
 export default function AcceptInvite() {
   const navigate = useNavigate();
@@ -50,20 +51,8 @@ export default function AcceptInvite() {
     const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_IN') {
         try {
-          const { data: finalizeResult, error } = await supabase?.rpc('finalize_leader_accept');
-          if (error) {
-            console.error('finalize_leader_accept error', error);
-            setError('Falha ao aceitar convite: ' + error.message);
-            return;
-          }
-          
-          if (finalizeResult?.error) {
-            console.error('finalize_leader_accept result error', finalizeResult.error);
-            setError('Falha ao aceitar convite: ' + finalizeResult.error);
-            return;
-          }
-          
-          // Sucesso -> redireciona para dashboard
+          // O RPC activate_leader será chamado automaticamente quando a senha for definida
+          // Não precisamos fazer nada aqui, apenas redirecionar
           console.log('Convite aceito com sucesso');
           navigate('/dashboard');
         } catch (e: any) {
@@ -93,12 +82,11 @@ export default function AcceptInvite() {
 
     setSaving(true);
     try {
-      // Define a senha do usuário convidado
-      const { error } = await supabase?.auth.updateUser({ password }) || { error: null };
-      if (error) throw error;
-
-      // O líder será ativado automaticamente pelo listener onAuthStateChange
-      // após a definição da senha
+      // Usar a função finalizeInvite que chama o RPC activate_leader
+      await finalizeInvite(password);
+      
+      // Sucesso -> redireciona para dashboard
+      navigate('/dashboard');
     } catch (e: any) {
       setError(e.message ?? "Falha ao criar a conta.");
     } finally {
