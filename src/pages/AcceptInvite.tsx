@@ -46,6 +46,38 @@ export default function AcceptInvite() {
         setChecking(false);
       }
     })();
+
+    // Configurar listener para aceitar convite após SIGNED_IN
+    const token = new URLSearchParams(window.location.search).get('token');
+    
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (evt) => {
+      if (evt === 'SIGNED_IN' && token) {
+        try {
+          const { data, error } = await supabase?.rpc('accept_leader_invite', { p_token: token });
+          if (error) {
+            console.error('Erro ao aceitar convite:', error);
+            setError('Falha ao aceitar convite: ' + error.message);
+            return;
+          }
+          
+          if (data?.success) {
+            console.log('Convite aceito com sucesso');
+            // O redirecionamento para dashboard será feito pela lógica existente
+          } else {
+            console.error('Erro ao aceitar convite:', data?.error);
+            setError('Falha ao aceitar convite: ' + (data?.error || 'Erro desconhecido'));
+          }
+        } catch (e: any) {
+          console.error('Erro ao aceitar convite:', e);
+          setError('Falha ao aceitar convite: ' + e.message);
+        }
+      }
+    }) || { data: { subscription: null } };
+
+    // Cleanup do listener
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [params]);
 
   async function handleCreate() {

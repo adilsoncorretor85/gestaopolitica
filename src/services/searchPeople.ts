@@ -18,13 +18,20 @@ export async function searchPeople(
   const query = q.trim();
   if (!query) return [];
 
+  console.log('[searchPeople] Executando RPC search_people com:', { query, limit, offset });
+
   const { data, error } = await supabase.rpc('search_people', {
     q: query,
     p_limit: limit,
     p_offset: offset
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error('[searchPeople] Erro na RPC:', error);
+    throw error;
+  }
+
+  console.log('[searchPeople] Dados retornados:', data?.length || 0);
   return (data ?? []) as PersonSearchRow[];
 }
 

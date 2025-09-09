@@ -21,20 +21,61 @@ export async function listPeople(params?: {
     const sortBy = params?.sortBy ?? 'full_name';
     const sortOrder = params?.sortOrder ?? 'asc';
     
-    // Se há busca por texto, usar FTS
+    // Se há busca por texto, tentar FTS primeiro, depois fallback
     if (params?.q && params.q.trim()) {
-      const offset = (page - 1) * size;
-      const ftsResults = await searchPeople(supabase, params.q, size, offset);
+      console.log('[listPeople] Realizando busca para:', params.q);
       
-      // Buscar dados completos das pessoas encontradas
-      if (ftsResults.length > 0) {
-        const ids = ftsResults.map(r => r.id);
-        let query = supabase.from("people").select("*", { count: "exact" })
-          .in("id", ids);
+      try {
+        const offset = (page - 1) * size;
+        const ftsResults = await searchPeople(supabase, params.q, size, offset);
+        console.log('[listPeople] Resultados FTS:', ftsResults.length);
+        
+        // Buscar dados completos das pessoas encontradas
+        if (ftsResults.length > 0) {
+          const ids = ftsResults.map(r => r.id);
+          let query = supabase.from("people").select("*", { count: "exact" })
+            .in("id", ids);
+
+          if (params?.leaderId) query = query.eq("owner_id", params.leaderId);
+          if (params?.city) {
+            // Usar city_norm para busca exata, fallback para city
+            const normalizedCity = params.city.toLowerCase().trim();
+            query = query.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
+          }
+          if (params?.state) query = query.ilike("state", `%${params.state}%`);
+
+          const { data, error, count } = await query;
+          
+          if (error) {
+            throw new Error(handleSupabaseError(error, 'listar pessoas'));
+          }
+
+          // Ordenar pelos resultados do FTS (por rank)
+          const sortedData = data ? data.sort((a, b) => {
+            const aRank = ftsResults.find(r => r.id === a.id)?.rank || 0;
+            const bRank = ftsResults.find(r => r.id === b.id)?.rank || 0;
+            return bRank - aRank; // Maior rank primeiro
+          }) : [];
+
+          console.log('[listPeople] Dados ordenados por FTS:', sortedData.length);
+          return { data: sortedData, error: null, count };
+        } else {
+          console.log('[listPeople] Nenhum resultado FTS, retornando vazio');
+          return { data: [], error: null, count: 0 };
+        }
+      } catch (ftsError) {
+        console.error('[listPeople] Erro no FTS, tentando busca simples:', ftsError);
+        
+        // Fallback: busca simples com ILIKE
+        const offset = (page - 1) * size;
+        let query = supabase.from("people")
+          .select("*", { count: "exact" })
+          .ilike("full_name", `%${params.q}%`)
+          .order(sortBy, { ascending: sortOrder === 'asc' })
+          .range(offset, offset + size - 1);
 
         if (params?.leaderId) query = query.eq("owner_id", params.leaderId);
         if (params?.city) {
-          // Usar city_norm para busca exata, fallback para city
           const normalizedCity = params.city.toLowerCase().trim();
           query = query.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
         }
@@ -46,16 +87,8 @@ export async function listPeople(params?: {
           throw new Error(handleSupabaseError(error, 'listar pessoas'));
         }
 
-        // Ordenar pelos resultados do FTS (por rank)
-        const sortedData = data ? data.sort((a, b) => {
-          const aRank = ftsResults.find(r => r.id === a.id)?.rank || 0;
-          const bRank = ftsResults.find(r => r.id === b.id)?.rank || 0;
-          return bRank - aRank; // Maior rank primeiro
-        }) : [];
-
-        return { data: sortedData, error: null, count };
-      } else {
-        return { data: [], error: null, count: 0 };
+        console.log('[listPeople] Fallback executado com sucesso:', data?.length || 0);
+        return { data, error: null, count };
       }
     }
     
