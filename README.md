@@ -116,6 +116,66 @@ npm run build
 
 O projeto está configurado para deploy automático no Netlify através do arquivo `netlify.toml`.
 
+## 🔑 Rotação de Chaves de Segurança
+
+### Supabase API Keys
+
+**Quando rotacionar:**
+- A cada 90 dias (recomendado)
+- Em caso de suspeita de comprometimento
+- Ao trocar de ambiente (dev → prod)
+
+**Como rotacionar:**
+
+1. **No painel Supabase → Settings → API:**
+   - Gere nova `anon key`
+   - Gere nova `service_role key`
+
+2. **Atualize as variáveis de ambiente:**
+   ```env
+   VITE_SUPABASE_ANON_KEY=nova-chave-anon
+   ```
+
+3. **Atualize as Edge Functions:**
+   - `SUPABASE_ANON_KEY` → nova chave anon
+   - `SUPABASE_SERVICE_ROLE_KEY` → nova chave service_role
+
+4. **Deploy das alterações:**
+   - Frontend: redeploy no Netlify
+   - Edge Functions: redeploy no Supabase
+
+### Google Maps API Key
+
+**Quando rotacionar:**
+- A cada 6 meses (recomendado)
+- Em caso de suspeita de comprometimento
+- Ao atingir limites de uso
+
+**Como rotacionar:**
+
+1. **No Google Cloud Console:**
+   - Vá para APIs & Services → Credentials
+   - Crie nova API Key
+   - Configure restrições (HTTP referrers, IPs)
+
+2. **Atualize a variável de ambiente:**
+   ```env
+   VITE_GOOGLE_MAPS_API_KEY=nova-chave-google-maps
+   ```
+
+3. **Deploy da alteração:**
+   - Redeploy no Netlify
+
+4. **Remova a chave antiga:**
+   - Após confirmar que a nova funciona
+   - Delete a chave antiga no Google Cloud Console
+
+### Monitoramento
+
+- Configure alertas para uso excessivo de APIs
+- Monitore logs de autenticação no Supabase
+- Verifique métricas de uso do Google Maps
+
 ## 📞 Suporte
 
 **Responsável pelo Sistema:**

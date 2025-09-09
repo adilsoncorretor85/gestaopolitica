@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://app.gabitechnology.cloud, https://*.netlify.app',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
     if (!body.userId || !body.action) {
       return new Response(
-        JSON.stringify({ error: 'userId and action are required' }),
+        JSON.stringify({ error: 'userId e action são obrigatórios' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
@@ -80,153 +80,66 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (!['ban', 'unban'].includes(body.action)) {
+    if (body.action !== 'ban' && body.action !== 'unban') {
       return new Response(
-        JSON.stringify({ error: 'action must be "ban" or "unban"' }),
+        JSON.stringify({ error: 'action deve ser "ban" ou "unban"' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
-        }
-      )
-    }
-
-    // Prevent self-ban
-    if (body.userId === meUser.user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot ban yourself' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      )
-    }
-
-    // Check if target user exists
-    const { data: targetUser, error: getUserError } = await admin.auth.admin.getUserById(body.userId)
-    if (getUserError || !targetUser.user) {
-      return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404,
         }
       )
     }
 
     // Perform ban/unban action
     if (body.action === 'ban') {
-      // Update user to banned status
       const { error: banError } = await admin.auth.admin.updateUserById(body.userId, {
-        ban_duration: 'none', // Permanent ban
+        ban_duration: '876000h', // 100 years (effectively permanent)
+        user_metadata: {
+          banned: true,
+          banned_at: new Date().toISOString(),
+          banned_by: meUser.user.id,
+          ban_reason: body.reason || 'Banned by administrator'
+        }
       })
 
       if (banError) {
-        throw new Error(`Failed to ban user: ${banError.message}`)
+        throw new Error(`Erro ao banir usuário: ${banError.message}`)
       }
-
-      // Update leader profile status to INACTIVE
-      const { error: profileError } = await admin
-        .from('leader_profiles')
-        .update({ status: 'INACTIVE' })
-        .eq('id', body.userId)
-
-      if (profileError) {
-        console.error('Failed to update leader profile:', profileError)
-        // Don't fail the whole operation for this
-      }
-
-      // Log the ban action
-      await admin
-        .from('audit_logs')
-        .insert({
-          table_name: 'auth.users',
-          record_id: body.userId,
-          action: 'UPDATE',
-          actor_id: meUser.user.id,
-          details: {
-            action: 'ban_user',
-            reason: body.reason || 'No reason provided',
-            target_user_email: targetUser.user.email,
-          },
-        })
-
-      return new Response(
-        JSON.stringify({ 
-          ok: true,
-          message: 'User banned successfully',
-          userId: body.userId,
-          action: 'ban'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      )
-
-    } else { // unban
-      // Remove ban from user
+    } else {
+      // Unban
       const { error: unbanError } = await admin.auth.admin.updateUserById(body.userId, {
-        ban_duration: 'none', // This actually removes the ban
+        ban_duration: 'none',
+        user_metadata: {
+          banned: false,
+          unbanned_at: new Date().toISOString(),
+          unbanned_by: meUser.user.id
+        }
       })
 
       if (unbanError) {
-        throw new Error(`Failed to unban user: ${unbanError.message}`)
+        throw new Error(`Erro ao desbanir usuário: ${unbanError.message}`)
       }
-
-      // Update leader profile status to ACTIVE (if it's a leader)
-      const { data: leaderProfile } = await admin
-        .from('leader_profiles')
-        .select('id')
-        .eq('id', body.userId)
-        .single()
-
-      if (leaderProfile) {
-        const { error: profileError } = await admin
-          .from('leader_profiles')
-          .update({ status: 'ACTIVE' })
-          .eq('id', body.userId)
-
-        if (profileError) {
-          console.error('Failed to update leader profile:', profileError)
-          // Don't fail the whole operation for this
-        }
-      }
-
-      // Log the unban action
-      await admin
-        .from('audit_logs')
-        .insert({
-          table_name: 'auth.users',
-          record_id: body.userId,
-          action: 'UPDATE',
-          actor_id: meUser.user.id,
-          details: {
-            action: 'unban_user',
-            reason: body.reason || 'No reason provided',
-            target_user_email: targetUser.user.email,
-          },
-        })
-
-      return new Response(
-        JSON.stringify({ 
-          ok: true,
-          message: 'User unbanned successfully',
-          userId: body.userId,
-          action: 'unban'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      )
     }
+
+    return new Response(
+      JSON.stringify({ 
+        ok: true,
+        message: body.action === 'ban' 
+          ? 'Usuário banido com sucesso'
+          : 'Usuário desbanido com sucesso'
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
 
   } catch (error) {
     console.error('Admin ban user error:', error)
     return new Response(
       JSON.stringify({ 
         ok: false,
-        error: error.message || 'Internal server error' 
+        error: error.message || 'Erro interno do servidor' 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -303,15 +303,13 @@ export default function Mapa() {
       if (selectedUF !== "__all__") peopleQuery = peopleQuery.eq("state", selectedUF);
       if (selectedNeighborhood !== "__all__") peopleQuery = peopleQuery.eq("neighborhood", selectedNeighborhood);
       if (selectedVoteStatus !== "__all__") peopleQuery = peopleQuery.eq("vote_status", selectedVoteStatus);
+      if (selectedCityKey) peopleQuery = peopleQuery.eq("city_norm", selectedCityKey);
 
       const { data: peopleData, error: peopleErr } = await peopleQuery;
       if (peopleErr) console.error("[MAP] erro pessoas:", peopleErr);
 
-      // Filtro tolerante de cidade (sem mexer no banco)
+      // Mapear dados sem filtro adicional de cidade
       const people = (peopleData ?? [])
-        .filter((r: any) => 
-          !selectedCityKey || normalizeKey(r.city) === selectedCityKey
-        )
         .map((r: any) => ({
         id: r.id as string,
         full_name: r.full_name as string,
@@ -368,15 +366,13 @@ export default function Mapa() {
         if (selectedLeaderId !== "__all__") leadersQuery = leadersQuery.eq("id", selectedLeaderId);
         if (selectedUF !== "__all__") leadersQuery = leadersQuery.eq("state", selectedUF);
         if (selectedNeighborhood !== "__all__") leadersQuery = leadersQuery.eq("neighborhood", selectedNeighborhood);
+        if (selectedCityKey) leadersQuery = leadersQuery.eq("city_norm", selectedCityKey);
 
         const { data: leadersRaw, error: leadersErr } = await leadersQuery;
         if (leadersErr) console.error("[MAP] erro leaders:", leadersErr);
 
-        // Filtro tolerante de cidade para líderes também
+        // Mapear dados sem filtro adicional de cidade
         leaders = (leadersRaw ?? [])
-          .filter((r: any) => 
-            !selectedCityKey || normalizeKey(r.city) === selectedCityKey
-          )
           .map((r: any) => ({
           id: r.id as string,
           name: (r.profiles?.full_name as string) ?? "Líder",
