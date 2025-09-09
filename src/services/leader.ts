@@ -39,6 +39,8 @@ export type LeaderDetail = {
   is_active: boolean | null;
   latitude?: number | null;
   longitude?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type LeaderInsert = {
@@ -62,80 +64,57 @@ export type LeaderInsert = {
 export async function listLeaders() {
   console.log('listLeaders chamada');
   
-  // Tentar usar a view original primeiro
+  // Usar query direta com join para profiles
   try {
-    console.log('Tentando usar app_leaders_list...');
     const { data, error } = await getSupabaseClient()
-      .from("app_leaders_list")
-      .select("id, full_name, email, phone, status, invited_at, accepted_at, is_active, is_pending, goal")
+      .from("leader_profiles")
+      .select(`
+        id,
+        status,
+        city, state, neighborhood,
+        goal,
+        invited_at,
+        accepted_at,
+        profiles!inner(
+          id,
+          full_name,
+          email,
+          phone
+        )
+      `)
       .order("invited_at", { ascending: false, nullsFirst: false });
     
     if (error) {
-      console.error('Erro na view app_leaders_list:', error);
+      console.error('Erro na query direta:', error);
       throw error;
     }
     
-      console.log('View app_leaders_list funcionou, dados:', data);
-      const leaders = (data ?? []) as LeaderListItem[];
-      console.log('Leaders com IDs:', leaders.map(l => ({ id: l.id, name: l.full_name })));
-      return leaders;
-  } catch (viewError) {
-    console.warn('View app_leaders_list falhou, tentando query direta:', viewError);
+    console.log('Query direta funcionou, dados brutos:', data);
     
-    // Fallback: query direta na leader_profiles
-    try {
-      const { data, error } = await getSupabaseClient()
-        .from("leader_profiles")
-        .select(`
-          id,
-          profile_id,
-          status,
-          city, state, neighborhood,
-          goal,
-          invited_at,
-          accepted_at,
-          profiles:profile_id (
-            id,
-            full_name,
-            email,
-            phone
-          )
-        `)
-        .order("invited_at", { ascending: false, nullsFirst: false });
-      
-      if (error) {
-        console.error('Erro na query direta:', error);
-        throw error;
-      }
-      
-      console.log('Query direta funcionou, dados brutos:', data);
-      console.log('Status dos líderes na query direta:', data.map((l: any) => ({ name: l.profiles?.full_name, status: l.status })));
-      
-      // Transformar para o formato esperado e calcular is_active/is_pending
-      const transformed = (data ?? []).map((leader: any) => ({
-        id: leader.id, // leader_profiles.id
-        profile_id: leader.profile_id, // profiles.id (para usar no modal de liderança)
-        full_name: leader.profiles?.full_name || null,
-        email: leader.profiles?.email || null,
-        phone: leader.profiles?.phone || null,
-        goal: leader.goal,
-        status: leader.status,
-        invited_at: leader.invited_at,
-        accepted_at: leader.accepted_at,
-        is_active: leader.status === 'ACTIVE',
-        is_pending: leader.status === 'PENDING',
-        city: leader.city || null,
-        state: leader.state || null,
-      }));
-      
-      console.log('Dados transformados:', transformed);
-      const leaders = transformed as LeaderListItem[];
-      console.log('Leaders com IDs (fallback):', leaders.map(l => ({ id: l.id, name: l.full_name })));
-      return leaders;
-    } catch (directError) {
-      console.error('Ambas as queries falharam:', directError);
-      throw directError;
-    }
+    // Transformar para o formato esperado
+    const transformed = (data ?? []).map((leader: any) => ({
+      id: leader.id, // leader_profiles.id
+      profile_id: leader.profiles.id, // profiles.id (para usar no modal de liderança)
+      full_name: leader.profiles.full_name || null,
+      email: leader.profiles.email || null,
+      phone: leader.profiles.phone || null,
+      goal: leader.goal,
+      status: leader.status,
+      invited_at: leader.invited_at,
+      accepted_at: leader.accepted_at,
+      is_active: leader.status === 'ACTIVE',
+      is_pending: leader.status === 'PENDING',
+      city: leader.city || null,
+      state: leader.state || null,
+    }));
+    
+    console.log('Dados transformados:', transformed);
+    const leaders = transformed as LeaderListItem[];
+    console.log('Leaders com IDs:', leaders.map(l => ({ id: l.id, name: l.full_name })));
+    return leaders;
+  } catch (directError) {
+    console.error('Query falhou:', directError);
+    throw directError;
   }
 }
 
@@ -204,7 +183,9 @@ export async function getLeaderDetail(id: string) {
     longitude: data.longitude,
     invited_at: null, // Será preenchido se necessário
     accepted_at: null, // Será preenchido se necessário
-    is_active: data.status === 'ACTIVE'
+    is_active: data.status === 'ACTIVE',
+    created_at: data.created_at,
+    updated_at: data.updated_at
   };
   
   return {

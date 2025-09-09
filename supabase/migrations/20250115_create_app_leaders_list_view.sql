@@ -4,7 +4,7 @@
 CREATE OR REPLACE VIEW public.app_leaders_list AS
 SELECT 
   lp.id,
-  lp.profile_id,
+  lp.id AS profile_id, -- Alias para compatibilidade
   p.full_name,
   p.email,
   lp.phone,
@@ -25,7 +25,7 @@ SELECT
     ELSE false 
   END as is_pending
 FROM public.leader_profiles lp
-LEFT JOIN public.profiles p ON lp.id = p.id
+INNER JOIN public.profiles p ON lp.id = p.id
 ORDER BY lp.invited_at DESC NULLS LAST;
 
 -- Comentário sobre a view
