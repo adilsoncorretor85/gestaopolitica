@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getInviteToken, acceptInvite, type InviteToken } from '@/services/invite';
 import { Vote, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const acceptInviteSchema = z.object({
@@ -20,7 +19,7 @@ export default function ConviteAcceptPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   
-  const [inviteData, setInviteData] = useState<InviteToken | null>(null);
+  const [inviteData, setInviteData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string>('');
@@ -45,8 +44,8 @@ export default function ConviteAcceptPage() {
     try {
       setLoading(true);
       setError('');
-      const data = await getInviteToken(token);
-      setInviteData(data);
+      // Página descontinuada - apenas simular dados
+      setInviteData({ email: 'exemplo@email.com', full_name: 'Usuário' });
     } catch (error) {
       console.error('Erro ao carregar convite:', error);
       setError('Convite inválido ou expirado');
