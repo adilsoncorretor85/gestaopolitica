@@ -23,15 +23,12 @@ export type InviteLeaderInput = {
 export async function finalizeInvite(password: string) {
   const supabase = getSupabaseClient();
 
-  // 1) define a senha do usuário que veio pelo link (invite/recovery)
-  const { error: passErr } = await supabase.auth.updateUser({ password });
-  if (passErr) throw new Error(passErr.message);
+  const { error: e1 } = await supabase.auth.updateUser({ password });
+  if (e1) throw e1;
 
-  // 2) ativa o perfil de líder no banco (bypass RLS via SECURITY DEFINER)
-  const { data, error: rpcErr } = await supabase.rpc('activate_leader');
-  if (rpcErr) throw new Error(rpcErr.message);
-  if (!data?.ok) throw new Error(data?.error ?? 'Falha ao ativar líder');
+  const { data, error: e2 } = await supabase.rpc('activate_leader');
+  if (e2) throw e2;
+  if (!data?.ok) throw new Error(data?.error ?? 'Falha ao ativar o líder');
 
-  // 3) retorna data
   return data;
 }
