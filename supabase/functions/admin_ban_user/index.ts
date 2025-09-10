@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
 
     // Perform ban/unban action
     if (body.action === 'ban') {
+      // 1. Ban no Supabase Auth
       const { error: banError } = await admin.auth.admin.updateUserById(body.userId, {
         ban_duration: '876000h', // 100 years (effectively permanent)
         user_metadata: {
@@ -105,8 +106,20 @@ Deno.serve(async (req) => {
       if (banError) {
         throw new Error(`Erro ao banir usuário: ${banError.message}`)
       }
+
+      // 2. Atualizar status no leader_profiles
+      const { error: statusError } = await admin
+        .from('leader_profiles')
+        .update({ status: 'INACTIVE' })
+        .eq('id', body.userId)
+
+      if (statusError) {
+        console.error('Erro ao atualizar status do líder:', statusError)
+        // Não falha o ban por causa disso, mas loga o erro
+      }
     } else {
       // Unban
+      // 1. Unban no Supabase Auth
       const { error: unbanError } = await admin.auth.admin.updateUserById(body.userId, {
         ban_duration: 'none',
         user_metadata: {
@@ -118,6 +131,17 @@ Deno.serve(async (req) => {
 
       if (unbanError) {
         throw new Error(`Erro ao desbanir usuário: ${unbanError.message}`)
+      }
+
+      // 2. Atualizar status no leader_profiles
+      const { error: statusError } = await admin
+        .from('leader_profiles')
+        .update({ status: 'ACTIVE' })
+        .eq('id', body.userId)
+
+      if (statusError) {
+        console.error('Erro ao atualizar status do líder:', statusError)
+        // Não falha o unban por causa disso, mas loga o erro
       }
     }
 

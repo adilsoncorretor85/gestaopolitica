@@ -47,6 +47,15 @@ export default function RouteGuard({ children }: RouteGuardProps) {
 
         // Verifica se é líder e se está ativo
         if (profile?.role === 'LEADER') {
+          // 1. Verifica se está banido no Supabase Auth
+          const { data: authUser } = await supabase.auth.getUser();
+          if (authUser?.user?.banned_until && new Date(authUser.user.banned_until) > new Date()) {
+            setIsBlocked(true);
+            navigate('/conta-bloqueada');
+            return;
+          }
+
+          // 2. Verifica status no leader_profiles
           const { data: leaderProfile, error: leaderError } = await supabase
             .from('leader_profiles')
             .select('status')
