@@ -308,12 +308,16 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
+      console.log('Iniciando desativação do líder:', id);
+      
       // Bane o usuário usando a Edge Function
-      await toggleUserBan({
+      const result = await toggleUserBan({
         userId: id,
         action: 'ban',
         reason: 'Desativado pelo administrador',
       });
+      
+      console.log('Resultado da desativação:', result);
       
       alert('Líder desativado com sucesso.');
       navigate('/lideres');
