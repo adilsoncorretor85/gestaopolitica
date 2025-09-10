@@ -17,6 +17,8 @@ type ToggleBanInput = {
 export async function toggleUserBan(input: ToggleBanInput) {
   const supabase = getSupabaseClient();
   
+  console.log('Chamando Edge Function admin_ban_user com:', input);
+  
   const { data, error } = await supabase.functions.invoke('admin_ban_user', {
     body: {
       userId: input.userId,
@@ -25,7 +27,10 @@ export async function toggleUserBan(input: ToggleBanInput) {
     }
   });
 
+  console.log('Resposta da Edge Function:', { data, error });
+
   if (error) {
+    console.error('Erro na Edge Function:', error);
     // tentar extrair o JSON retornado pela função
     const respText = (error as any)?.context?.response
       ? await (error as any).context.response.text()
