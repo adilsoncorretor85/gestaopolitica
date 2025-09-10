@@ -38,17 +38,31 @@ export async function finalizeInvite(password: string) {
 
 export async function inviteLeader(input: InviteLeaderInput) {
   const supabase = getSupabaseClient();
-  const appUrl = window.location.origin;
   const { data, error } = await supabase.functions.invoke('invite_leader', {
-    body: { ...input, appUrl },
+    body: input,
   });
-  if (error) throw new Error(error.message || 'Falha ao enviar convite');
-  if (!data?.ok) throw new Error(data?.error || 'Falha ao enviar convite');
+
+  if (error) {
+    // tentar extrair o JSON retornado pela função
+    const respText = (error as any)?.context?.response
+      ? await (error as any).context.response.text()
+      : '';
+    let serverMsg = '';
+    try { serverMsg = JSON.parse(respText)?.error; } catch { /* ignore */ }
+
+    throw new Error(serverMsg || error.message || 'Falha ao enviar convite');
+  }
+
+  if (!data?.ok) {
+    throw new Error(data?.error || 'Falha ao enviar convite');
+  }
+
   return data as {
     ok: true;
-    acceptUrl?: string;
+    acceptUrl: string;
     status: 'INVITED' | 'USER_EXISTS';
     userId: string;
+    emailStatus: 'sent'|'failed'|'skipped';
     message: string;
   };
 }

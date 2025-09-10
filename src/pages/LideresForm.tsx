@@ -57,6 +57,11 @@ export default function LideresFormPage() {
   const [openMap, setOpenMap] = useState(false);
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
   const [leaderData, setLeaderData] = useState<LeaderDetail | null>(null);
+  const [inviteResult, setInviteResult] = useState<{
+    message: string;
+    emailStatus: 'sent'|'failed'|'skipped';
+    acceptUrl?: string;
+  } | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   
   // Estados para liderança - HOTFIX: Comentados temporariamente
@@ -242,9 +247,18 @@ export default function LideresFormPage() {
         // Invite new leader
         try {
           const result = await inviteLeader(payload);
-          alert(result?.message || 'Convite enviado com sucesso!');
+          
+          // Armazenar resultado para exibição
+          setInviteResult({
+            message: result?.message || 'Convite enviado com sucesso!',
+            emailStatus: result?.emailStatus || 'skipped',
+            acceptUrl: result?.acceptUrl
+          });
+          
+          // Log para debug
           if (result?.acceptUrl) {
             console.log('Link de convite:', result.acceptUrl);
+            console.log('Email status:', result.emailStatus);
           }
           
           // Se foi preenchida uma liderança, criar após o convite
@@ -276,7 +290,10 @@ export default function LideresFormPage() {
         }
       }
       
-      navigate('/lideres');
+      // Para edição de líder existente, navegar após salvar
+      if (id) {
+        navigate('/lideres');
+      }
     } catch (error) {
       console.error('Erro geral:', error);
       alert(`Erro inesperado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -882,6 +899,80 @@ export default function LideresFormPage() {
                 />
               </form>
             </div>
+
+            {/* Feedback do Convite */}
+            {inviteResult && (
+              <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="flex items-start space-x-3">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    inviteResult.emailStatus === 'sent' 
+                      ? 'bg-green-100 dark:bg-green-900' 
+                      : inviteResult.emailStatus === 'failed'
+                      ? 'bg-yellow-100 dark:bg-yellow-900'
+                      : 'bg-blue-100 dark:bg-blue-900'
+                  }`}>
+                    {inviteResult.emailStatus === 'sent' ? (
+                      <span className="text-green-600 dark:text-green-400 text-lg">✅</span>
+                    ) : inviteResult.emailStatus === 'failed' ? (
+                      <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
+                    ) : (
+                      <span className="text-blue-600 dark:text-blue-400 text-lg">ℹ️</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      Resultado do Convite
+                    </h3>
+                    <p className="text-gray-700 dark:text-gray-300 mb-3">
+                      {inviteResult.message}
+                    </p>
+                    
+                    {inviteResult.emailStatus === 'failed' && inviteResult.acceptUrl && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Como o email não foi enviado, você pode copiar o link de convite abaixo:
+                        </p>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            value={inviteResult.acceptUrl}
+                            readOnly
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(inviteResult.acceptUrl!);
+                              alert('Link copiado para a área de transferência!');
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="mt-4 flex space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => setInviteResult(null)}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Fechar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/lideres')}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Ver Lista de Líderes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

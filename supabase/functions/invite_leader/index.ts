@@ -8,11 +8,11 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', {
-    headers: corsHeaders
-  });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  let phase = 'start';
   try {
+    phase = 'env';
     const url = Deno.env.get('SUPABASE_URL');
     const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const anon = Deno.env.get('SUPABASE_ANON_KEY');
@@ -20,115 +20,96 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, service);
     const caller = createClient(url, anon, {
-      global: {
-        headers: {
-          Authorization: req.headers.get('Authorization') ?? ''
-        }
-      }
+      global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } }
     });
 
-    // 1) precisa estar logado
+    phase = 'auth_getUser';
     const { data: me } = await caller.auth.getUser();
     if (!me?.user) {
-      return new Response(JSON.stringify({
-        ok: false,
-        error: 'Unauthorized'
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        },
-        status: 401
+      return new Response(JSON.stringify({ ok:false, error:'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type':'application/json' }, status:401
       });
     }
 
-    // 2) precisa ser ADMIN (usa admin client pra ignorar RLS na leitura)
-    const { data: profile, error: profErr } = await admin.from('profiles').select('role').eq('id', me.user.id).single();
-    if (profErr) throw profErr;
+    phase = 'check_admin';
+    const { data: profile, error: profErr } = await admin
+      .from('profiles').select('role').eq('id', me.user.id).single();
+    if (profErr) throw new Error('profiles read failed: '+profErr.message);
     if (!profile || profile.role !== 'ADMIN') {
-      return new Response(JSON.stringify({
-        ok: false,
-        error: 'Forbidden'
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        },
-        status: 403
+      return new Response(JSON.stringify({ ok:false, error:'Forbidden' }), {
+        headers: { ...corsHeaders, 'Content-Type':'application/json' }, status:403
       });
     }
 
-    // 3) valida body
+    phase = 'parse_body';
     const body = await req.json();
     if (!body?.full_name || !body?.email) {
-      return new Response(JSON.stringify({
-        ok: false,
-        error: 'Nome e email são obrigatórios'
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        },
-        status: 400
+      return new Response(JSON.stringify({ ok:false, error:'Nome e email são obrigatórios' }), {
+        headers: { ...corsHeaders, 'Content-Type':'application/json' }, status:400
       });
     }
 
-    // 4) origem e redirect
-    const origin = body.appUrl || req.headers.get('origin') || (req.headers.get('referer')?.split('/').slice(0, 3).join('/') ?? '');
-    const redirectTo = `${origin}/convite`; // rota oficial
+    phase = 'origin';
+    const origin = body.appUrl
+      || req.headers.get('origin')
+      || (req.headers.get('referer')?.split('/').slice(0,3).join('/') ?? '');
+    const redirectTo = `${origin}/convite`;
     const fallbackUrl = `${origin}/convite`;
 
     let userId = '';
-    let status = 'INVITED';
+    let status: 'INVITED' | 'USER_EXISTS' = 'INVITED';
     let acceptUrl = '';
+    let emailStatus: 'sent'|'failed'|'skipped' = 'skipped';
 
-    // 5) usuário já existe?
-    const { data: byEmail } = await admin.auth.admin.getUserByEmail(body.email);
-    const existing = byEmail?.user ?? null;
+    // --- estratégia robusta: tenta criar; se já existir, trata como existente ---
+    phase = 'create_user';
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: body.email,
+      email_confirm: false,
+      user_metadata: { full_name: body.full_name, phone: body.phone ?? null }
+    });
 
-    if (existing) {
-      // já existe ⇒ manda link de recovery
-      userId = existing.id;
+    if (createErr) {
+      // usuário pode já existir (422). Tenta pegar por email.
+      phase = 'get_user_by_email';
+      const { data: got } = await admin.auth.admin.getUserByEmail(body.email);
+      if (!got?.user) throw new Error('Falha ao criar e também não encontrei usuário: ' + createErr.message);
+      userId = got.user.id;
       status = 'USER_EXISTS';
-      const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+
+      phase = 'send_recovery';
+      const { data: rec, error: recErr } = await admin.auth.admin.generateLink({
         type: 'recovery',
         email: body.email,
-        options: {
-          redirectTo
-        }
+        options: { redirectTo }
       });
-      if (!linkErr) acceptUrl = link.properties?.action_link ?? fallbackUrl;
-    } else {
-      // não existe ⇒ cria e convida
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: body.email,
-        email_confirm: false,
-        user_metadata: {
-          full_name: body.full_name,
-          phone: body.phone
-        }
-      });
-      if (createErr || !created?.user) {
-        throw new Error(createErr?.message || 'Falha ao criar usuário');
+      if (recErr) {
+        emailStatus = 'failed';
+        console.error('recovery error:', recErr);
+      } else {
+        emailStatus = 'sent';
+        acceptUrl = rec?.properties?.action_link ?? fallbackUrl;
       }
-      userId = created.user.id;
+    } else {
+      // criado novo
+      userId = created!.user!.id;
       status = 'INVITED';
 
-      // envia e-mail de convite
+      phase = 'send_invite';
       const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(body.email, {
         redirectTo,
-        data: {
-          full_name: body.full_name
-        }
+        data: { full_name: body.full_name }
       });
-      if (!inviteErr) acceptUrl = invited?.properties?.action_link ?? fallbackUrl;
+      if (inviteErr) {
+        emailStatus = 'failed';
+        console.error('invite error:', inviteErr);
+      } else {
+        emailStatus = 'sent';
+        acceptUrl = invited?.properties?.action_link ?? fallbackUrl;
+      }
 
-      // upsert nos dados de domínio (ignora RLS via service role)
-      await admin.from('profiles').upsert({
-        id: userId,
-        role: 'LEADER',
-        full_name: body.full_name
-      });
+      phase = 'upserts';
+      await admin.from('profiles').upsert({ id: userId, role: 'LEADER', full_name: body.full_name });
 
       await admin.from('leader_profiles').upsert({
         id: userId,
@@ -150,10 +131,8 @@ Deno.serve(async (req) => {
         status: 'PENDING'
       });
 
-      // registra um token pra controle (opcional, mas útil)
       const token = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
+      const expiresAt = new Date(); expiresAt.setDate(expiresAt.getDate() + 7);
       await admin.from('invite_tokens').upsert({
         email: body.email,
         full_name: body.full_name,
@@ -167,30 +146,18 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      ok: true,
-      acceptUrl,
-      status,
-      userId,
-      message: status === 'USER_EXISTS' ? 'Usuário já existe — link de recuperação enviado.' : 'Convite enviado com sucesso!'
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
-      status: 200
-    });
+      ok: true, acceptUrl, status, userId, emailStatus,
+      message: status === 'USER_EXISTS'
+        ? 'Usuário já existe — link de recuperação enviado.'
+        : 'Convite enviado com sucesso!'
+    }), { headers: { ...corsHeaders, 'Content-Type':'application/json' }, status: 200 });
 
-  } catch (err) {
-    console.error('invite_leader error:', err);
+  } catch (err: any) {
+    console.error('invite_leader error phase=', phase, 'msg=', err?.message);
     return new Response(JSON.stringify({
       ok: false,
+      phase,
       error: err?.message ?? 'Erro interno'
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
-      status: 500
-    });
+    }), { headers: { ...corsHeaders, 'Content-Type':'application/json' }, status: 500 });
   }
 });
