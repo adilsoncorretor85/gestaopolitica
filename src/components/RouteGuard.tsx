@@ -75,9 +75,10 @@ export default function RouteGuard({ children }: RouteGuardProps) {
 
           console.log('Status do líder no banco:', leaderProfile?.status);
 
-          // Se o líder está inativo, redireciona para página de bloqueio
+          // Se o líder está inativo, faz signOut e redireciona para página de bloqueio
           if (leaderProfile?.status === 'INACTIVE') {
-            console.log('Líder inativo, redirecionando...');
+            console.log('Líder inativo, fazendo signOut e redirecionando...');
+            await supabase.auth.signOut();
             setIsBlocked(true);
             navigate('/conta-bloqueada');
             return;
