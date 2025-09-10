@@ -1,5 +1,0 @@
-[33mef5f7ec[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: Implementar ativação automática de líderes no primeiro login
-[33m4ab6dee[m fix: Corrigir salvamento de goal, latitude e longitude na função invite_leader
-[33m40876ea[m feat: corrigir tipagem e otimizações de performance
-[33m5aab376[m feat: implementar hardening de segurança e melhorias de UX
-[33m5fa0d05[m fix: remover variável não utilizada no Mapa.tsx

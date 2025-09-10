@@ -1,0 +1,5 @@
+[33m7c664a2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: melhorar feedback de convites com emailStatus e botão copiar
+[33mff4d542[m fix: corrigir Edge Function invite_leader
+[33m4275741[m fix: ajustes finais no serviço de convites
+[33mf9aea9c[m refactor: limpeza completa de duplicações e unificação do fluxo de convites
+[33mda22a49[m refactor: simplificar sistema de convites conforme especificado

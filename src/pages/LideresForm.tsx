@@ -308,13 +308,10 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
-      // Atualiza o status no leader_profiles
-      await updateLeaderProfile(id, { status: 'INACTIVE' });
-      
-      // Bane o usuário no auth
+      // Bane o usuário usando a Edge Function
       await toggleUserBan({
-        user_id: id,
-        ban: true,
+        userId: id,
+        action: 'ban',
         reason: 'Desativado pelo administrador',
       });
       
@@ -334,13 +331,10 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
-      // Atualiza o status no leader_profiles
-      await updateLeaderProfile(id, { status: 'ACTIVE' });
-      
-      // Remove o ban do usuário no auth
+      // Remove o ban do usuário usando a Edge Function
       await toggleUserBan({
-        user_id: id,
-        ban: false,
+        userId: id,
+        action: 'unban',
         reason: 'Reativado pelo administrador',
       });
       

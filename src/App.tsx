@@ -13,34 +13,10 @@ import Lideres from "@/pages/Lideres";
 import LideresForm from "@/pages/LideresForm";
 import Projecao from "@/pages/Projecao";
 import Convite from "@/pages/Convite";
+import ContaBloqueada from "@/pages/ContaBloqueada";
 import ProtectedAdmin from "@/components/ProtectedAdmin";
+import RouteGuard from "@/components/RouteGuard";
 
-function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    if (!supabase) {
-      console.error('Supabase não configurado. Verifique o .env e reinicie o Vite.');
-      setLoading(false);
-      return;
-    }
-
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  if (loading) return <div>Carregando…</div>;
-  if (!supabase) return <div>Erro: Supabase não configurado. Verifique o .env e reinicie o Vite.</div>;
-  if (!session) return <Navigate to="/login" replace />;
-  return children;
-}
 
 export default function App() {
   return (
@@ -51,81 +27,90 @@ export default function App() {
           <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/conta-bloqueada" element={<ContaBloqueada />} />
           
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <RouteGuard>
                 <Dashboard />
-              </ProtectedRoute>
+              </RouteGuard>
             }
           />
           
           <Route
             path="/pessoas"
             element={
-              <ProtectedRoute>
+              <RouteGuard>
                 <Pessoas />
-              </ProtectedRoute>
+              </RouteGuard>
             }
           />
           <Route
             path="/pessoas/nova"
             element={
-              <ProtectedRoute>
+              <RouteGuard>
                 <PessoasForm />
-              </ProtectedRoute>
+              </RouteGuard>
             }
           />
           <Route
             path="/pessoas/:id"
             element={
-              <ProtectedRoute>
+              <RouteGuard>
                 <PessoasForm />
-              </ProtectedRoute>
+              </RouteGuard>
             }
           />
           
           <Route
             path="/mapa"
             element={
-              <ProtectedRoute>
+              <RouteGuard>
                 <Mapa />
-              </ProtectedRoute>
+              </RouteGuard>
             }
           />
           
           <Route
             path="/lideres"
             element={
-              <ProtectedAdmin>
-                <Lideres />
-              </ProtectedAdmin>
+              <RouteGuard>
+                <ProtectedAdmin>
+                  <Lideres />
+                </ProtectedAdmin>
+              </RouteGuard>
             }
           />
           <Route
             path="/lideres/novo"
             element={
-              <ProtectedAdmin>
-                <LideresForm />
-              </ProtectedAdmin>
+              <RouteGuard>
+                <ProtectedAdmin>
+                  <LideresForm />
+                </ProtectedAdmin>
+              </RouteGuard>
             }
           />
           <Route
             path="/lideres/:id"
             element={
-              <ProtectedAdmin>
-                <LideresForm />
-              </ProtectedAdmin>
+              <RouteGuard>
+                <ProtectedAdmin>
+                  <LideresForm />
+                </ProtectedAdmin>
+              </RouteGuard>
             }
           />
           
           <Route
             path="/projecao"
             element={
-              <ProtectedAdmin>
-                <Projecao />
-              </ProtectedAdmin>
+              <RouteGuard>
+                <ProtectedAdmin>
+                  <Projecao />
+                </ProtectedAdmin>
+              </RouteGuard>
             }
           />
           

@@ -1,5 +1,0 @@
-[33m5b2b6f2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: corrigir constraint de status para permitir PENDING
-[33md2f52c8[m feat: implementar ativação automática de líderes com RPC
-[33m999458f[m feat: melhorias na ativação automática de líderes e Edge Function
-[33mef5f7ec[m feat: Implementar ativação automática de líderes no primeiro login
-[33m4ab6dee[m fix: Corrigir salvamento de goal, latitude e longitude na função invite_leader

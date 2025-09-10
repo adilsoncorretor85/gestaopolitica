@@ -9,32 +9,38 @@ export type LeaderRow = {
 };
 
 type ToggleBanInput = {
-  user_id: string;
-  ban: boolean;                 // true = banir, false = desbanir
-  until?: number | string;      // dias (número) OU ISO string (ex: "2030-01-01T00:00:00.000Z")
+  userId: string;
+  action: 'ban' | 'unban';
   reason?: string;
-  mirrorLeaderStatus?: "ACTIVE" | "INACTIVE" | null; // opcional: espelhar em leader_profiles
 };
 
 export async function toggleUserBan(input: ToggleBanInput) {
-  if (!getSupabaseClient()) throw new Error('Supabase não configurado');
-
-  const payload = {
-    user_id: input.user_id,
-    ban: input.ban,
-    until: input.until ?? undefined,
-    reason: input.reason ?? null,
-    set_leader_status: input.mirrorLeaderStatus ?? null,
-  };
-
-  const { data, error } = await getSupabaseClient().functions.invoke("admin_ban_user", {
-    body: payload,
+  const supabase = getSupabaseClient();
+  
+  const { data, error } = await supabase.functions.invoke('admin_ban_user', {
+    body: {
+      userId: input.userId,
+      action: input.action,
+      reason: input.reason || 'Solicitado pelo admin'
+    }
   });
 
-  if (error || !data?.ok) {
-    throw new Error(data?.error || error?.message || "Falha ao bloquear/desbloquear usuário");
+  if (error) {
+    // tentar extrair o JSON retornado pela função
+    const respText = (error as any)?.context?.response
+      ? await (error as any).context.response.text()
+      : '';
+    let serverMsg = '';
+    try { serverMsg = JSON.parse(respText)?.error; } catch { /* ignore */ }
+
+    throw new Error(serverMsg || error.message || 'Falha ao bloquear/desbloquear usuário');
   }
-  return data as { ok: true; user_id: string; banned_until: string | null };
+
+  if (!data?.ok) {
+    throw new Error(data?.error || 'Falha ao bloquear/desbloquear usuário');
+  }
+
+  return data as { ok: true; userId: string; action: string; message: string };
 }
 
 export async function fetchLeaders(status?: "PENDING" | "ACTIVE" | "INACTIVE") {
