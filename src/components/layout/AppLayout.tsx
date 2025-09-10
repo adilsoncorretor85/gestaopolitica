@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Profile } from '@/types'
+import { Profile } from '@/types/database'
 import Header from '@/components/Header'
 import Sidebar from '@/components/Sidebar'
 

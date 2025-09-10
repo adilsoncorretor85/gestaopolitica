@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { finalizeInvite } from '@/services/invite';
 import { Vote } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 function useInviteParams() {
   return useMemo(() => {
@@ -81,8 +82,12 @@ export default function Convite() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg border px-6 py-5 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
+          {/* Theme Toggle */}
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <Vote className="h-8 w-8 text-white animate-pulse" />
@@ -96,51 +101,102 @@ export default function Convite() {
 
   if (!sessionOk) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg border px-6 py-5 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 max-w-md text-center">
+          {/* Theme Toggle */}
+          <div className="absolute top-4 right-4">
+            <ThemeToggle />
+          </div>
           <div className="flex justify-center mb-4">
             <div className="bg-red-100 p-3 rounded-full">
               <Vote className="h-8 w-8 text-red-600" />
             </div>
           </div>
-          <h1 className="text-xl font-semibold mb-2">Convite inválido</h1>
+          <h1 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">Convite Inválido</h1>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{err ?? 'Convite inválido.'}</p>
-          <button onClick={() => nav('/login')} className="px-4 py-2 rounded-lg bg-blue-600 text-white">Ir para login</button>
+          <button 
+            onClick={() => nav('/login')} 
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            Ir para Login
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg border px-6 py-5 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg">
+        {/* Theme Toggle */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-600 p-3 rounded-full">
               <Vote className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold mb-1">Definir Senha</h1>
+          <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-white">Aceitar Convite</h1>
           <p className="text-sm text-gray-600 dark:text-gray-300">Gestão Política - Vereador Wilian Tonezi</p>
-          {email && <p className="text-sm text-blue-600 mt-2">Bem-vindo, {email}</p>}
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <p className="text-sm text-blue-800">
+            {email ? (
+              <>Você foi convidado para o sistema com o e-mail <strong>{email}</strong>.</>
+            ) : (
+              "Convite válido."
+            )}
+          </p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          {err && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{err}</div>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Senha *
+            </label>
+            <input
+              type="password"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              placeholder="Crie uma senha (mínimo 6 caracteres)"
+            />
+          </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Nova Senha *</label>
-            <input type="password" value={pwd} onChange={(e)=>setPwd(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Confirmar Senha *</label>
-            <input type="password" value={pwd2} onChange={(e)=>setPwd2(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Confirmar senha *
+            </label>
+            <input
+              type="password"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={pwd2}
+              onChange={(e) => setPwd2(e.target.value)}
+              placeholder="Repita a senha"
+            />
           </div>
 
-          <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white rounded-lg py-2">
-            {saving ? 'Criando conta…' : 'Criar Conta'}
+          {err && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {err}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {saving ? "Criando conta..." : "Criar Conta"}
           </button>
         </form>
+
+        <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p>Já tem uma conta? <a href="/login" className="text-blue-600 hover:text-blue-800">Fazer login</a></p>
+        </div>
       </div>
     </div>
   );

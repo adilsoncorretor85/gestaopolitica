@@ -81,27 +81,6 @@ export async function listLeaders(includePending = true): Promise<any[]> {
   }
 }
 
-export async function reinviteLeader(payload: {
-  full_name: string;
-  email: string;
-  phone?: string;
-}) {
-  const { data: { session } } = await (getSupabaseClient() as any)?.auth.getSession() || { data: { session: null } };
-  if (!session?.access_token) throw new Error('Sem sessão');
-
-  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/invite_leader`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ ...payload, appUrl: window.location.origin }),
-  });
-
-  const json = await res.json();
-  if (!res.ok) throw new Error(json?.error || 'Falha ao reenviar convite');
-  return json;
-}
 
 export async function countLeaders(_profile?: any) {
   return await (getSupabaseClient() as any)?.from("profiles").select("*", { count:"exact", head:false }).eq("role","LEADER");

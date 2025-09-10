@@ -10,7 +10,7 @@ import { useElection as useElectionStore } from '@/stores/useElection';
 import { getActiveElection } from '@/services/election';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeKey } from '@/lib/normalize';
-import { Profile } from '@/types';
+import { Profile } from '@/types/database';
 
 // Declaração de tipos para Google Maps
 declare const google: any;

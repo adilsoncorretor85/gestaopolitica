@@ -1,5 +1,26 @@
 import { supabase } from '@/lib/supabaseClient';
-import { PersonInsert, PersonUpdate, PeopleFilters, PaginatedResponse, PersonWithProfile } from '@/types';
+import { PersonInsert, PersonUpdate, Profile } from '@/types/database';
+
+export interface PeopleFilters {
+  search?: string;
+  city?: string;
+  state?: string;
+  ownerId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PersonWithProfile extends PersonInsert {
+  owner: Profile;
+}
 import { logAudit } from './audit';
 import { getCurrentProfile } from './auth';
 import { searchPeople } from '@/services/searchPeople';

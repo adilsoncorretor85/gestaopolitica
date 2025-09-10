@@ -259,59 +259,6 @@ export async function updateLeader(id: string, payload: Partial<LeaderInsert>) {
   return data;
 }
 
-export async function inviteLeader(payload: {
-  full_name: string;
-  email: string;
-  phone?: string;
-  birth_date?: string;
-  gender?: string;
-  cep?: string;
-  street?: string;
-  number?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  notes?: string;
-  goal?: number;
-  latitude?: number | null;
-  longitude?: number | null;
-  appUrl?: string;
-}) {
-  // 1) Garante sessão
-  const { data: { session } } = await getSupabaseClient().auth.getSession();
-  if (!session) throw new Error('Você não está autenticado.');
-
-  // 2) Chama a edge function COM o Bearer token
-  const { data, error } = await getSupabaseClient().functions.invoke('invite_leader', {
-    body: { ...payload, appUrl: payload.appUrl || window.location.origin },
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-
-  if (error) throw error;
-  if (data?.ok === false) throw new Error(data?.error || 'Falha ao enviar convite.');
-
-  return data; // { ok, acceptUrl, status, userId, message }
-}
-
-export async function resendInvite(email: string, full_name?: string) {
-  const { data: { session } } = await getSupabaseClient().auth.getSession();
-  if (!session) throw new Error('Você não está autenticado.');
-
-  const { data, error } = await getSupabaseClient().functions.invoke('invite_leader', {
-    body: { 
-      email, 
-      full_name: full_name || '',
-      appUrl: window.location.origin 
-    },
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-
-  if (error) throw error;
-  if (data?.ok === false) throw new Error(data?.error || 'Falha ao reenviar convite.');
-
-  return data;
-}
 
 export async function deactivateLeader(id: string) {
   const { error } = await getSupabaseClient()
