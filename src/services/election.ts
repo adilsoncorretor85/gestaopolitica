@@ -8,10 +8,13 @@ export interface ElectionSettings {
   election_name: string;
   election_date: string;         // ISO (YYYY-MM-DD)
   timezone: string;              // IANA (ex.: America/Sao_Paulo)
+  election_type: ElectionLevel;  // Campo obrigatório na tabela
   election_level: ElectionLevel | null;
   scope_state: string | null;    // UF
   scope_city: string | null;     // nome do município
-  scope_city_ibge: number | null;
+  scope_city_ibge: string | null; // Código IBGE como string
+  uf: string | null;             // Campo legado
+  city: string | null;           // Campo legado
   created_at?: string;
   updated_at?: string;
 }

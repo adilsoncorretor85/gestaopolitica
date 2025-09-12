@@ -1,8 +1,19 @@
 import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
 import type { Person, PersonInsert, PersonUpdate } from '@/types/database';
 import { searchPeople } from './searchPeople';
+import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 
 export type { Person, PersonInsert, PersonUpdate };
+
+// Função para normalizar estado (UF ou nome) para UF
+function toUF(s?: string | null): string | null {
+  if (!s) return null;
+  const txt = s.trim();
+  const hit = ESTADOS_BRASIL.find(
+    e => e.sigla.toLowerCase() === txt.toLowerCase() || e.nome.toLowerCase() === txt.toLowerCase()
+  );
+  return hit ? hit.sigla : txt.toUpperCase();
+}
 
 export async function listPeople(params?: {
   leaderId?: string;
@@ -15,6 +26,7 @@ export async function listPeople(params?: {
   sortOrder?: 'asc' | 'desc';
 }) {
   try {
+    console.log('🔍 listPeople - Parâmetros recebidos:', params);
     const supabase = getSupabaseClient();
 
     const page = params?.page ?? 1, size = params?.pageSize ?? 20;
@@ -38,11 +50,23 @@ export async function listPeople(params?: {
 
           if (params?.leaderId) query = query.eq("owner_id", params.leaderId);
           if (params?.city) {
-            // Usar city_norm para busca exata, fallback para city
-            const normalizedCity = params.city.toLowerCase().trim();
-            query = query.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
+            // Busca por cidade usando ILIKE
+            query = query.ilike("city", `%${params.city}%`);
           }
-          if (params?.state) query = query.ilike("state", `%${params.state}%`);
+          if (params?.state) {
+            const uf = params.state.toUpperCase();
+            const est = ESTADOS_BRASIL.find(e =>
+              e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === params.state!.toLowerCase()
+            );
+            // Buscar tanto por UF quanto por nome completo
+            if (est) {
+              console.log('🔍 listPeople - Filtro de estado (FTS):', { original: params.state, uf, est });
+              query = query.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+            } else {
+              console.log('🔍 listPeople - Filtro de estado (FTS) - estado não encontrado:', params.state);
+              query = query.ilike("state", `%${params.state}%`);
+            }
+          }
 
           const { data, error, count } = await query;
           
@@ -76,10 +100,23 @@ export async function listPeople(params?: {
 
         if (params?.leaderId) query = query.eq("owner_id", params.leaderId);
         if (params?.city) {
-          const normalizedCity = params.city.toLowerCase().trim();
-          query = query.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
+          // Busca por cidade usando ILIKE
+          query = query.ilike("city", `%${params.city}%`);
         }
-        if (params?.state) query = query.ilike("state", `%${params.state}%`);
+        if (params?.state) {
+          const uf = params.state.toUpperCase();
+          const est = ESTADOS_BRASIL.find(e =>
+            e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === params.state!.toLowerCase()
+          );
+          // Buscar tanto por UF quanto por nome completo
+          if (est) {
+            console.log('🔍 listPeople - Filtro de estado (fallback):', { original: params.state, uf, est });
+            query = query.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+          } else {
+            console.log('🔍 listPeople - Filtro de estado (fallback) - estado não encontrado:', params.state);
+            query = query.ilike("state", `%${params.state}%`);
+          }
+        }
 
         const { data, error, count } = await query;
         
@@ -99,11 +136,23 @@ export async function listPeople(params?: {
 
     if (params?.leaderId) q = q.eq("owner_id", params.leaderId);
     if (params?.city) {
-      // Usar city_norm para busca exata, fallback para city
-      const normalizedCity = params.city.toLowerCase().trim();
-      q = q.or(`city_norm.eq.${normalizedCity},city.ilike.%${params.city}%`);
+      // Busca por cidade usando ILIKE
+      q = q.ilike("city", `%${params.city}%`);
     }
-    if (params?.state) q = q.ilike("state", `%${params.state}%`);
+    if (params?.state) {
+      const uf = params.state.toUpperCase();
+      const est = ESTADOS_BRASIL.find(e =>
+        e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === params.state!.toLowerCase()
+      );
+      // Buscar tanto por UF quanto por nome completo
+      if (est) {
+        console.log('🔍 listPeople - Filtro de estado (normal):', { original: params.state, uf, est });
+        q = q.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+      } else {
+        console.log('🔍 listPeople - Filtro de estado (normal) - estado não encontrado:', params.state);
+        q = q.ilike("state", `%${params.state}%`);
+      }
+    }
 
     const { data, error, count } = await q;
     
@@ -111,6 +160,8 @@ export async function listPeople(params?: {
       throw new Error(handleSupabaseError(error, 'listar pessoas'));
     }
 
+    console.log('🔍 listPeople - Resultado final:', { count: count || 0, dataLength: data?.length || 0 });
+    
     return { data, error: null, count };
   } catch (error) {
     return { 
@@ -204,8 +255,8 @@ export async function createPerson(p: PersonInsert): Promise<{ data: Person | nu
       throw new Error('Usuário não autenticado');
     }
     
-    // Set owner_id to current user
-    const personWithOwner = { ...p, owner_id: user.id };
+    // Set owner_id to current user and normalize state
+    const personWithOwner = { ...p, owner_id: user.id, state: toUF(p.state) };
     
     const { data, error } = await supabase
       .from("people")
@@ -248,10 +299,12 @@ export async function updatePerson(id: string, p: PersonUpdate): Promise<{ data:
   try {
     const supabase = getSupabaseClient();
     
+    const payload = { ...p, state: toUF(p.state ?? null) };
+    
     const { data, error } = await supabase
       .from("people")
       .update({
-        ...p,
+        ...payload,
         latitude: p.latitude ?? null,
         longitude: p.longitude ?? null,
       })

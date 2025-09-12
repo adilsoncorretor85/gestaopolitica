@@ -81,11 +81,14 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
       const payload: Partial<ElectionSettings> = {
         election_name: name,
         election_date: date,
+        election_type: level, // Campo obrigatório na tabela
         election_level: level,
         scope_state: level !== 'FEDERAL' ? (uf || null) : null,
         scope_city: level === 'MUNICIPAL' ? (city?.name ?? null) : null,
         scope_city_ibge: level === 'MUNICIPAL' ? (city?.ibge ?? null) : null,
         timezone: timezone,
+        uf: level !== 'FEDERAL' ? (uf || null) : null,
+        city: level === 'MUNICIPAL' ? (city?.name ?? null) : null,
       };
       const saved = await upsertElectionCurrent(supabase, payload);
       onSaved?.(saved);

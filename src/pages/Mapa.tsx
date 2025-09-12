@@ -11,6 +11,7 @@ import { getActiveElection } from '@/services/election';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeKey } from '@/lib/normalize';
 import { Profile } from '@/types/database';
+import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 
 // Declaração de tipos para Google Maps
 declare const google: any;
@@ -213,7 +214,7 @@ export default function Mapa() {
         gRef.current = g;
         mapRef.current = new g.maps.Map(divRef.current, {
           center: { lat: -26.304, lng: -48.846 },
-          zoom: 12,
+          zoom: 10, // Zoom menor para melhor visualização
           streetViewControl: false,
           mapTypeControl: true,
           fullscreenControl: true,
@@ -300,13 +301,46 @@ export default function Mapa() {
         peopleQuery = peopleQuery.eq("owner_id", authProfile.id);
       }
 
-      if (selectedUF !== "__all__") peopleQuery = peopleQuery.eq("state", selectedUF);
+      if (selectedUF !== "__all__") {
+        // Usar a mesma lógica corrigida da página de Pessoas
+        const ESTADOS_BRASIL = [
+          { sigla: 'SC', nome: 'Santa Catarina' },
+          { sigla: 'PR', nome: 'Paraná' },
+          { sigla: 'RS', nome: 'Rio Grande do Sul' }
+          // ... outros estados
+        ];
+        
+        const uf = selectedUF.toUpperCase();
+        const est = ESTADOS_BRASIL.find(e =>
+          e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === selectedUF.toLowerCase()
+        );
+        
+        if (est) {
+          peopleQuery = peopleQuery.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+        } else {
+          peopleQuery = peopleQuery.eq("state", selectedUF);
+        }
+      }
       if (selectedNeighborhood !== "__all__") peopleQuery = peopleQuery.eq("neighborhood", selectedNeighborhood);
       if (selectedVoteStatus !== "__all__") peopleQuery = peopleQuery.eq("vote_status", selectedVoteStatus);
-      if (selectedCityKey) peopleQuery = peopleQuery.eq("city_norm", selectedCityKey);
+      if (selectedCityKey) {
+        // Usar ILIKE em vez de city_norm que pode não existir
+        peopleQuery = peopleQuery.ilike("city", `%${selectedCityKey}%`);
+      }
 
       const { data: peopleData, error: peopleErr } = await peopleQuery;
       if (peopleErr) console.error("[MAP] erro pessoas:", peopleErr);
+      
+      console.log("[MAP] Pessoas encontradas:", peopleData?.length || 0);
+      if (peopleData && peopleData.length > 0) {
+        console.log("[MAP] Primeira pessoa:", {
+          nome: peopleData[0].full_name,
+          cidade: peopleData[0].city,
+          estado: peopleData[0].state,
+          lat: peopleData[0].latitude,
+          lng: peopleData[0].longitude
+        });
+      }
 
       // Mapear dados sem filtro adicional de cidade
       const people = (peopleData ?? [])
@@ -322,6 +356,8 @@ export default function Mapa() {
         latitude: Number(r.latitude),
         longitude: Number(r.longitude),
       }));
+      
+      console.log("[MAP] Pessoas mapeadas:", people.length);
 
       // Popular opções cascateadas (com base no dataset atual)
       if (!cancelled) {
@@ -364,9 +400,15 @@ export default function Mapa() {
           .limit(5000);
 
         if (selectedLeaderId !== "__all__") leadersQuery = leadersQuery.eq("id", selectedLeaderId);
-        if (selectedUF !== "__all__") leadersQuery = leadersQuery.eq("state", selectedUF);
+        if (selectedUF !== "__all__") {
+          // Buscar por UF ou nome completo do estado (mesmo problema das pessoas)
+          const estado = ESTADOS_BRASIL.find(est => est.sigla === selectedUF);
+          if (estado) {
+            leadersQuery = leadersQuery.or(`state.ilike.%${estado.sigla}%,state.ilike.%${estado.nome}%`);
+          }
+        }
         if (selectedNeighborhood !== "__all__") leadersQuery = leadersQuery.eq("neighborhood", selectedNeighborhood);
-        if (selectedCityKey) leadersQuery = leadersQuery.eq("city_norm", selectedCityKey);
+        if (selectedCityKey) leadersQuery = leadersQuery.ilike("city", `%${selectedCityKey}%`);
 
         const { data: leadersRaw, error: leadersErr } = await leadersQuery;
         if (leadersErr) console.error("[MAP] erro leaders:", leadersErr);
@@ -438,10 +480,16 @@ export default function Mapa() {
           const pos = m.getPosition();
           if (pos) bounds.extend(pos);
         });
-        map?.fitBounds(bounds);
+        // Ajustar bounds com padding para melhor visualização
+        map?.fitBounds(bounds, { 
+          top: 50, 
+          right: 50, 
+          bottom: 50, 
+          left: 50 
+        });
       } else {
         map?.setCenter({ lat: -26.304, lng: -48.846 });
-        map?.setZoom(12);
+        map?.setZoom(10); // Zoom menor quando não há marcadores
       }
     }
 
