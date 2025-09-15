@@ -3,6 +3,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
+import { useElection } from '@/contexts/ElectionContext';
 import { getLeaderCounters, getGoalSummary, updateOrgGoalFromElectionType, type GoalSummary } from '@/lib/dashboard';
 import { getSupabaseClient, handleSupabaseError } from '@/lib/supabaseClient';
 import { formatCountdown } from '@/services/election';
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   
   console.log('🔍 [Dashboard] Antes de chamar useAuth');
   const { profile, isAdmin: isAdminUser, loading: authLoading } = useAuth();
+  const { election, defaultFilters } = useElection();
   console.log('🔍 [Dashboard] Depois de chamar useAuth');
   
   // Debug: verificar se está sendo reconhecido como admin
@@ -64,7 +66,7 @@ export default function DashboardPage() {
   const [countdownLoading, setCountdownLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    console.log('🔍 [Dashboard] useEffect (auth loading/isAdmin/profile)');
+    console.log('🔍 [Dashboard] useEffect (auth loading/isAdmin/profile/election)');
     if (authLoading) return; // aguarda auth resolver
     
     // Carregar configurações de eleição para todos os usuários
@@ -74,7 +76,7 @@ export default function DashboardPage() {
     loadStats().catch(error => {
       console.error('Erro ao carregar dados do dashboard:', error);
     });
-  }, [authLoading, isAdminUser, profile?.id]);
+  }, [authLoading, isAdminUser, profile?.id, election?.election_level, defaultFilters]);
 
   // Invalidar cache da meta quando o usuário trocar
   useEffect(() => {
@@ -123,13 +125,28 @@ export default function DashboardPage() {
       const supabase = getSupabaseClient();
       
       if (isAdminUser) {
-        // Para ADMIN: carregar estatísticas gerais
+        // Para ADMIN: carregar estatísticas gerais com filtros de eleição
+        console.log('🔍 [Dashboard] Filtros de eleição:', { election, defaultFilters });
+        
+        // Construir filtros baseados na eleição
+        let peopleQuery = supabase.from('people').select('id', { count: 'exact', head: true });
+        let confirmedQuery = supabase.from('people').select('id', { count: 'exact', head: true }).eq('vote_status', 'CONFIRMADO');
+        let probableQuery = supabase.from('people').select('id', { count: 'exact', head: true }).eq('vote_status', 'PROVAVEL');
+        
+        // Aplicar filtros se for eleição municipal
+        if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
+          console.log('🔍 [Dashboard] Aplicando filtros municipais:', { city: defaultFilters.city, state: defaultFilters.state });
+          peopleQuery = peopleQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
+          confirmedQuery = confirmedQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
+          probableQuery = probableQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
+        }
+        
         const [leaderCounters, goalData, totalQ, confirmedQ, probableQ] = await Promise.all([
           getLeaderCounters(),
           getGoalSummary(),
-          supabase.from('people').select('id', { count: 'exact', head: true }),
-          supabase.from('people').select('id', { count: 'exact', head: true }).eq('vote_status', 'CONFIRMADO'),
-          supabase.from('people').select('id', { count: 'exact', head: true }).eq('vote_status', 'PROVAVEL')
+          peopleQuery,
+          confirmedQuery,
+          probableQuery
         ]);
         
         console.log('🔍 [Dashboard] Dados do admin carregados:', {
@@ -249,7 +266,7 @@ export default function DashboardPage() {
       const supabase = getSupabaseClient();
       
       // Query otimizada para top líderes usando agregação no banco
-      const { data, error } = await supabase
+      let query = supabase
         .from('people')
         .select(`
           owner_id,
@@ -258,6 +275,14 @@ export default function DashboardPage() {
         `)
         .not('owner_id', 'is', null)
         .limit(1000); // Limite razoável para agregação
+      
+      // Aplicar filtros se for eleição municipal
+      if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
+        console.log('🔍 [Dashboard] Aplicando filtros municipais no Top Leaders:', { city: defaultFilters.city, state: defaultFilters.state });
+        query = query.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
 
