@@ -136,6 +136,7 @@ export default function DashboardPage() {
         // Aplicar filtros se for eleição municipal
         if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
           console.log('🔍 [Dashboard] Aplicando filtros municipais:', { city: defaultFilters.city, state: defaultFilters.state });
+          // Para eleição municipal, filtrar por cidade e estado (somar apenas bairros da cidade específica)
           peopleQuery = peopleQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
           confirmedQuery = confirmedQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
           probableQuery = probableQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
@@ -279,6 +280,7 @@ export default function DashboardPage() {
       // Aplicar filtros se for eleição municipal
       if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
         console.log('🔍 [Dashboard] Aplicando filtros municipais no Top Leaders:', { city: defaultFilters.city, state: defaultFilters.state });
+        // Para eleição municipal, filtrar por cidade e estado (somar apenas bairros da cidade específica)
         query = query.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
       }
       
@@ -526,7 +528,6 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Lideranças - Apenas para Admin */}
-              {console.log('🔍 DEBUG Top Leaders:', { isAdminUser, topLeadersLength: topLeaders.length, topLeaders })}
               {isAdminUser && topLeaders.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top 5 Lideranças</h3>
