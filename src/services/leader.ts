@@ -150,7 +150,7 @@ export async function getLeaderDetail(id: string) {
       )
     `)
     .eq("id", id)
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
   
   if (error) throw error;
   
@@ -239,7 +239,7 @@ export async function createLeader(payload: LeaderInsert) {
       latitude: payload.latitude ?? null,
       longitude: payload.longitude ?? null,
     })
-    .select('*').single();
+    .select('*').maybeSingle(); // 👈 evita erro "0 rows"
   if (error) throw error;
   return data;
 }
@@ -254,7 +254,7 @@ export async function updateLeader(id: string, payload: Partial<LeaderInsert>) {
       longitude: payload.longitude ?? null,
     })
     .eq('id', id)
-    .select('*').single();
+    .select('*').maybeSingle(); // 👈 evita erro "0 rows"
   if (error) throw error;
   return data;
 }

@@ -175,7 +175,7 @@ export async function listPeople(params?: {
 export async function getPerson(id: string): Promise<{ data: Person | null; error: string | null }> {
   try {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from("people").select("*").eq("id", id).single();
+    const { data, error } = await supabase.from("people").select("*").eq("id", id).maybeSingle(); // 👈 evita erro "0 rows"
     
     if (error) {
       throw new Error(handleSupabaseError(error, 'buscar pessoa'));
@@ -223,7 +223,7 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
       query.eq('whatsapp', normalizedPhone); // Usar whatsapp em vez de phone
     }
     
-    const { data, error } = await query.limit(1).single();
+    const { data, error } = await query.limit(1).maybeSingle(); // 👈 evita erro "0 rows"
     
     if (error && error.code !== 'PGRST116') {
       console.error('Erro ao verificar pessoa existente:', error);
@@ -266,7 +266,7 @@ export async function createPerson(p: PersonInsert): Promise<{ data: Person | nu
         longitude: p.longitude ?? null,
       })
       .select('*')
-      .single();
+      .maybeSingle(); // 👈 evita erro "0 rows"
     
     if (error) {
       const errorMessage = handleSupabaseError(error, 'criar pessoa');
@@ -310,7 +310,7 @@ export async function updatePerson(id: string, p: PersonUpdate): Promise<{ data:
       })
       .eq("id", id)
       .select('*')
-      .single();
+      .maybeSingle(); // 👈 evita erro "0 rows"
     
     if (error) {
       throw new Error(handleSupabaseError(error, 'atualizar pessoa'));

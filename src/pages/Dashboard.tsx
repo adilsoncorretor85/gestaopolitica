@@ -3,9 +3,11 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
-import { getLeaderCounters, getGoalSummary, type GoalSummary } from '@/lib/dashboard';
+import { getLeaderCounters, getGoalSummary, updateOrgGoalFromElectionType, type GoalSummary } from '@/lib/dashboard';
 import { getSupabaseClient, handleSupabaseError } from '@/lib/supabaseClient';
-import { getElectionSettings, formatCountdown } from '@/services/election';
+import { formatCountdown } from '@/services/election';
+import { useLeaderGoal, useInvalidateLeaderGoal } from '@/hooks/useLeaderGoal';
+import DashboardGoalCard from '@/components/DashboardGoalCard';
 import { Users, UserCheck, Target, TrendingUp, Calendar, Settings } from 'lucide-react';
 
 // Tipos para o Dashboard
@@ -23,9 +25,24 @@ const formatNumber = (num: number | string): string => {
 };
 
 export default function DashboardPage() {
+  console.log('🔍 [Dashboard] Componente sendo renderizado');
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { profile, isAdmin: isAdminUser } = useAuth();
+  
+  console.log('🔍 [Dashboard] Antes de chamar useAuth');
+  const { profile, isAdmin: isAdminUser, loading: authLoading } = useAuth();
+  console.log('🔍 [Dashboard] Depois de chamar useAuth');
+  
+  // Debug: verificar se está sendo reconhecido como admin
+  console.log('🔍 [Dashboard] Verificação de admin:', {
+    profile,
+    isAdminUser,
+    profileRole: profile?.role,
+    profileId: profile?.id
+  });
+  const { data: leaderGoalData } = useLeaderGoal();
+  const invalidateLeaderGoal = useInvalidateLeaderGoal();
   
   const [stats, setStats] = useState({
     activeLeaders: 0,
@@ -33,7 +50,7 @@ export default function DashboardPage() {
     totalPeople: 0,
     confirmedVotes: 0,
     probableVotes: 0,
-    effectiveTotalGoal: 120
+    effectiveTotalGoal: 0 // Será calculado dinamicamente
   });
   const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(null);
   const [topLeaders, setTopLeaders] = useState<TopLeader[]>([]);
@@ -44,23 +61,58 @@ export default function DashboardPage() {
   // Estados para eleição
   const [countdownText, setCountdownText] = useState<string>("");
   const [electionLabel, setElectionLabel] = useState<string>("");
+  const [countdownLoading, setCountdownLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    loadStats();
+    console.log('🔍 [Dashboard] useEffect (auth loading/isAdmin/profile)');
+    if (authLoading) return; // aguarda auth resolver
+    
+    // Carregar configurações de eleição para todos os usuários
     loadElectionSettings();
-  }, []);
+    
+    // Carregar estatísticas para ADMIN e LÍDER
+    loadStats().catch(error => {
+      console.error('Erro ao carregar dados do dashboard:', error);
+    });
+  }, [authLoading, isAdminUser, profile?.id]);
+
+  // Invalidar cache da meta quando o usuário trocar
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        // Invalidar cache da meta quando há mudança de autenticação
+        invalidateLeaderGoal();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [invalidateLeaderGoal]);
 
   const loadElectionSettings = async () => {
     try {
-      const supabase = getSupabaseClient();
-      const settings = await getElectionSettings(supabase);
-      if (settings?.election_date) {
-        const countdown = formatCountdown(settings.election_date);
+      setCountdownLoading(true);
+      
+      // Usar a função real de countdown
+      const { loadCountdownData } = await import('@/services/publicSettings');
+      const countdownData = await loadCountdownData();
+      
+      if (countdownData) {
+        const { formatCountdown } = await import('@/services/election');
+        const countdown = formatCountdown(countdownData.date);
         setCountdownText(countdown);
-        setElectionLabel(`${settings.election_name} • ${new Date(settings.election_date).toLocaleDateString("pt-BR")}`);
+        setElectionLabel(`${countdownData.name || 'Eleição'} • ${new Date(countdownData.date).toLocaleDateString('pt-BR')}`);
+      } else {
+        setCountdownText("Erro ao carregar");
+        setElectionLabel("Erro na configuração");
       }
+      
     } catch (error) {
-      console.error('Erro ao carregar configurações de eleição:', error);
+      console.error('Erro:', error);
+      setCountdownText("Erro ao carregar");
+      setElectionLabel("Erro na configuração");
+    } finally {
+      setCountdownLoading(false);
     }
   };
 
@@ -68,52 +120,121 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setError('');
-      
       const supabase = getSupabaseClient();
       
-      // Carregar contadores de líderes e metas
-      const [leaderCounters, goalData] = await Promise.all([
-        getLeaderCounters(),
-        getGoalSummary()
-      ]);
-      
-      // Contagem eficiente de pessoas usando count: 'exact', head: true
-      const [
-        { count: totalPeople, error: totalError },
-        { count: confirmedVotes, error: confirmedError },
-        { count: probableVotes, error: probableError }
-      ] = await Promise.all([
-        supabase
-          .from('people')
-          .select('id', { count: 'exact', head: true }),
-        supabase
-          .from('people')
-          .select('id', { count: 'exact', head: true })
-          .eq('vote_status', 'CONFIRMADO'),
-        supabase
-          .from('people')
-          .select('id', { count: 'exact', head: true })
-          .eq('vote_status', 'PROVAVEL')
-      ]);
-
-      if (totalError) throw totalError;
-      if (confirmedError) throw confirmedError;
-      if (probableError) throw probableError;
-
-      setStats({
-        activeLeaders: leaderCounters.active,
-        pendingLeaders: leaderCounters.pending,
-        totalPeople: totalPeople || 0,
-        confirmedVotes: confirmedVotes || 0,
-        probableVotes: probableVotes || 0,
-        effectiveTotalGoal: goalData.effective_total_goal
-      });
-
-      setGoalSummary(goalData);
-
-      // Top líderes por número de pessoas cadastradas (apenas para admin)
       if (isAdminUser) {
+        // Para ADMIN: carregar estatísticas gerais
+        const [leaderCounters, goalData, totalQ, confirmedQ, probableQ] = await Promise.all([
+          getLeaderCounters(),
+          getGoalSummary(),
+          supabase.from('people').select('id', { count: 'exact', head: true }),
+          supabase.from('people').select('id', { count: 'exact', head: true }).eq('vote_status', 'CONFIRMADO'),
+          supabase.from('people').select('id', { count: 'exact', head: true }).eq('vote_status', 'PROVAVEL')
+        ]);
+        
+        console.log('🔍 [Dashboard] Dados do admin carregados:', {
+          leaderCounters,
+          goalData,
+          effectiveTotalGoal: goalData.effective_total_goal,
+          totalLeadersGoal: goalData.total_leaders_goal,
+          defaultOrgGoal: goalData.default_org_goal
+        });
+        
+        const totalPeople = totalQ.count ?? 0;
+        const confirmedVotes = confirmedQ.count ?? 0;
+        const probableVotes = probableQ.count ?? 0;
+
+        console.log('🔍 [Dashboard] DEBUG - Contagem de pessoas:', {
+          totalQ: totalQ,
+          totalQCount: totalQ.count,
+          totalPeople: totalPeople,
+          confirmedQ: confirmedQ,
+          probableQ: probableQ
+        });
+
+        console.log('Dashboard - Admin logado:', {
+          leaderCounters,
+          goalData,
+          totalPeople,
+          confirmedVotes,
+          probableVotes
+        });
+
+        setStats({
+          activeLeaders: leaderCounters.active,
+          pendingLeaders: leaderCounters.pending,
+          totalPeople: totalPeople || 0,
+          confirmedVotes: confirmedVotes || 0,
+          probableVotes: probableVotes || 0,
+          effectiveTotalGoal: goalData.effective_total_goal
+        });
+
+        setGoalSummary(goalData);
         await loadTopLeaders();
+      } else {
+        // Para LÍDER: carregar apenas suas próprias estatísticas
+        console.log('🔍 [Dashboard] isAdminUser é FALSE - executando lógica de líder');
+        if (!profile?.id) { setLoading(false); return; }
+        
+        console.log('🔍 Carregando estatísticas do líder...');
+        console.log('🔍 Profile ID:', profile.id);
+        console.log('🔍 Profile Role:', profile.role);
+        console.log('🔍 Is Admin:', isAdminUser);
+        
+        console.log('🔍 [Dashboard] DEBUG - Contagem para LÍDER:', {
+          profileId: profile.id,
+          queryFilter: `owner_id = ${profile.id}`
+        });
+        
+        // Contagem apenas das pessoas cadastradas por este líder
+        const [
+          { count: totalPeople, error: totalError },
+          { count: confirmedVotes, error: confirmedError },
+          { count: probableVotes, error: probableError }
+        ] = await Promise.all([
+          supabase
+            .from('people')
+            .select('id', { count: 'exact', head: true })
+            .eq('owner_id', profile.id),
+          supabase
+            .from('people')
+            .select('id', { count: 'exact', head: true })
+            .eq('owner_id', profile.id)
+            .eq('vote_status', 'CONFIRMADO'),
+          supabase
+            .from('people')
+            .select('id', { count: 'exact', head: true })
+            .eq('owner_id', profile.id)
+            .eq('vote_status', 'PROVAVEL')
+        ]);
+
+        if (totalError) throw totalError;
+        if (confirmedError) throw confirmedError;
+        if (probableError) throw probableError;
+
+        // Usar meta do líder via hook (já carregada)
+        const leaderGoal = leaderGoalData?.goal || 100;
+        console.log('✅ Usando meta do líder via hook:', leaderGoal, 'Fonte:', leaderGoalData?.source);
+        
+        console.log('Dashboard - Líder logado:', {
+          profileId: profile.id,
+          leaderGoalData,
+          leaderGoal,
+          totalPeople,
+          confirmedVotes,
+          probableVotes
+        });
+
+        setStats({
+          activeLeaders: 0, // Líder não vê contadores de outros líderes
+          pendingLeaders: 0,
+          totalPeople: totalPeople || 0,
+          confirmedVotes: confirmedVotes || 0,
+          probableVotes: probableVotes || 0,
+          effectiveTotalGoal: leaderGoal
+        });
+
+        setGoalSummary(null); // Líder não vê resumo geral
       }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -176,12 +297,33 @@ export default function DashboardPage() {
     }
   };
 
+  const handleUpdateOrgGoal = async () => {
+    try {
+      console.log('🔍 [Dashboard] Atualizando meta da organização...');
+      const newGoal = await updateOrgGoalFromElectionType();
+      
+      if (newGoal > 0) {
+        console.log('✅ [Dashboard] Meta atualizada:', newGoal);
+        // Recarregar estatísticas para mostrar a nova meta
+        await loadStats();
+      } else {
+        console.warn('⚠️ [Dashboard] Nenhuma meta foi calculada');
+      }
+    } catch (error) {
+      console.error('❌ [Dashboard] Erro ao atualizar meta:', error);
+    }
+  };
+
   // Se houver erro de tabela não existir, mostrar tela de configuração
   if (error && error.includes('does not exist')) {
     return <DatabaseStatus error={error} />;
   }
 
-  const progressoMeta = Math.round((stats.totalPeople / stats.effectiveTotalGoal) * 100);
+  // Calcular progresso da meta
+  const metaAtual = isAdminUser ? stats.effectiveTotalGoal : (leaderGoalData?.goal || 100);
+  const progressoMeta = metaAtual > 0 
+    ? Math.round((stats.totalPeople / metaAtual) * 100)
+    : 0;
   
   const estatisticasCards = [
     // Mostrar card de lideranças apenas para ADMIN
@@ -193,14 +335,14 @@ export default function DashboardPage() {
       descricao: `${stats.pendingLeaders} pendentes`
     }] : []),
     {
-      titulo: 'Total de Contatos',
+      titulo: isAdminUser ? 'Total de Contatos' : 'Meus Contatos',
       valor: stats.totalPeople,
       icon: UserCheck,
       cor: 'bg-green-500',
-      descricao: `Meta: ${stats.effectiveTotalGoal}`
+      descricao: `Meta: ${metaAtual}`
     },
     {
-      titulo: 'Votos Confirmados',
+      titulo: isAdminUser ? 'Votos Confirmados' : 'Meus Votos Confirmados',
       valor: stats.confirmedVotes,
       icon: Target,
       cor: 'bg-emerald-500',
@@ -213,22 +355,24 @@ export default function DashboardPage() {
       icon: Settings,
       cor: 'bg-purple-500',
       descricao: `Líderes: ${goalSummary.total_leaders_goal}`,
-      editable: true
+      editable: true,
+      onUpdate: handleUpdateOrgGoal
     }] : []),
+    // Card de Meta Pessoal (apenas para LÍDER) - será renderizado separadamente
     {
-      titulo: 'Progresso da Meta',
+      titulo: isAdminUser ? 'Progresso da Meta' : 'Meu Progresso',
       valor: `${progressoMeta}%`,
       icon: TrendingUp,
       cor: 'bg-purple-500',
-      descricao: `${stats.totalPeople}/${stats.effectiveTotalGoal}`
+      descricao: `${stats.totalPeople}/${metaAtual}`
     },
     // Card de contagem regressiva
     {
       titulo: 'Contagem regressiva',
-      valor: countdownText || "—",
+      valor: countdownLoading ? "Carregando..." : (countdownText || "—"),
       icon: Calendar,
       cor: 'bg-orange-500',
-      descricao: countdownText.includes("Hoje") ? "É hoje!" : "para a eleição",
+      descricao: countdownLoading ? "Carregando..." : (countdownText.includes("Hoje") ? "É hoje!" : "para a eleição"),
       extraInfo: electionLabel
     }
   ];
@@ -296,8 +440,19 @@ export default function DashboardPage() {
                 return (
                   <div key={index} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.titulo}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.titulo}</p>
+                          {card.editable && card.onUpdate && (
+                            <button
+                              onClick={card.onUpdate}
+                              className="text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 px-2 py-1 rounded transition-colors"
+                              title="Atualizar meta automaticamente"
+                            >
+                              ↻
+                            </button>
+                          )}
+                        </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatNumber(card.valor)}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{card.descricao}</p>
                         {card.extraInfo && (
@@ -313,13 +468,22 @@ export default function DashboardPage() {
               })}
             </div>
 
+            {/* Card de Meta do Líder (apenas para LÍDER) */}
+            {!isAdminUser && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <DashboardGoalCard />
+              </div>
+            )}
+
             {/* Gráfico de Progresso */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Progresso da Meta de Contatos</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                {isAdminUser ? 'Progresso da Meta de Contatos' : 'Meu Progresso de Contatos'}
+              </h3>
               <div className="space-y-4">
                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                  <span>Contatos Realizados</span>
-                  <span>{formatNumber(stats.totalPeople)} / {formatNumber(stats.effectiveTotalGoal)}</span>
+                  <span>{isAdminUser ? 'Contatos Realizados' : 'Meus Contatos'}</span>
+                  <span>{formatNumber(stats.totalPeople)} / {formatNumber(metaAtual)}</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div 

@@ -1,174 +1,152 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// supabase/functions/admin_ban_user/index.ts
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// --- CORS dinâmico -----------------------------------------------------------
+const ALLOWED_ORIGINS = new Set([
+  'https://app.gabitechnology.cloud',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+]);
+function makeCorsHeaders(origin) {
+  const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://app.gabitechnology.cloud';
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin'
+  };
 }
-
-interface BanUserRequest {
-  userId: string
-  action: 'ban' | 'unban'
-  reason?: string
-}
-
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
+// -----------------------------------------------------------------------------
+Deno.serve(async (req)=>{
+  const origin = req.headers.get('Origin');
+  const corsHeaders = makeCorsHeaders(origin);
+  if (req.method === 'OPTIONS') return new Response('ok', {
+    headers: corsHeaders
+  });
   try {
-    // Environment variables
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!
-
-    if (!supabaseUrl || !serviceKey || !anonKey) {
-      throw new Error('Missing required environment variables')
-    }
-
-    // Create clients
-    const admin = createClient(supabaseUrl, serviceKey)
-    const caller = createClient(supabaseUrl, anonKey, {
-      global: { 
-        headers: { 
-          Authorization: req.headers.get("Authorization") ?? "" 
-        } 
-      },
-    })
-
-    // Validate user authentication
-    const { data: meUser } = await caller.auth.getUser()
-    if (!meUser?.user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
+    const url = Deno.env.get('SUPABASE_URL');
+    const svc = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anon = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!url || !svc || !anon) throw new Error('Missing SUPABASE_* envs');
+    // admin = ignora RLS (para checar role sem depender de policies)
+    const admin = createClient(url, svc);
+    // caller = valida sessão do chamador
+    const caller = createClient(url, anon, {
+      global: {
+        headers: {
+          Authorization: req.headers.get('Authorization') ?? ''
         }
-      )
+      }
+    });
+    // 1) precisa estar autenticado
+    const { data: me } = await caller.auth.getUser();
+    if (!me?.user) {
+      return new Response(JSON.stringify({
+        error: 'Unauthorized'
+      }), {
+        headers: corsHeaders,
+        status: 401
+      });
     }
-
-    // Check if user is ADMIN
-    const { data: profile } = await caller
-      .from('profiles')
-      .select('role')
-      .eq('id', meUser.user.id)
-      .single()
-
-    if (!profile || profile.role !== 'ADMIN') {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient permissions - ADMIN role required' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403,
-        }
-      )
+    // 2) precisa ser ADMIN
+    const { data: prof, error: profErr } = await admin.from('profiles').select('role').eq('id', me.user.id).single();
+    if (profErr) throw profErr;
+    if (prof?.role !== 'ADMIN') {
+      return new Response(JSON.stringify({
+        error: 'Forbidden'
+      }), {
+        headers: corsHeaders,
+        status: 403
+      });
     }
-
-    // Parse request body
-    const body: BanUserRequest = await req.json()
-
-    if (!body.userId || !body.action) {
-      return new Response(
-        JSON.stringify({ error: 'userId e action são obrigatórios' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      )
+    // 3) body
+    const body = await req.json();
+    if (!body?.userId || body.action !== 'ban' && body.action !== 'unban') {
+      return new Response(JSON.stringify({
+        error: 'Bad request: userId/action required'
+      }), {
+        headers: corsHeaders,
+        status: 400
+      });
     }
-
-    if (body.action !== 'ban' && body.action !== 'unban') {
-      return new Response(
-        JSON.stringify({ error: 'action deve ser "ban" ou "unban"' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      )
+    if (body.userId === me.user.id) {
+      return new Response(JSON.stringify({
+        error: 'Você não pode desativar a si mesmo'
+      }), {
+        headers: corsHeaders,
+        status: 400
+      });
     }
-
-    // Perform ban/unban action
+    // 4) usuário alvo existe?
+    const { data: target, error: getErr } = await admin.auth.admin.getUserById(body.userId);
+    if (getErr || !target?.user) {
+      return new Response(JSON.stringify({
+        error: 'Usuário não encontrado'
+      }), {
+        headers: corsHeaders,
+        status: 404
+      });
+    }
+    // 5) ação
     if (body.action === 'ban') {
-      // 1. Ban no Supabase Auth
-      const { error: banError } = await admin.auth.admin.updateUserById(body.userId, {
-        ban_duration: '876000h', // 100 years (effectively permanent)
+      // BANIR: bloqueia logins futuros
+      // (ban_duration aceita formatos "1h", "24h", "7d", etc. Usamos ~100 anos.)
+      const { error: e1 } = await admin.auth.admin.updateUserById(body.userId, {
+        ban_duration: '876000h',
         user_metadata: {
           banned: true,
           banned_at: new Date().toISOString(),
-          banned_by: meUser.user.id,
-          ban_reason: body.reason || 'Banned by administrator'
+          banned_by: me.user.id,
+          ban_reason: body.reason ?? 'Banned by admin'
         }
-      })
-
-      if (banError) {
-        throw new Error(`Erro ao banir usuário: ${banError.message}`)
-      }
-
-      // 2. Atualizar status no leader_profiles
-      const { error: statusError } = await admin
-        .from('leader_profiles')
-        .update({ status: 'INACTIVE' })
-        .eq('id', body.userId)
-
-      if (statusError) {
-        console.error('Erro ao atualizar status do líder:', statusError)
-        // Não falha o ban por causa disso, mas loga o erro
-      }
+      });
+      if (e1) throw e1;
+      // Domínio
+      const { error: e2 } = await admin.from('leader_profiles').update({
+        status: 'INACTIVE'
+      }).eq('id', body.userId);
+      if (e2) console.warn('leader_profiles update warn:', e2);
     } else {
-      // Unban
-      // 1. Unban no Supabase Auth
-      const { error: unbanError } = await admin.auth.admin.updateUserById(body.userId, {
+      // DESBANIR
+      const { error: e1 } = await admin.auth.admin.updateUserById(body.userId, {
         ban_duration: 'none',
         user_metadata: {
           banned: false,
           unbanned_at: new Date().toISOString(),
-          unbanned_by: meUser.user.id
+          unbanned_by: me.user.id
         }
-      })
-
-      if (unbanError) {
-        throw new Error(`Erro ao desbanir usuário: ${unbanError.message}`)
-      }
-
-      // 2. Atualizar status no leader_profiles
-      const { error: statusError } = await admin
-        .from('leader_profiles')
-        .update({ status: 'ACTIVE' })
-        .eq('id', body.userId)
-
-      if (statusError) {
-        console.error('Erro ao atualizar status do líder:', statusError)
-        // Não falha o unban por causa disso, mas loga o erro
-      }
+      });
+      if (e1) throw e1;
+      const { error: e2 } = await admin.from('leader_profiles').update({
+        status: 'ACTIVE'
+      }).eq('id', body.userId);
+      if (e2) console.warn('leader_profiles update warn:', e2);
     }
-
-    return new Response(
-      JSON.stringify({ 
-        ok: true,
-        message: body.action === 'ban' 
-          ? 'Usuário banido com sucesso'
-          : 'Usuário desbanido com sucesso'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+    // 6) auditoria
+    await admin.from('audit_logs').insert({
+      table_name: 'auth.users',
+      record_id: body.userId,
+      action: 'UPDATE',
+      actor_id: me.user.id,
+      details: {
+        action: body.action,
+        reason: body.reason ?? null
       }
-    )
-
-  } catch (error) {
-    console.error('Admin ban user error:', error)
-    return new Response(
-      JSON.stringify({ 
-        ok: false,
-        error: error.message || 'Erro interno do servidor' 
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    )
+    });
+    return new Response(JSON.stringify({
+      ok: true,
+      action: body.action
+    }), {
+      headers: corsHeaders,
+      status: 200
+    });
+  } catch (err) {
+    console.error('admin_ban_user error:', err);
+    return new Response(JSON.stringify({
+      ok: false,
+      error: err?.message ?? 'Internal error'
+    }), {
+      headers: makeCorsHeaders(origin),
+      status: 500
+    });
   }
-})
+});

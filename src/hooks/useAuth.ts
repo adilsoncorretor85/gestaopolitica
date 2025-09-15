@@ -23,8 +23,13 @@ export default function useAuth(): UseAuth {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // Debug: verificar se o hook está sendo chamado
+  console.log('🔍 [useAuth] Hook sendo executado');
+  console.log('🔍 [useAuth] Estado inicial:', { user, session, profile, loading });
 
   const load = useCallback(async () => {
+    console.log('🔍 [useAuth] Função load sendo executada');
     setLoading(true);
 
     try {
@@ -114,7 +119,15 @@ export default function useAuth(): UseAuth {
     }
   }, [load]);
 
+  // TEMPORÁRIO: Simplificar verificação de admin para debug
   const isAdmin = !!profile && profile.role === "ADMIN";
+  
+  // Debug: verificar o cálculo do isAdmin
+  console.log('🔍 [useAuth] Cálculo do isAdmin:', {
+    hasProfile: !!profile,
+    profileRole: profile?.role,
+    finalIsAdmin: isAdmin
+  });
 
   return {
     user,

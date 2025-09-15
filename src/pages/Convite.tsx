@@ -72,7 +72,8 @@ export default function Convite() {
 
       setSaving(true);
       await finalizeInvite(pwd);
-      nav('/dashboard');
+      // Redirecionar para completar perfil em vez de ir direto para dashboard
+      nav('/complete-profile');
     } catch (e: any) {
       setErr(e.message ?? 'Erro ao finalizar convite.');
     } finally {

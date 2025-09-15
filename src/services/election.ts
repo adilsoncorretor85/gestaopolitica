@@ -12,7 +12,7 @@ export interface ElectionSettings {
   election_level: ElectionLevel | null;
   scope_state: string | null;    // UF
   scope_city: string | null;     // nome do município
-  scope_city_ibge: string | null; // Código IBGE como string
+  scope_city_ibge: string | null; // Código IBGE como string (convertido para bigint no DB)
   uf: string | null;             // Campo legado
   city: string | null;           // Campo legado
   created_at?: string;
@@ -20,38 +20,74 @@ export interface ElectionSettings {
 }
 
 /**
- * Mantém compatibilidade:
- * - aceita colunas novas (election_level, scope_state, scope_city, scope_city_ibge)
- * - ou antigas (election_type, uf, city, city_ibge)
- * Retorna o registro mais recente.
+ * Busca a configuração de eleição mais recente usando RPC
+ * Mantém compatibilidade com colunas novas e antigas
  */
 export async function getElectionSettings(
   supabase: SupabaseClient
 ): Promise<ElectionSettings | null> {
-  const { data, error } = await supabase
-    .from('election_settings')
-    .select('*')
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  try {
+    console.log('🔍 getElectionSettings: Iniciando busca via RPC...');
+    // Tentar usar a função RPC primeiro (mais eficiente)
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_current_election');
+    
+    console.log('📊 getElectionSettings: Resultado RPC:', { rpcData, rpcError });
+    
+    if (!rpcError && rpcData) {
+      const r = rpcData as any;
+      const result = {
+        id: r.id,
+        election_name: r.election_name,
+        election_date: r.election_date,
+        timezone: r.timezone ?? 'America/Sao_Paulo',
+        election_level: (r.election_level ?? r.election_type) ?? null,
+        scope_state: (r.scope_state ?? r.uf) ?? null,
+        scope_city: (r.scope_city ?? r.city) ?? null,
+        scope_city_ibge: (r.scope_city_ibge ?? r.city_ibge) ?? null,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      };
+      console.log('✅ getElectionSettings: Dados RPC processados:', result);
+      return result;
+    }
+    
+    // Fallback para query direta se RPC não existir
+    console.warn('⚠️ getElectionSettings: RPC get_current_election não disponível, usando query direta:', rpcError);
+    
+    const { data, error } = await supabase
+      .from('election_settings')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
+    console.log('📊 getElectionSettings: Resultado query direta:', { data, error });
 
-  const r: any = data;
+    if (error) throw error;
+    if (!data) {
+      console.warn('⚠️ getElectionSettings: Nenhum dado encontrado na query direta');
+      return null;
+    }
 
-  return {
-    id: r.id,
-    election_name: r.election_name,
-    election_date: r.election_date,
-    timezone: r.timezone ?? 'America/Sao_Paulo',
-    election_level: (r.election_level ?? r.election_type) ?? null,
-    scope_state: (r.scope_state ?? r.uf) ?? null,
-    scope_city: (r.scope_city ?? r.city) ?? null,
-    scope_city_ibge: (r.scope_city_ibge ?? r.city_ibge) ?? null,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
-  };
+    const r: any = data;
+    const result = {
+      id: r.id,
+      election_name: r.election_name,
+      election_date: r.election_date,
+      timezone: r.timezone ?? 'America/Sao_Paulo',
+      election_level: (r.election_level ?? r.election_type) ?? null,
+      scope_state: (r.scope_state ?? r.uf) ?? null,
+      scope_city: (r.scope_city ?? r.city) ?? null,
+      scope_city_ibge: (r.scope_city_ibge ?? r.city_ibge) ?? null,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    };
+    console.log('✅ getElectionSettings: Dados query direta processados:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ getElectionSettings: Erro ao buscar configurações de eleição:', error);
+    throw error;
+  }
 }
 
 // Helper
@@ -108,20 +144,62 @@ export async function upsertElectionCurrent(
   supabase: SupabaseClient,
   payload: Partial<ElectionSettings>
 ) {
-  const { data: current } = await supabase
+  console.log('🔍 [upsertElectionCurrent] Iniciando upsert...');
+  console.log('📤 [upsertElectionCurrent] Payload recebido:', payload);
+  
+  // Buscar registro atual
+  console.log('🔍 [upsertElectionCurrent] Buscando registro atual...');
+  const { data: current, error: currentError } = await supabase
     .from('election_settings')
     .select('id')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  const row = { ...payload, id: current?.id };
-  const { data, error } = await supabase
-    .from('election_settings')
-    .upsert(row, { onConflict: 'id' })
-    .select()
-    .single();
+  if (currentError) {
+    console.error('❌ [upsertElectionCurrent] Erro ao buscar registro atual:', currentError);
+    throw currentError;
+  }
 
-  if (error) throw error;
-  return data as ElectionSettings;
+  console.log('📋 [upsertElectionCurrent] Registro atual encontrado:', current);
+
+  // Se existe registro atual, atualizar; senão, inserir novo
+  if (current?.id) {
+    console.log('💾 [upsertElectionCurrent] Atualizando registro existente...');
+    const { data, error } = await supabase
+      .from('election_settings')
+      .update(payload)
+      .eq('id', current.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ [upsertElectionCurrent] Erro na atualização:', error);
+      throw error;
+    }
+
+    console.log('✅ [upsertElectionCurrent] Atualização bem-sucedida:', data);
+    return data as ElectionSettings;
+  } else {
+    console.log('💾 [upsertElectionCurrent] Inserindo novo registro...');
+    const { data, error } = await supabase
+      .from('election_settings')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ [upsertElectionCurrent] Erro na inserção:', error);
+      console.error('❌ [upsertElectionCurrent] Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
+
+    console.log('✅ [upsertElectionCurrent] Inserção bem-sucedida:', data);
+    return data as ElectionSettings;
+  }
 }

@@ -302,6 +302,49 @@ export async function saveNeighborhoodGoal(params: {
   return { mode: 'inserted', id: ins.id as string };
 }
 
+/** DELETE: Remove meta de cidade */
+export async function deleteCityGoal(city: string, state: string) {
+  if (!supabase) throw new Error('Supabase não configurado');
+  
+  const { data: authRes } = await supabase.auth.getUser();
+  const uid = authRes?.user?.id;
+  if (!uid) throw new Error("Usuário não autenticado");
+
+  const normalizedCity = norm(city);
+  const normalizedState = normUF(state);
+
+  if (!normalizedCity) throw new Error("Cidade é obrigatória");
+  if (!normalizedState) throw new Error("UF é obrigatória");
+
+  const { error } = await supabase
+    .from("city_goals")
+    .delete()
+    .eq("city", normalizedCity)
+    .eq("state", normalizedState);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+/** DELETE: Remove meta de bairro */
+export async function deleteNeighborhoodGoal(id: string) {
+  if (!supabase) throw new Error('Supabase não configurado');
+  
+  const { data: authRes } = await supabase.auth.getUser();
+  const uid = authRes?.user?.id;
+  if (!uid) throw new Error("Usuário não autenticado");
+
+  if (!id) throw new Error("ID é obrigatório");
+
+  const { error } = await supabase
+    .from("neighborhood_goals")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+  return { success: true };
+}
+
 // Lista cidades para o filtro: união de metas (city_goals) + realidade (vw_votes_by_city)
 export async function listCitiesForFilter(): Promise<{ city: string; state: string }[]> {
   if (!supabase) throw new Error('Supabase não configurado');

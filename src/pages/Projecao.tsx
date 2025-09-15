@@ -57,6 +57,18 @@ export default function Projecao() {
     }
   }, [profile, navigate]);
 
+  // Definir cidade selecionada baseada na configuração da eleição
+  useEffect(() => {
+    if (election?.election_level === 'MUNICIPAL' && election?.scope_city && election?.scope_state) {
+      const cityKey = `${election.scope_city}-${election.scope_state}`;
+      console.log('🔍 [Projecao] Definindo cidade selecionada para eleição municipal:', cityKey);
+      setSelectedCity(cityKey);
+    } else if (election?.election_level === 'ESTADUAL') {
+      console.log('🔍 [Projecao] Eleição estadual - mostrando todas as cidades');
+      setSelectedCity('__all__');
+    }
+  }, [election]);
+
   // Carregar dados iniciais
   useEffect(() => {
     const loadData = async () => {
@@ -124,17 +136,40 @@ export default function Projecao() {
   // Dados para o gráfico
   const chartData = useMemo(() => {
     if (selectedCity === '__all__') {
-      // por cidade - usar dados da projeção
-      return (cityProjections ?? []).map(proj => ({
-        name: `${proj.city.toUpperCase()}-${proj.state.toUpperCase()}`,
-        meta: proj.meta,
-        confirmados: proj.confirmados,
-        provaveis: proj.provaveis,
-        realizado: proj.realizado,
-        cobertura_pct: proj.cobertura_pct,
-      }));
+      // Se eleição é ESTADUAL, mostrar cidades; se MUNICIPAL, mostrar bairros
+      if (election?.election_level === 'ESTADUAL') {
+        // por cidade - usar dados da projeção
+        return (cityProjections ?? []).map(proj => ({
+          name: `${proj.city.toUpperCase()}-${proj.state.toUpperCase()}`,
+          meta: proj.meta,
+          confirmados: proj.confirmados,
+          provaveis: proj.provaveis,
+          realizado: proj.realizado,
+          cobertura_pct: proj.cobertura_pct,
+        }));
+      } else {
+        // por bairro - mostrar todos os bairros de todas as cidades
+        return (hoods ?? []).map(hg => {
+          // Encontrar a projeção correspondente
+          const p = hoodProjections.find(x =>
+            x.neighborhood.toLowerCase() === (hg.neighborhood ?? '').toLowerCase()
+          );
+          
+          const confirmados = p?.confirmed ?? 0;
+          const provaveis = p?.probable ?? 0;
+          const realizado = confirmados + provaveis;
+          
+          return {
+            name: hg.neighborhood?.toUpperCase(),
+            meta: hg.goal,
+            confirmados,
+            provaveis,
+            realizado,
+          };
+        });
+      }
     }
-    // por bairro da cidade - com dados reais das projeções
+    // por bairro da cidade específica - com dados reais das projeções
     return (hoods ?? []).map(hg => {
       // Encontrar a projeção correspondente
       const p = hoodProjections.find(x =>
@@ -153,17 +188,42 @@ export default function Projecao() {
         realizado,
       };
     });
-  }, [selectedCity, cityProjections, hoods, hoodProjections]);
+  }, [selectedCity, cityProjections, hoods, hoodProjections, election?.election_level]);
 
   // Totais calculados
   const totals = useMemo(() => {
     if (selectedCity === '__all__') {
-      const meta = cityProjections.reduce((sum, proj) => sum + proj.meta, 0);
-      const conf = cityProjections.reduce((sum, proj) => sum + proj.confirmados, 0);
-      const prob = cityProjections.reduce((sum, proj) => sum + proj.provaveis, 0);
-      const realizado = cityProjections.reduce((sum, proj) => sum + proj.realizado, 0);
-      return { meta, conf, prob, realizado, cov: meta ? Math.round((realizado/meta)*100) : 0 };
+      if (election?.election_level === 'ESTADUAL') {
+        // Totais por cidade
+        const meta = cityProjections.reduce((sum, proj) => sum + proj.meta, 0);
+        const conf = cityProjections.reduce((sum, proj) => sum + proj.confirmados, 0);
+        const prob = cityProjections.reduce((sum, proj) => sum + proj.provaveis, 0);
+        const realizado = cityProjections.reduce((sum, proj) => sum + proj.realizado, 0);
+        return { meta, conf, prob, realizado, cov: meta ? Math.round((realizado/meta)*100) : 0 };
+      } else {
+        // Totais por bairro (todos os bairros)
+        const meta = hoods.reduce((sum, hood) => sum + hood.goal, 0);
+        
+        // Calcular totais com dados reais das projeções
+        let conf = 0, prob = 0, realizado = 0;
+        
+        hoods.forEach(hg => {
+          const p = hoodProjections.find(x =>
+            x.neighborhood.toLowerCase() === (hg.neighborhood ?? '').toLowerCase()
+          );
+          
+          if (p) {
+            conf += p.confirmed;
+            prob += p.probable;
+            realizado += p.confirmed + p.probable;
+          }
+        });
+        
+        const cov = meta > 0 ? Math.round((realizado / meta) * 100) : 0;
+        return { meta, conf, prob, realizado, cov };
+      }
     } else {
+      // Totais por bairro da cidade específica
       const meta = hoods.reduce((sum, hood) => sum + hood.goal, 0);
       
       // Calcular totais com dados reais das projeções
@@ -184,32 +244,70 @@ export default function Projecao() {
       const cov = meta > 0 ? Math.round((realizado / meta) * 100) : 0;
       return { meta, conf, prob, realizado, cov };
     }
-  }, [selectedCity, cityProjections, hoods, hoodProjections]);
+  }, [selectedCity, cityProjections, hoods, hoodProjections, election?.election_level]);
 
   // Dados da tabela
   const tableData = useMemo(() => {
     if (selectedCity === '__all__') {
-      // Filtrar cidades por termo de busca
-      const filteredCities = citySearchTerm.trim() 
-        ? (cityProjections ?? []).filter(proj => 
-            proj.city.toLowerCase().includes(citySearchTerm.toLowerCase()) ||
-            proj.state.toLowerCase().includes(citySearchTerm.toLowerCase())
-          )
-        : (cityProjections ?? []);
-        
-      return filteredCities.map(proj => ({
-        id: `${proj.city}-${proj.state}`,
-        name: `${proj.city.toUpperCase()} - ${proj.state.toUpperCase()}`,
-        meta: proj.meta,
-        confirmados: proj.confirmados,
-        provaveis: proj.provaveis,
-        indefinidos: proj.indefinidos,
-        total: proj.total,
-        realizado: proj.realizado,
-        gap: proj.gap,
-        cobertura: proj.cobertura_pct,
-        type: 'city'
-      })).sort((a, b) => b.meta - a.meta);
+      if (election?.election_level === 'ESTADUAL') {
+        // Filtrar cidades por termo de busca
+        const filteredCities = citySearchTerm.trim() 
+          ? (cityProjections ?? []).filter(proj => 
+              proj.city.toLowerCase().includes(citySearchTerm.toLowerCase()) ||
+              proj.state.toLowerCase().includes(citySearchTerm.toLowerCase())
+            )
+          : (cityProjections ?? []);
+          
+        return filteredCities.map(proj => ({
+          id: `${proj.city}-${proj.state}`,
+          name: `${proj.city.toUpperCase()} - ${proj.state.toUpperCase()}`,
+          meta: proj.meta,
+          confirmados: proj.confirmados,
+          provaveis: proj.provaveis,
+          indefinidos: proj.indefinidos,
+          total: proj.total,
+          realizado: proj.realizado,
+          gap: proj.gap,
+          cobertura: proj.cobertura_pct,
+          type: 'city'
+        })).sort((a, b) => b.meta - a.meta);
+      } else {
+        // Filtrar bairros por termo de busca (todos os bairros)
+        const filteredHoods = searchTerm.trim() 
+          ? hoods.filter(hg => 
+              hg.neighborhood?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+          : hoods;
+          
+        return filteredHoods.map(hg => {
+          // Encontrar a projeção correspondente
+          const p = hoodProjections.find(x =>
+            x.neighborhood.toLowerCase() === (hg.neighborhood ?? '').toLowerCase()
+          );
+          
+          const confirmados = p?.confirmed ?? 0;
+          const provaveis = p?.probable ?? 0;
+          const indefinidos = p?.undefined ?? 0;
+          const total = p?.total_people ?? 0;
+          const realizado = confirmados + provaveis;
+          const gap = hg.goal - realizado;
+          const cobertura = hg.goal > 0 ? Math.round((realizado * 100) / hg.goal) : 0;
+          
+          return {
+            id: `${hg.city}-${hg.state}-${hg.neighborhood}`,
+            name: hg.neighborhood?.toUpperCase(),
+            meta: hg.goal,
+            confirmados,
+            provaveis,
+            indefinidos,
+            total,
+            realizado,
+            gap,
+            cobertura,
+            type: 'neighborhood'
+          };
+        }).sort((a, b) => b.meta - a.meta);
+      }
     } else {
       // Filtrar bairros por termo de busca
       const filteredHoods = searchTerm.trim() 
@@ -371,6 +469,30 @@ export default function Projecao() {
               </div>
             </div>
 
+            {/* Alerta quando não há dados */}
+            {totals.meta === 0 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <Target className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Nenhuma meta configurada
+                    </h3>
+                    <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                      <p>
+                        {selectedCity === '__all__' 
+                          ? 'Para começar a acompanhar as projeções de votação, configure metas para as cidades usando o botão "Meta Cidade" acima.'
+                          : 'Para acompanhar as projeções desta cidade, configure metas para os bairros usando o botão "Meta Bairro" acima.'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Filtros */}
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-sm text-gray-700 dark:text-gray-300">Cidade:</label>
@@ -426,39 +548,97 @@ export default function Projecao() {
 
             {/* Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <Card label="Meta" value={totals.meta} icon={<Target className="h-5 w-5" />} />
-              <Card label="Confirmados" value={totals.conf} icon={<Users className="h-5 w-5" />} />
-              <Card label="Prováveis" value={totals.prob} icon={<TrendingUp className="h-5 w-5" />} />
-              <Card label="Realizado" value={totals.realizado} icon={<Users className="h-5 w-5" />} />
-              <Card label="Cobertura" value={`${totals.cov}%`} icon={<MapPin className="h-5 w-5" />} />
+              <Card 
+                label="Meta" 
+                value={totals.meta === 0 ? "Não configurada" : totals.meta} 
+                icon={<Target className="h-5 w-5" />}
+                isEmpty={totals.meta === 0}
+              />
+              <Card 
+                label="Confirmados" 
+                value={totals.conf} 
+                icon={<Users className="h-5 w-5" />}
+                isEmpty={totals.meta === 0}
+              />
+              <Card 
+                label="Prováveis" 
+                value={totals.prob} 
+                icon={<TrendingUp className="h-5 w-5" />}
+                isEmpty={totals.meta === 0}
+              />
+              <Card 
+                label="Realizado" 
+                value={totals.realizado} 
+                icon={<Users className="h-5 w-5" />}
+                isEmpty={totals.meta === 0}
+              />
+              <Card 
+                label="Cobertura" 
+                value={totals.meta === 0 ? "N/A" : `${totals.cov}%`} 
+                icon={<MapPin className="h-5 w-5" />}
+                isEmpty={totals.meta === 0}
+              />
             </div>
 
             {/* Gráfico */}
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
               <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">
-                {selectedCity === '__all__' ? 'Meta x Votos por Cidade' : `Meta x Votos por Bairro — ${selectedCity.split('-')[0].toUpperCase()}`}
+                {selectedCity === '__all__' 
+                  ? (election?.election_level === 'ESTADUAL' ? 'Meta x Votos por Cidade' : 'Meta x Votos por Bairro')
+                  : `Meta x Votos por Bairro — ${selectedCity.split('-')[0].toUpperCase()}`
+                }
               </div>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis dataKey="name" stroke="#6B7280" />
-                    <YAxis stroke="#6B7280" />
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: '#1F2937',
-                        border: '1px solid #374151',
-                        borderRadius: '8px',
-                        color: '#F9FAFB'
+                {chartData.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                      <TrendingUp className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      Nenhum dado para exibir
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-sm">
+                      {selectedCity === '__all__' 
+                        ? 'Configure metas para as cidades para visualizar o gráfico de projeções.'
+                        : 'Configure metas para os bairros desta cidade para visualizar o gráfico.'
+                      }
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (selectedCity === '__all__') {
+                          setShowCityModal(true);
+                        } else {
+                          setShowHoodModal(true);
+                        }
                       }}
-                      formatter={(value: any) => [formatNumber(value), '']}
-                    />
-                    <Legend />
-                    <Bar dataKey="meta" name="Meta" fill="#3B82F6" />
-                    <Bar dataKey="confirmados" name="Confirmados" fill="#10B981" />
-                    <Bar dataKey="provaveis" name="Prováveis" fill="#F59E0B" />
-                  </BarChart>
-                </ResponsiveContainer>
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      {selectedCity === '__all__' ? 'Adicionar Meta de Cidade' : 'Adicionar Meta de Bairro'}
+                    </button>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="name" stroke="#6B7280" />
+                      <YAxis stroke="#6B7280" />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: '#1F2937',
+                          border: '1px solid #374151',
+                          borderRadius: '8px',
+                          color: '#F9FAFB'
+                        }}
+                        formatter={(value: any) => [formatNumber(value), '']}
+                      />
+                      <Legend />
+                      <Bar dataKey="meta" name="Meta" fill="#3B82F6" />
+                      <Bar dataKey="confirmados" name="Confirmados" fill="#10B981" />
+                      <Bar dataKey="provaveis" name="Prováveis" fill="#F59E0B" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 
@@ -468,7 +648,10 @@ export default function Projecao() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                      {selectedCity === '__all__' ? 'Resumo por Cidade' : `Resumo por Bairro - ${selectedCity.split('-')[0].toUpperCase()}`}
+                      {selectedCity === '__all__' 
+                        ? (election?.election_level === 'ESTADUAL' ? 'Resumo por Cidade' : 'Resumo por Bairro')
+                        : `Resumo por Bairro - ${selectedCity.split('-')[0].toUpperCase()}`
+                      }
                     </h3>
                     {selectedCity === '__all__' && citySearchTerm.trim() && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -492,7 +675,10 @@ export default function Projecao() {
                   <thead className="bg-gray-50 dark:bg-gray-900">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        {selectedCity === '__all__' ? 'Cidade' : 'Bairro'}
+                        {selectedCity === '__all__' 
+                          ? (election?.election_level === 'ESTADUAL' ? 'Cidade' : 'Bairro')
+                          : 'Bairro'
+                        }
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Meta
@@ -518,8 +704,43 @@ export default function Projecao() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {tableData.map((row) => (
-                      <tr 
+                    {tableData.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center space-y-4">
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                              <Target className="h-8 w-8 text-gray-400" />
+                            </div>
+                            <div className="text-center">
+                              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                                {selectedCity === '__all__' ? 'Nenhuma meta de cidade configurada' : 'Nenhuma meta de bairro configurada'}
+                              </h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                {selectedCity === '__all__' 
+                                  ? 'Configure metas para as cidades para começar a acompanhar as projeções de votação.'
+                                  : 'Configure metas para os bairros desta cidade para acompanhar as projeções.'
+                                }
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (selectedCity === '__all__') {
+                                    setShowCityModal(true);
+                                  } else {
+                                    setShowHoodModal(true);
+                                  }
+                                }}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                              >
+                                <Target className="h-4 w-4 mr-2" />
+                                {selectedCity === '__all__' ? 'Adicionar Meta de Cidade' : 'Adicionar Meta de Bairro'}
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      tableData.map((row) => (
+                        <tr 
                         key={row.id} 
                         className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors group"
                         onClick={() => {
@@ -606,7 +827,8 @@ export default function Projecao() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -668,18 +890,43 @@ export default function Projecao() {
   );
 }
 
-function Card({ label, value, icon }: { label: string; value: number | string; icon: React.ReactNode }) {
+function Card({ label, value, icon, isEmpty = false }: { 
+  label: string; 
+  value: number | string; 
+  icon: React.ReactNode;
+  isEmpty?: boolean;
+}) {
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+    <div className={`rounded-lg border p-6 transition-colors ${
+      isEmpty 
+        ? 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50' 
+        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+    }`}>
       <div className="flex items-center">
         <div className="flex-shrink-0">
-          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+            isEmpty 
+              ? 'bg-gray-100 dark:bg-gray-600 text-gray-400 dark:text-gray-500' 
+              : 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+          }`}>
             {icon}
           </div>
         </div>
         <div className="ml-4">
-          <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">{formatNumber(value)}</div>
+          <div className={`text-sm ${
+            isEmpty 
+              ? 'text-gray-500 dark:text-gray-400' 
+              : 'text-gray-600 dark:text-gray-400'
+          }`}>
+            {label}
+          </div>
+          <div className={`mt-1 text-2xl font-semibold ${
+            isEmpty 
+              ? 'text-gray-400 dark:text-gray-500' 
+              : 'text-gray-900 dark:text-white'
+          }`}>
+            {typeof value === 'number' ? formatNumber(value) : value}
+          </div>
         </div>
       </div>
     </div>

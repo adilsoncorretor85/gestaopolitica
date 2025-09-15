@@ -136,7 +136,13 @@ export default function Login() {
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Precisa de ajuda? Entre em contato com o administrador.</p>
+          <button 
+            onClick={() => navigate('/reset-password')}
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+          >
+            Esqueci minha senha
+          </button>
+          <p className="mt-2">Precisa de ajuda? Entre em contato com o administrador.</p>
         </div>
       </div>
     </div>

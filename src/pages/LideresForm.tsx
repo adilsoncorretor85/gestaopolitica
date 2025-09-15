@@ -24,6 +24,14 @@ function maskCep(s: string) {
   return d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
 }
 
+// Schema minimalista para convite
+const inviteSchema = z.object({
+  full_name: z.string().min(3, 'Informe o nome completo'),
+  email: z.string().email('E-mail inválido'),
+  goal: z.coerce.number().int().positive().optional(), // opcional
+});
+
+// Schema completo para edição
 const leaderSchema = z.object({
   full_name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('Email inválido'),
@@ -42,12 +50,14 @@ const leaderSchema = z.object({
 });
 
 type LeaderFormData = z.infer<typeof leaderSchema>;
+type InviteFormData = z.infer<typeof inviteSchema>;
 
 export default function LideresFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('lideres');
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const { profile, isAdmin } = useAuth();
   
   const [loading, setLoading] = useState(false);
@@ -78,14 +88,16 @@ export default function LideresFormPage() {
   });
   */
 
+  const isInvite = !id; // Se não tem ID, é um convite
+  
   const {
     register,
     handleSubmit,
     setValue,
     watch,
     formState: { errors }
-  } = useForm<LeaderFormData>({
-    resolver: zodResolver(leaderSchema)
+  } = useForm<LeaderFormData | InviteFormData>({
+    resolver: zodResolver(isInvite ? inviteSchema : leaderSchema)
   });
 
 
@@ -221,21 +233,22 @@ export default function LideresFormPage() {
     }, 400);
   }
 
-  const onSubmit = async (data: LeaderFormData) => {
+  const onSubmit = async (data: LeaderFormData | InviteFormData) => {
     if (!isAdmin) return;
     
     try {
       setSaving(true);
       
-      const payload = {
-        ...data,
-        cep: onlyDigits(data.cep || ''),
-        latitude: coords?.lat ?? null,
-        longitude: coords?.lng ?? null,
-      };
-      
       if (id) {
-        // Update existing leader
+        // Update existing leader - usar schema completo
+        const fullData = data as LeaderFormData;
+        const payload = {
+          ...fullData,
+          cep: onlyDigits(fullData.cep || ''),
+          latitude: coords?.lat ?? null,
+          longitude: coords?.lng ?? null,
+        };
+        
         try {
           await updateLeaderProfile(id, payload);
           alert('Líder atualizado com sucesso!');
@@ -244,7 +257,15 @@ export default function LideresFormPage() {
           return;
         }
       } else {
-        // Invite new leader
+        // Invite new leader - usar schema minimalista
+        const inviteData = data as InviteFormData;
+        const payload = {
+          full_name: inviteData.full_name,
+          email: inviteData.email,
+          goal: inviteData.goal,
+          // Campos opcionais podem ser adicionados aqui se necessário
+        };
+        
         try {
           const result = await inviteLeader(payload);
           
@@ -404,7 +425,11 @@ export default function LideresFormPage() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 {/* Dados Básicos */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Dados Básicos</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                    {isInvite ? 'Dados do Convite' : 'Dados Básicos'}
+                  </h3>
+                  
+                  {/* Campos essenciais - sempre visíveis */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -436,45 +461,7 @@ export default function LideresFormPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Telefone
-                      </label>
-                      <input
-                        type="tel"
-                        {...register('phone')}
-                        placeholder="(11) 99999-9999"
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Data de Nascimento
-                      </label>
-                      <input
-                        type="date"
-                        {...register('birth_date')}
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Sexo
-                      </label>
-                      <select
-                        {...register('gender')}
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Selecione</option>
-                        <option value="M">Masculino</option>
-                        <option value="F">Feminino</option>
-                        <option value="O">Outro</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Meta do líder
+                        Meta do líder {isInvite && '(opcional)'}
                       </label>
                       <input
                         type="number"
@@ -488,9 +475,74 @@ export default function LideresFormPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Botão para expandir campos avançados (apenas no convite) */}
+                  {isInvite && (
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                        className="flex items-center space-x-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+                      >
+                        <span>{showAdvancedFields ? 'Ocultar' : 'Mostrar'} campos avançados</span>
+                        <svg
+                          className={`w-4 h-4 transition-transform ${showAdvancedFields ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Campos avançados - visíveis apenas se não for convite ou se expandido */}
+                  {(!isInvite || showAdvancedFields) && (
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isInvite ? 'mt-4' : ''}`}>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Telefone
+                        </label>
+                        <input
+                          type="tel"
+                          {...register('phone')}
+                          placeholder="(11) 99999-9999"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Data de Nascimento
+                        </label>
+                        <input
+                          type="date"
+                          {...register('birth_date')}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Sexo
+                        </label>
+                        <select
+                          {...register('gender')}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Selecione</option>
+                          <option value="M">Masculino</option>
+                          <option value="F">Feminino</option>
+                          <option value="O">Outro</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Endereço */}
+                {/* Endereço - apenas para edição ou convite com campos avançados */}
+                {(!isInvite || showAdvancedFields) && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Endereço</h3>
                   
@@ -595,6 +647,7 @@ export default function LideresFormPage() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Liderança (opcional) - apenas para convites */}
                 {false && (
@@ -864,22 +917,24 @@ export default function LideresFormPage() {
                   </button>
                 </div>
 
-                {/* Botão Definir no mapa */}
-                <div className="mt-4 flex gap-2 items-center">
-                  <button
-                    type="button"
-                    onClick={() => setOpenMap(true)}
-                    className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 inline-flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Definir no mapa
-                  </button>
-                  {coords && (
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      Marcado: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-                    </span>
-                  )}
-                </div>
+                {/* Botão Definir no mapa - apenas quando campos avançados estão visíveis */}
+                {(!isInvite || showAdvancedFields) && (
+                  <div className="mt-4 flex gap-2 items-center">
+                    <button
+                      type="button"
+                      onClick={() => setOpenMap(true)}
+                      className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 inline-flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Definir no mapa
+                    </button>
+                    {coords && (
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Marcado: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <MapPicker
                   open={openMap}

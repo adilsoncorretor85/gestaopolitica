@@ -20,7 +20,7 @@ export async function activateLeaderIfPending(): Promise<void> {
       ?.from('leader_profiles')
       .select('id, status, email')
       .eq('id', user.id)
-      .single() || { data: null, error: null };
+      .maybeSingle() || { data: null, error: null }; // 👈 evita erro "0 rows"
 
     if (fetchError) {
       console.warn('[activateLeaderIfPending] Erro ao buscar perfil do líder:', fetchError);
@@ -82,7 +82,7 @@ export async function isActiveLeader(): Promise<boolean> {
       ?.from('leader_profiles')
       .select('status')
       .eq('id', user.id)
-      .single() || { data: null };
+      .maybeSingle() || { data: null }; // 👈 evita erro "0 rows"
 
     return leaderProfile?.status === 'ACTIVE';
   } catch (error) {

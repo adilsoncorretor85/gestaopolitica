@@ -36,10 +36,23 @@ export async function finalizeInvite(password: string) {
 }
 
 
+// Função para remover campos vazios/undefined
+function compact<T extends Record<string, any>>(obj: T): Partial<T> {
+  const out: Partial<T> = {};
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (typeof v === 'string' && v.trim() === '') return;
+    out[k as keyof T] = v as any;
+  });
+  return out;
+}
+
 export async function inviteLeader(input: InviteLeaderInput) {
   const supabase = getSupabaseClient();
+  const appUrl = window.location.origin;
+  
   const { data, error } = await supabase.functions.invoke('invite_leader', {
-    body: input,
+    body: compact({ ...input, appUrl }), // Envia só o que tem valor
   });
 
   if (error) {

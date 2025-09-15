@@ -156,7 +156,7 @@ export async function createPerson(personData: PersonInsert) {
     .from('people')
     .insert(personData)
     .select()
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   if (error) {
     throw error;
@@ -190,7 +190,7 @@ export async function updatePerson(id: string, personData: PersonUpdate) {
     .update(personData)
     .eq('id', id)
     .select()
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   if (error) {
     throw error;
@@ -224,7 +224,7 @@ export async function deletePerson(id: string) {
     .from('people')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   const { error } = await supabase
     .from('people')
@@ -260,7 +260,7 @@ export async function getPerson(id: string) {
       owner:profiles(*)
     `)
     .eq('id', id)
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   if (error) {
     throw error;

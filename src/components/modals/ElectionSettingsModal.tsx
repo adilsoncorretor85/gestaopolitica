@@ -22,21 +22,65 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
 
   useEffect(() => {
     if (!open || !supabase) return;
-    (async () => {
+    
+    const loadData = async () => {
       setLoading(true);
-      const settings = await getElectionSettings(supabase);
-      if (settings) {
-        setLevel(settings.election_level ?? 'MUNICIPAL');
-        setUf(settings.scope_state ?? '');
-        setName(settings.election_name ?? '');
-        setDate(settings.election_date ?? '');
-        setTimezone(settings.timezone ?? 'America/Sao_Paulo');
-        if (settings.scope_city && settings.scope_city_ibge) {
-          setCity({ ibge: settings.scope_city_ibge, name: settings.scope_city });
+      try {
+        // Tentar public_settings primeiro
+        const { getPublicSettings } = await import('@/services/publicSettings');
+        const publicSettings = await getPublicSettings(supabase);
+        
+        if (publicSettings) {
+          setLevel(publicSettings.election_level ?? 'MUNICIPAL');
+          setUf(publicSettings.scope_state ?? '');
+          setName(publicSettings.election_name ?? '');
+          
+          // Converter data para formato do input (YYYY-MM-DD)
+          const dateValue = publicSettings.election_date ? 
+            (publicSettings.election_date.includes('T') ? 
+              publicSettings.election_date.split('T')[0] : 
+              publicSettings.election_date) : '';
+          setDate(dateValue);
+          
+          setTimezone(publicSettings.timezone ?? 'America/Sao_Paulo');
+          
+          // Definir cidade se disponível
+          if (publicSettings.scope_city && publicSettings.scope_city_ibge) {
+            setTimeout(() => {
+              setCity({ ibge: Number(publicSettings.scope_city_ibge), name: publicSettings.scope_city });
+            }, 500);
+          }
+        } else {
+          // Fallback para getElectionSettings
+          const settings = await getElectionSettings(supabase);
+          if (settings) {
+            setLevel(settings.election_level ?? 'MUNICIPAL');
+            setUf(settings.scope_state ?? '');
+            setName(settings.election_name ?? '');
+            
+            const dateValue = settings.election_date ? 
+              (settings.election_date.includes('T') ? 
+                settings.election_date.split('T')[0] : 
+                settings.election_date) : '';
+            setDate(dateValue);
+            
+            setTimezone(settings.timezone ?? 'America/Sao_Paulo');
+            
+            if (settings.scope_city && settings.scope_city_ibge) {
+              setTimeout(() => {
+                setCity({ ibge: Number(settings.scope_city_ibge), name: settings.scope_city });
+              }, 500);
+            }
+          }
         }
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    })();
+    };
+    
+    loadData();
   }, [open, supabase]);
 
   useEffect(() => {
@@ -49,7 +93,13 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
   }, [level, uf]);
 
   const save = async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      console.error('❌ Supabase client não disponível');
+      alert("Erro: Cliente Supabase não disponível.");
+      return;
+    }
+    
+    console.log('🔍 Iniciando salvamento das configurações de eleição...');
     
     // Validações antes de salvar
     if (!name.trim()) {
@@ -85,20 +135,41 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
         election_level: level,
         scope_state: level !== 'FEDERAL' ? (uf || null) : null,
         scope_city: level === 'MUNICIPAL' ? (city?.name ?? null) : null,
-        scope_city_ibge: level === 'MUNICIPAL' ? (city?.ibge ?? null) : null,
+        scope_city_ibge: level === 'MUNICIPAL' && city?.ibge ? String(city.ibge) : null,
         timezone: timezone,
         uf: level !== 'FEDERAL' ? (uf || null) : null,
         city: level === 'MUNICIPAL' ? (city?.name ?? null) : null,
       };
+      
+      console.log('📤 Payload a ser enviado:', payload);
+      console.log('🔍 Chamando upsertElectionCurrent...');
+      
       const saved = await upsertElectionCurrent(supabase, payload);
+      
+      console.log('✅ Configurações salvas com sucesso:', saved);
+      
       onSaved?.(saved);
       onClose();
     } catch (e: any) {
+      console.error('❌ Erro ao salvar configurações:', e);
+      console.error('❌ Detalhes do erro:', {
+        message: e.message,
+        code: e.code,
+        details: e.details,
+        hint: e.hint,
+        stack: e.stack
+      });
+      
       // Melhorar mensagem de erro para constraint violations
       let errorMessage = e.message;
       if (errorMessage.includes('es_scope_chk')) {
         errorMessage = "Erro de validação: Para eleições municipais é obrigatório informar estado e município. Para eleições estaduais é obrigatório informar o estado.";
+      } else if (errorMessage.includes('permission denied')) {
+        errorMessage = "Erro de permissão: Você não tem permissão para salvar configurações de eleição. Verifique se você é um administrador.";
+      } else if (errorMessage.includes('row-level security')) {
+        errorMessage = "Erro de segurança: Política de segurança impede o salvamento. Verifique as políticas RLS da tabela election_settings.";
       }
+      
       alert("Falha ao salvar configurações: " + errorMessage);
     } finally {
       setLoading(false);

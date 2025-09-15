@@ -120,7 +120,7 @@ export async function countVotes(kind: "CONFIRMADO" | "PROVAVEL", profile?: any)
 }
 
 export async function getDefaultGoal() {
-  return await (getSupabaseClient() as any)?.from("org_settings").select("default_goal").eq("id",1).single();
+  return await (getSupabaseClient() as any)?.from("org_settings").select("default_goal").eq("id",1).maybeSingle(); // 👈 evita erro "0 rows"
 }
 
 export async function listLeaderStats() {
@@ -133,5 +133,5 @@ export async function setRole(userId: string, role: "ADMIN"|"LEADER") {
 }
 
 export async function upsertLeaderGoal(leaderId: string, goal: number) {
-  return await (getSupabaseClient() as any)?.from("leader_targets").upsert({ leader_id: leaderId, goal }).select().single();
+  return await (getSupabaseClient() as any)?.from("leader_targets").upsert({ leader_id: leaderId, goal }).select().maybeSingle(); // 👈 evita erro "0 rows"
 }

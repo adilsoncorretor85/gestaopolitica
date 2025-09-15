@@ -15,7 +15,7 @@ export async function getCurrentProfile() {
     .from("profiles")
     .select("id, role, full_name")
     .eq("id", user.id)
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   return data ?? null;
 }

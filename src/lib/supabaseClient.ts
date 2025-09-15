@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+console.log('🔍 [supabaseClient] Carregando configuração do Supabase');
+
 // Em Vite, use import.meta.env (NÃO use process.env)
 const env = import.meta.env;
 
@@ -10,6 +12,8 @@ const anon = env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 if (!url || !anon) {
   console.error('ENV faltando: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env na RAIZ do projeto.');
+  console.error('URL:', url);
+  console.error('ANON:', anon ? 'definida' : 'não definida');
 }
 
 export const supabase: SupabaseClient | null =

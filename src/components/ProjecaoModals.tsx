@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { X, Save, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   upsertCityGoalWithUpsert,
   saveNeighborhoodGoal,
-  listCityGoals
+  listCityGoals,
+  deleteCityGoal,
+  deleteNeighborhoodGoal
 } from '@/services/projecoes';
 import type { CityGoal, NeighborhoodGoal } from '@/types/projecoes';
+import CityAutocomplete from './CityAutocomplete';
+import { useElection } from '@/contexts/ElectionContext';
 
 // Lista de UFs brasileiras
 const UFS = [
@@ -24,6 +28,7 @@ interface CityGoalModalProps {
 }
 
 export function CityGoalModal({ isOpen, onClose, onSuccess, editData, defaultDeadline, onToast }: CityGoalModalProps) {
+  const { election } = useElection();
   const [formData, setFormData] = useState({
     city: '',
     state: '',
@@ -42,14 +47,16 @@ export function CityGoalModal({ isOpen, onClose, onSuccess, editData, defaultDea
         deadline: editData.deadline || ''
       });
     } else {
+      // Pré-selecionar estado da eleição se disponível
+      const electionState = election?.scope_state || '';
       setFormData({
         city: '',
-        state: '',
+        state: electionState,
         goal: '',
         deadline: defaultDeadline || ''
       });
     }
-  }, [editData, isOpen, defaultDeadline]);
+  }, [editData, isOpen, defaultDeadline, election]);
 
   // Forçar o deadline quando o modal abrir
   useEffect(() => {
@@ -62,6 +69,25 @@ export function CityGoalModal({ isOpen, onClose, onSuccess, editData, defaultDea
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Validação manual dos campos obrigatórios
+    if (!formData.city.trim()) {
+      setError('Cidade é obrigatória');
+      setLoading(false);
+      return;
+    }
+    
+    if (!formData.state.trim()) {
+      setError('Estado é obrigatório');
+      setLoading(false);
+      return;
+    }
+    
+    if (!formData.goal || parseInt(formData.goal) <= 0) {
+      setError('Meta total deve ser maior que zero');
+      setLoading(false);
+      return;
+    }
 
     try {
       await upsertCityGoalWithUpsert({
@@ -76,7 +102,40 @@ export function CityGoalModal({ isOpen, onClose, onSuccess, editData, defaultDea
       onClose();
     } catch (err: any) {
       console.error('❌ Erro ao salvar meta da cidade:', err);
-      const errorMessage = err.message || 'Erro ao salvar meta da cidade';
+      let errorMessage = err.message || 'Erro ao salvar meta da cidade';
+      
+      // Tratar erro de autenticação especificamente
+      if (errorMessage.includes('não autenticado') || errorMessage.includes('authentication')) {
+        errorMessage = 'Sua sessão expirou. Por favor, recarregue a página e faça login novamente.';
+      }
+      
+      onToast(errorMessage, 'error');
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editData) return;
+    
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir a meta da cidade ${editData.city} - ${editData.state}?\n\nEsta ação não pode ser desfeita.`
+    );
+    
+    if (!confirmed) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await deleteCityGoal(editData.city, editData.state);
+      onToast('Meta da cidade excluída com sucesso!', 'success');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error('❌ Erro ao excluir meta da cidade:', err);
+      const errorMessage = err.message || 'Erro ao excluir meta da cidade';
       onToast(errorMessage, 'error');
       setError(errorMessage);
     } finally {
@@ -113,12 +172,11 @@ export function CityGoalModal({ isOpen, onClose, onSuccess, editData, defaultDea
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Cidade *
             </label>
-            <input
-              type="text"
+            <CityAutocomplete
               value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
+              onChange={(city, state) => setFormData({ ...formData, city, state })}
+              placeholder="Digite o nome da cidade..."
+              filterByState={formData.state}
             />
           </div>
 
@@ -165,26 +223,39 @@ export function CityGoalModal({ isOpen, onClose, onSuccess, editData, defaultDea
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              <span>{loading ? 'Salvando...' : 'Salvar'}</span>
-            </button>
+          <div className="flex justify-between pt-4">
+            {editData && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Excluir</span>
+              </button>
+            )}
+            <div className="flex space-x-3 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{loading ? 'Salvando...' : 'Salvar'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -265,6 +336,33 @@ export function NeighborhoodGoalModal({ isOpen, onClose, onSuccess, editData, on
     } catch (err: any) {
       console.error('❌ Erro ao salvar meta do bairro:', err);
       const errorMessage = err.message || 'Erro ao salvar meta do bairro';
+      onToast(errorMessage, 'error');
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editData?.id) return;
+    
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir a meta do bairro ${editData.neighborhood} - ${editData.city}?\n\nEsta ação não pode ser desfeita.`
+    );
+    
+    if (!confirmed) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await deleteNeighborhoodGoal(editData.id);
+      onToast('Meta do bairro excluída com sucesso!', 'success');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error('❌ Erro ao excluir meta do bairro:', err);
+      const errorMessage = err.message || 'Erro ao excluir meta do bairro';
       onToast(errorMessage, 'error');
       setError(errorMessage);
     } finally {
@@ -369,26 +467,39 @@ export function NeighborhoodGoalModal({ isOpen, onClose, onSuccess, editData, on
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              <span>{loading ? 'Salvando...' : 'Salvar'}</span>
-            </button>
+          <div className="flex justify-between pt-4">
+            {editData && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Excluir</span>
+              </button>
+            )}
+            <div className="flex space-x-3 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{loading ? 'Salvando...' : 'Salvar'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

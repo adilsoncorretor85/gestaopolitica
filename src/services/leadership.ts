@@ -215,7 +215,7 @@ export async function upsertProfileLeadership(profileId: string, payload: Leader
     .from('profile_leaderships')
     .upsert(toInsert, { onConflict: 'profile_id' })
     .select('*')
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   if (error) throw error;
   return data as ProfileLeadership;
@@ -254,7 +254,7 @@ export async function upsertProfileLeadershipLegacy(payload: {
     .from('profile_leaderships')
     .upsert(row, { onConflict: 'profile_id' })
     .select('*')
-    .single();
+    .maybeSingle(); // 👈 evita erro "0 rows"
 
   if (error) {
     console.error('[leadership] upsert error', error);
