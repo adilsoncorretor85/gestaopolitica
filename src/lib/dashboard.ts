@@ -36,17 +36,17 @@ export async function getGoalSummary(): Promise<GoalSummary> {
     if (election?.election_level === 'ESTADUAL') {
       // Eleição Estadual: somar metas das cidades
       console.log('🔍 [getGoalSummary] Calculando meta para eleição ESTADUAL (cidades)...');
-      const cityGoals = await supabase.from("city_goals").select("goal");
+      const cityGoals = await supabase.from("city_goals").select("goal_total");
       if (!cityGoals.error && cityGoals.data) {
-        calculatedGoal = cityGoals.data.reduce((sum, row: any) => sum + (row.goal || 0), 0);
+        calculatedGoal = cityGoals.data.reduce((sum, row: any) => sum + (row.goal_total || 0), 0);
         console.log('🔍 [getGoalSummary] Meta calculada das cidades:', calculatedGoal);
       }
     } else if (election?.election_level === 'MUNICIPAL') {
       // Eleição Municipal: somar metas dos bairros
       console.log('🔍 [getGoalSummary] Calculando meta para eleição MUNICIPAL (bairros)...');
-      const hoodGoals = await supabase.from("hood_goals").select("goal");
-      if (!hoodGoals.error && hoodGoals.data) {
-        calculatedGoal = hoodGoals.data.reduce((sum, row: any) => sum + (row.goal || 0), 0);
+      const neighborhoodGoals = await supabase.from("neighborhood_goals").select("goal_total");
+      if (!neighborhoodGoals.error && neighborhoodGoals.data) {
+        calculatedGoal = neighborhoodGoals.data.reduce((sum, row: any) => sum + (row.goal_total || 0), 0);
         console.log('🔍 [getGoalSummary] Meta calculada dos bairros:', calculatedGoal);
       }
     }
@@ -120,17 +120,17 @@ export async function updateOrgGoalFromElectionType(): Promise<number> {
     if (election.election_level === 'ESTADUAL') {
       // Eleição Estadual: somar metas das cidades
       console.log('🔍 [updateOrgGoalFromElectionType] Calculando meta para eleição ESTADUAL (cidades)...');
-      const cityGoals = await supabase.from("city_goals").select("goal");
+      const cityGoals = await supabase.from("city_goals").select("goal_total");
       if (!cityGoals.error && cityGoals.data) {
-        calculatedGoal = cityGoals.data.reduce((sum, row: any) => sum + (row.goal || 0), 0);
+        calculatedGoal = cityGoals.data.reduce((sum, row: any) => sum + (row.goal_total || 0), 0);
         console.log('🔍 [updateOrgGoalFromElectionType] Meta calculada das cidades:', calculatedGoal);
       }
     } else if (election.election_level === 'MUNICIPAL') {
       // Eleição Municipal: somar metas dos bairros
       console.log('🔍 [updateOrgGoalFromElectionType] Calculando meta para eleição MUNICIPAL (bairros)...');
-      const hoodGoals = await supabase.from("hood_goals").select("goal");
-      if (!hoodGoals.error && hoodGoals.data) {
-        calculatedGoal = hoodGoals.data.reduce((sum, row: any) => sum + (row.goal || 0), 0);
+      const neighborhoodGoals = await supabase.from("neighborhood_goals").select("goal_total");
+      if (!neighborhoodGoals.error && neighborhoodGoals.data) {
+        calculatedGoal = neighborhoodGoals.data.reduce((sum, row: any) => sum + (row.goal_total || 0), 0);
         console.log('🔍 [updateOrgGoalFromElectionType] Meta calculada dos bairros:', calculatedGoal);
       }
     }
