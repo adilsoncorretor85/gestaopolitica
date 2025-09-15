@@ -501,6 +501,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Lideranças - Apenas para Admin */}
+              {console.log('🔍 DEBUG Top Leaders:', { isAdminUser, topLeadersLength: topLeaders.length, topLeaders })}
               {isAdminUser && topLeaders.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top 5 Lideranças</h3>
