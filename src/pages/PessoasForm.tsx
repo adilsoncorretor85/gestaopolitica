@@ -70,6 +70,15 @@ export default function PessoasFormPage() {
     loadLeaders();
   }, [id]);
 
+  // Limpeza do timeout quando o componente for desmontado
+  useEffect(() => {
+    return () => {
+      if (cepRef.current) {
+        clearTimeout(cepRef.current);
+      }
+    };
+  }, []);
+
   const loadPerson = async () => {
     if (!id) return;
     
@@ -153,7 +162,7 @@ export default function PessoasFormPage() {
       if (d.length !== 8) return;        // só busca com CEP completo
       
       setLoadingCep(true);
-      const adr = await fetchAddressByCep(d);
+      const adr = await fetchAddressByCep(d).catch(() => null);
       setLoadingCep(false);
       
       if (!adr) {
