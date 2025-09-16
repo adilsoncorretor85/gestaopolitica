@@ -107,22 +107,27 @@ export default function DashboardPage() {
         const countdown = formatCountdownWithTimezone(countdownData.date, countdownData.tz);
         setCountdownText(countdown);
         
+        // Buscar election_level diretamente do publicSettings
+        const { getPublicSettings } = await import('@/services/publicSettings');
+        const publicSettings = await getPublicSettings();
+        
         // Debug: verificar os dados que estão sendo exibidos
         console.log('🔍 [Dashboard] Dados para exibição:', {
           name: countdownData.name,
           date: countdownData.date,
           formattedDate: new Date(countdownData.date).toLocaleDateString('pt-BR'),
-          tz: countdownData.tz
+          tz: countdownData.tz,
+          election_level: publicSettings?.election_level
         });
         
-             // Criar label dinâmico baseado no tipo de eleição
-             const electionType = countdownData.election_level === 'MUNICIPAL' ? 'Municipal' : 
-                                 countdownData.election_level === 'ESTADUAL' ? 'Estadual' : 
-                                 countdownData.election_level === 'FEDERAL' ? 'Federal' : 'Eleição';
-             
-             // Corrigir a data para evitar problemas de fuso horário
-             const electionDate = new Date(countdownData.date + 'T00:00:00');
-             setElectionLabel(`${electionType} • ${electionDate.toLocaleDateString('pt-BR')}`);
+        // Criar label dinâmico baseado no tipo de eleição
+        const electionType = publicSettings?.election_level === 'MUNICIPAL' ? 'Municipal' : 
+                            publicSettings?.election_level === 'ESTADUAL' ? 'Estadual' : 
+                            publicSettings?.election_level === 'FEDERAL' ? 'Federal' : 'Eleição';
+        
+        // Corrigir a data para evitar problemas de fuso horário
+        const electionDate = new Date(countdownData.date + 'T00:00:00');
+        setElectionLabel(`${electionType} • ${electionDate.toLocaleDateString('pt-BR')}`);
       } else {
         console.warn('⚠️ [Dashboard] Nenhum dado de countdown encontrado');
         setCountdownText("Erro ao carregar");
