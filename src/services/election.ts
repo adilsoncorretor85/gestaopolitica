@@ -137,6 +137,46 @@ export function formatCountdown(dateISO: string): string {
   return past ? `Encerrada há ${text}` : `Faltam ${text}`;
 }
 
+/**
+ * Retorna uma string pronta para exibir considerando o fuso horário configurado.
+ * Versão melhorada que usa o fuso horário da eleição.
+ */
+export function formatCountdownWithTimezone(dateISO: string, timezone: string = 'America/Sao_Paulo'): string {
+  try {
+    // Obter a data atual no fuso horário configurado
+    const now = new Date();
+    const todayInTimezone = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    
+    // Converter para formato ISO (YYYY-MM-DD)
+    const todayISO = todayInTimezone;
+    
+    // Garantir que a data da eleição seja tratada como data local (sem conversão de fuso)
+    const electionDate = new Date(dateISO + 'T00:00:00');
+    
+    // Verificar se a eleição já passou
+    const past = electionDate.getTime() < new Date(todayISO).getTime();
+
+    const { y, m, d } = past
+      ? diffYMD(dateISO, todayISO)  // já passou
+      : diffYMD(todayISO, dateISO); // falta
+
+    const p = (n: number, s: string, p: string) => (n ? `${n} ${n === 1 ? s : p}` : '');
+    const parts = [p(y,'ano','anos'), p(m,'mês','meses'), p(d,'dia','dias')].filter(Boolean);
+    const text = parts.join(' e ');
+
+    return past ? `Encerrada há ${text}` : `Faltam ${text}`;
+  } catch (error) {
+    console.warn('⚠️ Erro ao calcular countdown com timezone, usando fallback:', error);
+    // Fallback para a função original se houver erro
+    return formatCountdown(dateISO);
+  }
+}
+
 /** Aliases úteis (não obrigatórios, mas ajudam em outros pontos do app) */
 export const getActiveElection = getElectionSettings;
 
@@ -163,6 +203,8 @@ export async function upsertElectionCurrent(
 
   console.log('📋 [upsertElectionCurrent] Registro atual encontrado:', current);
 
+  let result: ElectionSettings;
+
   // Se existe registro atual, atualizar; senão, inserir novo
   if (current?.id) {
     console.log('💾 [upsertElectionCurrent] Atualizando registro existente...');
@@ -179,7 +221,7 @@ export async function upsertElectionCurrent(
     }
 
     console.log('✅ [upsertElectionCurrent] Atualização bem-sucedida:', data);
-    return data as ElectionSettings;
+    result = data as ElectionSettings;
   } else {
     console.log('💾 [upsertElectionCurrent] Inserindo novo registro...');
     const { data, error } = await supabase
@@ -200,6 +242,35 @@ export async function upsertElectionCurrent(
     }
 
     console.log('✅ [upsertElectionCurrent] Inserção bem-sucedida:', data);
-    return data as ElectionSettings;
+    result = data as ElectionSettings;
   }
+
+  // Atualizar public_settings manualmente
+  try {
+    console.log('🔄 [upsertElectionCurrent] Atualizando public_settings...');
+    const publicSettingsPayload = {
+      election_name: result.election_name,
+      election_date: result.election_date,
+      timezone: result.timezone,
+      election_level: result.election_level,
+      scope_state: result.scope_state,
+      scope_city: result.scope_city,
+      scope_city_ibge: result.scope_city_ibge,
+    };
+
+    const { error: publicError } = await supabase
+      .from('public_settings')
+      .upsert({ id: 1, ...publicSettingsPayload });
+
+    if (publicError) {
+      console.warn('⚠️ [upsertElectionCurrent] Erro ao atualizar public_settings:', publicError);
+      // Não falha a operação principal se public_settings falhar
+    } else {
+      console.log('✅ [upsertElectionCurrent] public_settings atualizado com sucesso');
+    }
+  } catch (publicError) {
+    console.warn('⚠️ [upsertElectionCurrent] Erro inesperado ao atualizar public_settings:', publicError);
+  }
+
+  return result;
 }

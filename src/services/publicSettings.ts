@@ -25,6 +25,15 @@ export async function getPublicSettings(
     const sb = client ?? sbDefault;
     
     console.log('🔍 [getPublicSettings] Tentando buscar public_settings...');
+    
+    // Primeiro, verificar se a tabela existe e tem dados
+    const { data: allData, error: allError } = await sb
+      .from('public_settings')
+      .select('*');
+    
+    console.log('🔍 [getPublicSettings] Todos os dados da tabela:', { allData, allError });
+    
+    // Agora buscar o registro específico
     const { data, error } = await sb
       .from('public_settings')
       .select('*')
@@ -42,9 +51,19 @@ export async function getPublicSettings(
     }
 
     if (data) {
-      console.log('✅ [getPublicSettings] Dados encontrados:', data);
+      console.log('✅ [getPublicSettings] Dados encontrados:', {
+        id: data.id,
+        election_name: data.election_name,
+        election_date: data.election_date,
+        election_level: data.election_level,
+        timezone: data.timezone,
+        scope_state: data.scope_state,
+        scope_city: data.scope_city,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      });
     } else {
-      console.warn('⚠️ [getPublicSettings] Nenhum dado encontrado');
+      console.warn('⚠️ [getPublicSettings] Nenhum dado encontrado para id=1');
     }
 
     return data as PublicSettings;
@@ -65,31 +84,47 @@ export async function loadCountdownData(
     // 1. Tentar public_settings primeiro (mais rápido)
     const publicSettings = await getPublicSettings(client);
     
+    console.log('🔍 [loadCountdownData] public_settings carregado:', publicSettings);
+    
     if (publicSettings?.election_date) {
-      console.log('✅ Countdown: usando public_settings (cache)');
-      return {
+      console.log('✅ [loadCountdownData] usando public_settings (cache):', {
         date: publicSettings.election_date,
-        tz: publicSettings.timezone || 'America/Sao_Paulo',
-        name: publicSettings.election_name
-      };
+        name: publicSettings.election_name,
+        timezone: publicSettings.timezone
+      });
+             return {
+               date: publicSettings.election_date,
+               tz: publicSettings.timezone || 'America/Sao_Paulo',
+               name: publicSettings.election_name,
+               election_level: publicSettings.election_level
+             };
     }
 
     // 2. Fallback para RPC se public_settings não disponível
-    console.log('⚠️ Countdown: public_settings não disponível, usando RPC fallback');
+    console.log('⚠️ [loadCountdownData] public_settings não disponível, usando RPC fallback');
     const { getElectionSettings } = await import('./election');
     const election = await getElectionSettings(client);
     
+    console.log('🔍 [loadCountdownData] election_settings carregado:', election);
+    
     if (election?.election_date) {
-      return {
+      console.log('✅ [loadCountdownData] usando election_settings (fallback):', {
         date: election.election_date,
-        tz: election.timezone || 'America/Sao_Paulo',
-        name: election.election_name
-      };
+        name: election.election_name,
+        timezone: election.timezone
+      });
+             return {
+               date: election.election_date,
+               tz: election.timezone || 'America/Sao_Paulo',
+               name: election.election_name,
+               election_level: election.election_level
+             };
     }
 
+    console.warn('⚠️ [loadCountdownData] Nenhuma configuração de eleição encontrada');
     return null;
   } catch (error) {
-    console.error('❌ Erro ao carregar dados do countdown:', error);
+    console.error('❌ [loadCountdownData] Erro ao carregar dados do countdown:', error);
     return null;
   }
 }

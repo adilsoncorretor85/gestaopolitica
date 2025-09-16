@@ -3,7 +3,6 @@ import { X, Save, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   upsertCityGoalWithUpsert,
   saveNeighborhoodGoal,
-  listCityGoals,
   deleteCityGoal,
   deleteNeighborhoodGoal
 } from '@/services/projecoes';
@@ -273,21 +272,16 @@ interface NeighborhoodGoalModalProps {
 }
 
 export function NeighborhoodGoalModal({ isOpen, onClose, onSuccess, editData, onToast }: NeighborhoodGoalModalProps) {
+  const { election } = useElection();
   const [formData, setFormData] = useState({
     city: '',
     state: '',
     neighborhood: '',
     goal: ''
   });
-  const [cities, setCities] = useState<CityGoal[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      loadCities();
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     if (editData) {
@@ -298,23 +292,31 @@ export function NeighborhoodGoalModal({ isOpen, onClose, onSuccess, editData, on
         goal: editData.goal.toString()
       });
     } else {
+      // Pré-selecionar cidade e estado da eleição se for municipal
+      const electionCity = election?.scope_city || '';
+      const electionState = election?.scope_state || '';
       setFormData({
-        city: '',
-        state: '',
+        city: electionCity,
+        state: electionState,
         neighborhood: '',
         goal: ''
       });
     }
-  }, [editData, isOpen]);
+  }, [editData, isOpen, election]);
 
-  const loadCities = async () => {
-    try {
-      const data = await listCityGoals();
-      setCities(data || []);
-    } catch (err) {
-      console.error('Erro ao carregar cidades:', err);
+  // Efeito adicional para garantir que os dados sejam aplicados quando o modal abrir
+  useEffect(() => {
+    if (isOpen && !editData && election) {
+      const electionCity = election?.scope_city || '';
+      const electionState = election?.scope_state || '';
+      setFormData(prev => ({
+        ...prev,
+        city: electionCity,
+        state: electionState
+      }));
     }
-  };
+  }, [isOpen, editData, election]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,27 +401,13 @@ export function NeighborhoodGoalModal({ isOpen, onClose, onSuccess, editData, on
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Cidade *
             </label>
-            <select
+            <CityAutocomplete
               value={formData.city}
-              onChange={(e) => {
-                const selectedCity = cities.find(c => c.city === e.target.value);
-                setFormData({ 
-                  ...formData, 
-                  city: e.target.value,
-                  state: selectedCity?.state || ''
-                });
-              }}
+              onChange={(city, state) => setFormData({ ...formData, city, state })}
+              placeholder="Digite o nome da cidade..."
+              filterByState={formData.state}
               disabled={!!editData}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
-              required
-            >
-              <option value="">Selecione uma cidade</option>
-              {cities.map((city, index) => (
-                <option key={`${city.city}-${city.state}-${index}`} value={city.city}>
-                  {city.city.toUpperCase()} - {city.state.toUpperCase()}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>

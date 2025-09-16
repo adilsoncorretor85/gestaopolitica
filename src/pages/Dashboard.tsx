@@ -9,7 +9,8 @@ import { getSupabaseClient, handleSupabaseError } from '@/lib/supabaseClient';
 import { formatCountdown } from '@/services/election';
 import { useLeaderGoal, useInvalidateLeaderGoal } from '@/hooks/useLeaderGoal';
 import DashboardGoalCard from '@/components/DashboardGoalCard';
-import { Users, UserCheck, Target, TrendingUp, Calendar, Settings } from 'lucide-react';
+import BirthdayCard from '@/components/BirthdayCard';
+import { Users, UserCheck, Target, TrendingUp, Calendar, Settings, CheckCircle } from 'lucide-react';
 
 // Tipos para o Dashboard
 type TopLeader = {
@@ -99,22 +100,89 @@ export default function DashboardPage() {
       const { loadCountdownData } = await import('@/services/publicSettings');
       const countdownData = await loadCountdownData();
       
+      console.log('🔍 [Dashboard] Dados do countdown carregados:', countdownData);
+      
       if (countdownData) {
-        const { formatCountdown } = await import('@/services/election');
-        const countdown = formatCountdown(countdownData.date);
+        const { formatCountdownWithTimezone } = await import('@/services/election');
+        const countdown = formatCountdownWithTimezone(countdownData.date, countdownData.tz);
         setCountdownText(countdown);
-        setElectionLabel(`${countdownData.name || 'Eleição'} • ${new Date(countdownData.date).toLocaleDateString('pt-BR')}`);
+        
+        // Debug: verificar os dados que estão sendo exibidos
+        console.log('🔍 [Dashboard] Dados para exibição:', {
+          name: countdownData.name,
+          date: countdownData.date,
+          formattedDate: new Date(countdownData.date).toLocaleDateString('pt-BR'),
+          tz: countdownData.tz
+        });
+        
+             // Criar label dinâmico baseado no tipo de eleição
+             const electionType = countdownData.election_level === 'MUNICIPAL' ? 'Municipal' : 
+                                 countdownData.election_level === 'ESTADUAL' ? 'Estadual' : 
+                                 countdownData.election_level === 'FEDERAL' ? 'Federal' : 'Eleição';
+             
+             // Corrigir a data para evitar problemas de fuso horário
+             const electionDate = new Date(countdownData.date + 'T00:00:00');
+             setElectionLabel(`${electionType} • ${electionDate.toLocaleDateString('pt-BR')}`);
       } else {
+        console.warn('⚠️ [Dashboard] Nenhum dado de countdown encontrado');
         setCountdownText("Erro ao carregar");
         setElectionLabel("Erro na configuração");
       }
       
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('❌ [Dashboard] Erro ao carregar configurações de eleição:', error);
       setCountdownText("Erro ao carregar");
       setElectionLabel("Erro na configuração");
     } finally {
       setCountdownLoading(false);
+    }
+  };
+
+  const refreshElectionSettings = async () => {
+    console.log('🔄 [Dashboard] Forçando refresh das configurações de eleição...');
+    
+    try {
+      // Primeiro, verificar se há discrepâncias
+      const { checkSettingsSync, syncPublicSettings, forceUpdatePublicSettings } = await import('@/services/syncElectionSettings');
+      const syncResult = await checkSettingsSync();
+      
+      console.log('🔍 [Dashboard] Resultado da verificação de sincronização:', syncResult);
+      
+      if (!syncResult.isSynced) {
+        console.log('⚠️ [Dashboard] Discrepâncias encontradas, sincronizando...');
+        const syncSuccess = await syncPublicSettings();
+        
+        if (syncSuccess) {
+          console.log('✅ [Dashboard] Sincronização bem-sucedida');
+        } else {
+          console.warn('⚠️ [Dashboard] Falha na sincronização, tentando atualização forçada...');
+          
+          // Se a sincronização falhar, tentar atualização forçada com dados corretos
+          if (syncResult.electionData) {
+            const forceSuccess = await forceUpdatePublicSettings({
+              election_name: syncResult.electionData.election_name,
+              election_date: syncResult.electionData.election_date,
+              election_level: syncResult.electionData.election_level || syncResult.electionData.election_type,
+              timezone: syncResult.electionData.timezone,
+              scope_state: syncResult.electionData.scope_state || syncResult.electionData.uf,
+              scope_city: syncResult.electionData.scope_city || syncResult.electionData.city,
+            });
+            
+            if (forceSuccess) {
+              console.log('✅ [Dashboard] Atualização forçada bem-sucedida');
+            } else {
+              console.warn('⚠️ [Dashboard] Falha na atualização forçada');
+            }
+          }
+        }
+      }
+      
+      // Recarregar as configurações
+      await loadElectionSettings();
+    } catch (error) {
+      console.error('❌ [Dashboard] Erro ao refresh das configurações:', error);
+      // Ainda assim, tentar recarregar
+      await loadElectionSettings();
     }
   };
 
@@ -371,7 +439,7 @@ export default function DashboardPage() {
     {
       titulo: isAdminUser ? 'Votos Confirmados' : 'Meus Votos Confirmados',
       valor: stats.confirmedVotes,
-      icon: Target,
+      icon: CheckCircle,
       cor: 'bg-emerald-500',
       descricao: `${stats.probableVotes} prováveis`
     },
@@ -379,20 +447,10 @@ export default function DashboardPage() {
     ...(isAdminUser && goalSummary ? [{
       titulo: 'Meta Geral',
       valor: goalSummary.effective_total_goal,
-      icon: Settings,
+      icon: Target,
       cor: 'bg-purple-500',
-      descricao: `Líderes: ${goalSummary.total_leaders_goal}`,
-      editable: true,
-      onUpdate: handleUpdateOrgGoal
+      descricao: `Líderes: ${goalSummary.total_leaders_goal}`
     }] : []),
-    // Card de Meta Pessoal (apenas para LÍDER) - será renderizado separadamente
-    {
-      titulo: isAdminUser ? 'Progresso da Meta' : 'Meu Progresso',
-      valor: `${progressoMeta}%`,
-      icon: TrendingUp,
-      cor: 'bg-purple-500',
-      descricao: `${stats.totalPeople}/${metaAtual}`
-    },
     // Card de contagem regressiva
     {
       titulo: 'Contagem regressiva',
@@ -461,7 +519,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Cards de Estatísticas */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isAdminUser ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isAdminUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
               {estatisticasCards.map((card, index) => {
                 const Icon = card.icon;
                 return (
@@ -470,15 +528,26 @@ export default function DashboardPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.titulo}</p>
-                          {card.editable && card.onUpdate && (
-                            <button
-                              onClick={card.onUpdate}
-                              className="text-xs bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 px-2 py-1 rounded transition-colors"
-                              title="Atualizar meta automaticamente"
-                            >
-                              ↻
-                            </button>
-                          )}
+                          <div className="flex items-center space-x-1">
+                            {card.refreshable && card.onRefresh && (
+                              <button
+                                onClick={card.onRefresh}
+                                className="text-xs bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 px-2 py-1 rounded transition-colors"
+                                title="Atualizar configurações de eleição"
+                              >
+                                ↻
+                              </button>
+                            )}
+                            {card.editable && card.onUpdate && (
+                              <button
+                                onClick={card.onUpdate}
+                                className="text-xs bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 px-2 py-1 rounded transition-colors"
+                                title="Atualizar meta automaticamente"
+                              >
+                                ⚙️
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatNumber(card.valor)}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{card.descricao}</p>
@@ -510,7 +579,7 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                   <span>{isAdminUser ? 'Contatos Realizados' : 'Meus Contatos'}</span>
-                  <span>{formatNumber(stats.totalPeople)} / {formatNumber(metaAtual)}</span>
+                  <span>{formatNumber(stats.totalPeople)} / {formatNumber(metaAtual)} ({progressoMeta}%)</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div 
@@ -578,6 +647,9 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Card de Aniversariantes */}
+            <BirthdayCard />
           </div>
         </main>
       </div>
