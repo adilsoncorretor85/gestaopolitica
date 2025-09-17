@@ -89,12 +89,41 @@ export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedR
         totalPages: Math.ceil((count || 0) / pageSize),
       };
     } else {
+      // Fallback: busca simples com ILIKE quando FTS não encontra resultados
+      console.log('[getPeople] Nenhum resultado FTS, tentando busca simples como fallback');
+      
+      let query = supabase.from('people').select(`
+        *,
+        owner:profiles(*)
+      `, { count: 'exact' })
+        .ilike('full_name', `%${search}%`)
+        .order('full_name', { ascending: true })
+        .range(from, to);
+
+      if (city) query = query.eq('city', city);
+      if (state) query = query.eq('state', state);
+
+      // Se for LEADER, só pode ver seus próprios contatos
+      if (profile.role === 'LEADER') {
+        query = query.eq('owner_id', profile.id);
+      } else if (ownerId && profile.role === 'ADMIN') {
+        query = query.eq('owner_id', ownerId);
+      }
+
+      const { data, error, count } = await query;
+      
+      if (error) {
+        throw error;
+      }
+
+      console.log('[getPeople] Resultados fallback:', data?.length || 0);
+      
       return {
-        data: [],
-        count: 0,
+        data: data as PersonWithProfile[] || [],
+        count: count || 0,
         page,
         pageSize,
-        totalPages: 0,
+        totalPages: Math.ceil((count || 0) / pageSize),
       };
     }
   }

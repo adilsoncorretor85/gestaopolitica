@@ -4,14 +4,16 @@ import { supabase } from '@/lib/supabaseClient';
 import { loadGoogleMaps } from '@/lib/googleMaps';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
+import { TagFilter } from '@/components/TagFilter';
 import useAuth from '@/hooks/useAuth';
 import { useElection } from '@/contexts/ElectionContext';
 import { useElection as useElectionStore } from '@/stores/useElection';
 import { getActiveElection } from '@/services/election';
-import { geocodeAddress } from '@/lib/geocode';
 import { normalizeKey } from '@/lib/normalize';
 import { Profile } from '@/types/database';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
+import { useThemeContext } from '@/components/ThemeProvider';
+import { tagsService, type Tag } from '@/services/tags';
 
 // Declaração de tipos para Google Maps
 declare const google: any;
@@ -47,6 +49,28 @@ const PersonPopup = ({ person }: { person: any }) => (
       {person.state && <p className="text-gray-700 dark:text-gray-300"><strong className="text-gray-900 dark:text-white">UF:</strong> {person.state}</p>}
       {person.vote_status && <p className="text-gray-700 dark:text-gray-300"><strong className="text-gray-900 dark:text-white">Status do voto:</strong> {person.vote_status}</p>}
       {person.leader_name && <p className="text-gray-700 dark:text-gray-300"><strong className="text-gray-900 dark:text-white">Líder:</strong> {person.leader_name}</p>}
+      
+      {/* Tags */}
+      {person.tags && Array.isArray(person.tags) && person.tags.length > 0 && (
+        <div className="text-gray-700 dark:text-gray-300">
+          <strong className="text-gray-900 dark:text-white">Tags:</strong>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {person.tags.map((tag: any, index: number) => (
+              <span 
+                key={index}
+                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                style={{ 
+                  backgroundColor: tag.color ? tag.color + '20' : '#e5e7eb', 
+                  borderColor: tag.color || '#9ca3af',
+                  color: tag.color || '#374151'
+                }}
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
     <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
       <a 
@@ -100,6 +124,7 @@ export default function Mapa() {
   const { profile: authProfile, isAdmin } = useAuth();
   const { defaultFilters } = useElection();
   const { election, setElection, hasAppliedMapLock, setHasAppliedMapLock } = useElectionStore();
+  const { isDark } = useThemeContext();
   
   // Converter o profile do useAuth para o tipo esperado pelo Header
   const profile: Profile | undefined = authProfile ? {
@@ -132,6 +157,12 @@ export default function Mapa() {
   const [selectedVoteStatus, setSelectedVoteStatus] = useState<string>("__all__");
   const [overrode, setOverrode] = useState(false);
   const [filtersApplied, setFiltersApplied] = useState(false);
+
+  // filtros de tags
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [tagMode, setTagMode] = useState<'ANY' | 'ALL'>('ANY');
+  const [loadingTags, setLoadingTags] = useState(false);
 
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   const [nbOptions, setNbOptions] = useState<string[]>([]);
@@ -212,12 +243,96 @@ export default function Mapa() {
         if (cancelled || !divRef.current) return;
 
         gRef.current = g;
+        
+        // Estilo dark para o Google Maps
+        const darkMapStyle = [
+          { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+          {
+            featureType: "administrative.locality",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }]
+          },
+          {
+            featureType: "poi",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }]
+          },
+          {
+            featureType: "poi.park",
+            elementType: "geometry",
+            stylers: [{ color: "#263c3f" }]
+          },
+          {
+            featureType: "poi.park",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#6b9a76" }]
+          },
+          {
+            featureType: "road",
+            elementType: "geometry",
+            stylers: [{ color: "#38414e" }]
+          },
+          {
+            featureType: "road",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#212a37" }]
+          },
+          {
+            featureType: "road",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#9ca5b3" }]
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry",
+            stylers: [{ color: "#746855" }]
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#1f2835" }]
+          },
+          {
+            featureType: "road.highway",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#f3d19c" }]
+          },
+          {
+            featureType: "transit",
+            elementType: "geometry",
+            stylers: [{ color: "#2f3948" }]
+          },
+          {
+            featureType: "transit.station",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }]
+          },
+          {
+            featureType: "water",
+            elementType: "geometry",
+            stylers: [{ color: "#17263c" }]
+          },
+          {
+            featureType: "water",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#515c6d" }]
+          },
+          {
+            featureType: "water",
+            elementType: "labels.text.stroke",
+            stylers: [{ color: "#17263c" }]
+          }
+        ];
+
         mapRef.current = new g.maps.Map(divRef.current, {
           center: { lat: -26.304, lng: -48.846 },
           zoom: 10, // Zoom menor para melhor visualização
           streetViewControl: false,
           mapTypeControl: true,
           fullscreenControl: true,
+          styles: isDark ? darkMapStyle : undefined
         });
 
         // Inicializar InfoWindow
@@ -236,7 +351,7 @@ export default function Mapa() {
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [isDark]);
 
   // Carregar opções do filtro de liderança (apenas admin)
   useEffect(() => {
@@ -265,6 +380,23 @@ export default function Mapa() {
     })();
   }, [isAdmin]);
 
+  // Carregar tags disponíveis
+  useEffect(() => {
+    const loadTags = async () => {
+      setLoadingTags(true);
+      try {
+        const tags = await tagsService.getAvailableTags();
+        setAvailableTags(tags);
+      } catch (error) {
+        console.error('[MAP] Erro ao carregar tags:', error);
+      } finally {
+        setLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, []);
+
   // Busca people + leaders e plota
   useEffect(() => {
     const g = gRef.current;
@@ -280,55 +412,126 @@ export default function Mapa() {
       if (!supabase) return;
 
       // --------- PESSOAS ----------
-      let peopleQuery = supabase
-        .from("people")
-        .select(`
-          id, full_name, whatsapp, city, neighborhood, state, vote_status,
-          latitude, longitude, owner_id,
-          profiles:owner_id(full_name)
-        `)
-        .not("latitude", "is", null)
-        .not("longitude", "is", null)
-        .limit(5000);
+      let peopleData: any[] = [];
+      let peopleErr: any = null;
 
-      if (isAdmin) {
-        if (selectedLeaderId !== "__all__") {
-          peopleQuery = peopleQuery.eq("owner_id", selectedLeaderId);
+      if (selectedTags.length > 0) {
+        // Usar RPC para busca com tags
+        try {
+          const tagIds = selectedTags.map(tag => tag.id);
+          const searchResult = await tagsService.searchPeopleWithTags('', tagIds, tagMode, 5000, 0);
+          
+          // Filtrar resultados baseado nos outros filtros
+          peopleData = searchResult.filter((person: any) => {
+            // Filtrar coordenadas válidas
+            if (!person.latitude || !person.longitude) return false;
+            
+            // Filtro de líder (admin only)
+            if (isAdmin && selectedLeaderId !== "__all__" && person.owner_id !== selectedLeaderId) {
+              return false;
+            }
+            
+            // Filtro de posse (líder não admin)
+            if (!isAdmin && person.owner_id !== authProfile?.id) {
+              return false;
+            }
+            
+            // Filtro de UF
+            if (selectedUF !== "__all__") {
+              const uf = selectedUF.toUpperCase();
+              const est = ESTADOS_BRASIL.find(e =>
+                e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === selectedUF.toLowerCase()
+              );
+              
+              if (est) {
+                const stateMatch = person.state && (
+                  person.state.toUpperCase().includes(est.sigla) || 
+                  person.state.toLowerCase().includes(est.nome.toLowerCase())
+                );
+                if (!stateMatch) return false;
+              } else {
+                if (person.state !== selectedUF) return false;
+              }
+            }
+            
+            // Filtro de cidade
+            if (selectedCityKey && person.city) {
+              if (!person.city.toLowerCase().includes(selectedCityKey.toLowerCase())) {
+                return false;
+              }
+            }
+            
+            // Filtro de bairro
+            if (selectedNeighborhood !== "__all__" && person.neighborhood !== selectedNeighborhood) {
+              return false;
+            }
+            
+            // Filtro de status do voto
+            if (selectedVoteStatus !== "__all__" && person.vote_status !== selectedVoteStatus) {
+              return false;
+            }
+            
+            return true;
+          });
+        } catch (error) {
+          console.error('[MAP] Erro na busca com tags:', error);
+          peopleErr = error;
+          peopleData = [];
         }
       } else {
-        // líder logado: apenas seus contatos
-        if (!authProfile?.id) return;
-        peopleQuery = peopleQuery.eq("owner_id", authProfile.id);
-      }
+        // Busca tradicional sem tags
+        let peopleQuery = supabase
+          .from("people")
+          .select(`
+            id, full_name, whatsapp, city, neighborhood, state, vote_status,
+            latitude, longitude, owner_id,
+            profiles:owner_id(full_name)
+          `)
+          .not("latitude", "is", null)
+          .not("longitude", "is", null)
+          .limit(5000);
 
-      if (selectedUF !== "__all__") {
-        // Usar a mesma lógica corrigida da página de Pessoas
-        const ESTADOS_BRASIL = [
-          { sigla: 'SC', nome: 'Santa Catarina' },
-          { sigla: 'PR', nome: 'Paraná' },
-          { sigla: 'RS', nome: 'Rio Grande do Sul' }
-          // ... outros estados
-        ];
-        
-        const uf = selectedUF.toUpperCase();
-        const est = ESTADOS_BRASIL.find(e =>
-          e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === selectedUF.toLowerCase()
-        );
-        
-        if (est) {
-          peopleQuery = peopleQuery.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+        if (isAdmin) {
+          if (selectedLeaderId !== "__all__") {
+            peopleQuery = peopleQuery.eq("owner_id", selectedLeaderId);
+          }
         } else {
-          peopleQuery = peopleQuery.eq("state", selectedUF);
+          // líder logado: apenas seus contatos
+          if (!authProfile?.id) return;
+          peopleQuery = peopleQuery.eq("owner_id", authProfile.id);
         }
-      }
-      if (selectedNeighborhood !== "__all__") peopleQuery = peopleQuery.eq("neighborhood", selectedNeighborhood);
-      if (selectedVoteStatus !== "__all__") peopleQuery = peopleQuery.eq("vote_status", selectedVoteStatus);
-      if (selectedCityKey) {
-        // Usar ILIKE em vez de city_norm que pode não existir
-        peopleQuery = peopleQuery.ilike("city", `%${selectedCityKey}%`);
-      }
 
-      const { data: peopleData, error: peopleErr } = await peopleQuery;
+        if (selectedUF !== "__all__") {
+          // Usar a mesma lógica corrigida da página de Pessoas
+          const ESTADOS_BRASIL = [
+            { sigla: 'SC', nome: 'Santa Catarina' },
+            { sigla: 'PR', nome: 'Paraná' },
+            { sigla: 'RS', nome: 'Rio Grande do Sul' }
+            // ... outros estados
+          ];
+          
+          const uf = selectedUF.toUpperCase();
+          const est = ESTADOS_BRASIL.find(e =>
+            e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === selectedUF.toLowerCase()
+          );
+          
+          if (est) {
+            peopleQuery = peopleQuery.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+          } else {
+            peopleQuery = peopleQuery.eq("state", selectedUF);
+          }
+        }
+        if (selectedNeighborhood !== "__all__") peopleQuery = peopleQuery.eq("neighborhood", selectedNeighborhood);
+        if (selectedVoteStatus !== "__all__") peopleQuery = peopleQuery.eq("vote_status", selectedVoteStatus);
+        if (selectedCityKey) {
+          // Usar ILIKE em vez de city_norm que pode não existir
+          peopleQuery = peopleQuery.ilike("city", `%${selectedCityKey}%`);
+        }
+
+        const result = await peopleQuery;
+        peopleData = result.data || [];
+        peopleErr = result.error;
+      }
       if (peopleErr) console.error("[MAP] erro pessoas:", peopleErr);
       
       console.log("[MAP] Pessoas encontradas:", peopleData?.length || 0);
@@ -352,9 +555,10 @@ export default function Mapa() {
         neighborhood: r.neighborhood as string | null,
         state: r.state as string | null,
         vote_status: r.vote_status as string | null,
-        leader_name: (r.profiles?.full_name as string) ?? null,
+        leader_name: selectedTags.length > 0 ? 'Líder não disponível' : (r.profiles?.full_name as string) ?? null,
         latitude: Number(r.latitude),
         longitude: Number(r.longitude),
+        tags: r.tags || null, // incluir tags se vieram do RPC
       }));
       
       console.log("[MAP] Pessoas mapeadas:", people.length);
@@ -508,10 +712,34 @@ export default function Mapa() {
     selectedCityKey,
     selectedNeighborhood,
     selectedVoteStatus,
+    selectedTags,
+    tagMode,
     filtersApplied,
   ]);
 
   const total = totals.people + totals.leaders;
+
+  // Handlers para tags
+  const handleTagsChange = (tags: Tag[]) => {
+    setSelectedTags(tags);
+  };
+
+  const handleTagModeChange = (mode: 'ANY' | 'ALL') => {
+    setTagMode(mode);
+  };
+
+  const clearAllFilters = () => {
+    setSelectedTags([]);
+    setSelectedUF("__all__");
+    setSelectedCity("__all__");
+    setSelectedCityKey("");
+    setSelectedNeighborhood("__all__");
+    setSelectedVoteStatus("__all__");
+    if (isAdmin) {
+      setSelectedLeaderId("__all__");
+    }
+    setOverrode(true);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -535,6 +763,32 @@ export default function Mapa() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mapa</h1>
                 <p className="text-gray-600 dark:text-gray-400">Visualização geográfica de pessoas e lideranças</p>
+              </div>
+            </div>
+
+            {/* Filtro por Tags */}
+            <div className="mb-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  <TagFilter
+                    availableTags={availableTags}
+                    selectedTags={selectedTags}
+                    onTagsChange={handleTagsChange}
+                    mode={tagMode}
+                    onModeChange={handleTagModeChange}
+                    loading={loadingTags}
+                  />
+                </div>
+                <div className="flex items-end">
+                  {(selectedTags.length > 0 || selectedUF !== "__all__" || selectedCity !== "__all__" || selectedNeighborhood !== "__all__" || selectedVoteStatus !== "__all__" || (isAdmin && selectedLeaderId !== "__all__")) && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 border border-red-300 dark:border-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      Limpar todos os filtros
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

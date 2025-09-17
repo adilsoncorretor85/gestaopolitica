@@ -61,14 +61,15 @@ export default function PessoasFormPage() {
     if (id) {
       loadPerson();
     } else {
-      // Para novas pessoas, sempre definir a data atual
+      // Para novas pessoas, sempre definir a data atual e o admin como líder padrão
       setFormData(prev => ({
         ...prev,
-        contacted_at: getCurrentDate()
+        contacted_at: getCurrentDate(),
+        owner_id: profile?.role === 'ADMIN' ? profile.id : undefined
       }));
     }
     loadLeaders();
-  }, [id]);
+  }, [id, profile]);
 
   // Limpeza do timeout quando o componente for desmontado
   useEffect(() => {
@@ -107,7 +108,26 @@ export default function PessoasFormPage() {
   const loadLeaders = async () => {
     try {
       const data = await listLeaders(true);
-      setLeaders(data || []);
+      let leadersWithAdmin = data || [];
+      
+      // Se for admin, adicionar o próprio admin na lista se não estiver presente
+      if (profile?.role === 'ADMIN' && profile.id && profile.full_name) {
+        const adminExists = leadersWithAdmin.some(leader => leader.id === profile.id);
+        if (!adminExists) {
+          leadersWithAdmin = [
+            {
+              id: profile.id,
+              email: '', // Email não é necessário para exibição
+              full_name: profile.full_name,
+              status: 'ACTIVE' as const,
+              invited_at: null
+            },
+            ...leadersWithAdmin
+          ];
+        }
+      }
+      
+      setLeaders(leadersWithAdmin);
     } catch (error) {
       console.error('Erro ao carregar líderes:', error);
     }
@@ -130,7 +150,9 @@ export default function PessoasFormPage() {
       state: state || undefined, 
       cep: cep || undefined 
     });
-    if (c) setCoords(c);
+    if (c && c.latitude && c.longitude) {
+      setCoords({ lat: c.latitude, lng: c.longitude });
+    }
   }
 
   // Handler para quando um endereço é selecionado no autocomplete
@@ -206,7 +228,10 @@ export default function PessoasFormPage() {
       state: addr.state || undefined,
       cep: addr.cep || undefined
     });
-    setCoords(g); // Centra o mapa no provável ponto
+    
+    if (g && g.latitude && g.longitude) {
+      setCoords({ lat: g.latitude, lng: g.longitude });
+    }
     setOpenMap(true);
   };
 
@@ -388,7 +413,12 @@ export default function PessoasFormPage() {
                           <option value="">Selecione um líder</option>
                           {leaders.map(leader => (
                             <option key={leader.id} value={leader.id}>
-                              {leader.status === 'PENDING' ? `${leader.full_name || 'Sem nome'} (pendente)` : (leader.full_name || 'Sem nome')}
+                              {leader.id === profile?.id 
+                                ? `${leader.full_name || 'Sem nome'} (Administrador)`
+                                : leader.status === 'PENDING' 
+                                  ? `${leader.full_name || 'Sem nome'} (pendente)` 
+                                  : (leader.full_name || 'Sem nome')
+                              }
                             </option>
                           ))}
                         </select>
@@ -529,7 +559,7 @@ export default function PessoasFormPage() {
                       <MapPin className="w-4 h-4" />
                       Definir no mapa
                     </button>
-                    {coords && (
+                    {coords && coords.lat && coords.lng && (
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         Marcado: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
                       </span>

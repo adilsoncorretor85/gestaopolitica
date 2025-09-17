@@ -1,0 +1,77 @@
+/*
+  # Full-Text Search (FTS) Implementation
+  
+  1. Add FTS column to people table
+  2. Create trigger for automatic FTS updates
+  3. Create GIN index for fast searching
+  4. Create search_people RPC function
+  5. Backfill existing data
+*/
+
+-- 1. Adicionar coluna FTS
+ALTER TABLE public.people 
+ADD COLUMN IF NOT EXISTS full_name_fts tsvector;
+
+-- 2. Criar função para atualizar FTS
+CREATE OR REPLACE FUNCTION public.people_set_full_name_fts()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.full_name_fts = to_tsvector('portuguese', unaccent(COALESCE(NEW.full_name, '')));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 3. Criar trigger
+DROP TRIGGER IF EXISTS trg_people_set_full_name_fts ON public.people;
+CREATE TRIGGER trg_people_set_full_name_fts
+  BEFORE INSERT OR UPDATE ON public.people
+  FOR EACH ROW EXECUTE FUNCTION public.people_set_full_name_fts();
+
+-- 4. Criar índice GIN
+CREATE INDEX IF NOT EXISTS people_full_name_fts 
+ON public.people USING gin(full_name_fts);
+
+-- 5. Remover função existente se houver (para evitar conflito de tipos)
+DROP FUNCTION IF EXISTS public.search_people(text, integer, integer);
+
+-- 6. Criar função RPC de busca
+CREATE OR REPLACE FUNCTION public.search_people(
+  q text,
+  p_limit integer DEFAULT 50,
+  p_offset integer DEFAULT 0
+)
+RETURNS TABLE(
+  id uuid,
+  full_name text,
+  city text,
+  state text,
+  rank real
+) 
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.id,
+    p.full_name,
+    p.city,
+    p.state,
+    ts_rank(p.full_name_fts, plainto_tsquery('portuguese', unaccent(q))) as rank
+  FROM public.people p
+  WHERE p.full_name_fts @@ plainto_tsquery('portuguese', unaccent(q))
+  ORDER BY rank DESC, p.full_name ASC
+  LIMIT p_limit
+  OFFSET p_offset;
+END;
+$$;
+
+-- 7. Backfill - popular dados existentes
+UPDATE public.people 
+SET full_name_fts = to_tsvector('portuguese', unaccent(COALESCE(full_name, '')))
+WHERE full_name_fts IS NULL;
+
+-- 8. Comentários para documentação
+COMMENT ON COLUMN public.people.full_name_fts IS 'Full-text search vector for full_name column';
+COMMENT ON FUNCTION public.search_people IS 'Search people using full-text search with Portuguese language support';
+COMMENT ON FUNCTION public.people_set_full_name_fts IS 'Trigger function to automatically update FTS column when full_name changes';

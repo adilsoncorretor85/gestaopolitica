@@ -339,21 +339,68 @@ export default function DashboardPage() {
     try {
       const supabase = getSupabaseClient();
       
-      // Query otimizada para top líderes usando agregação no banco
+      console.log('🔍 [loadTopLeaders] Iniciando carregamento dos top líderes...');
+      
+      // OPÇÃO 1: Usar a nova RPC otimizada (recomendado)
+      try {
+        let rpcParams = { limit_count: 5 };
+        
+        // Aplicar filtros se for eleição municipal
+        if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
+          console.log('🔍 [loadTopLeaders] Aplicando filtros municipais via RPC:', { 
+            city: defaultFilters.city, 
+            state: defaultFilters.state 
+          });
+          rpcParams = {
+            ...rpcParams,
+            filter_city: defaultFilters.city,
+            filter_state: defaultFilters.state
+          };
+        }
+        
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_top_leaders', rpcParams);
+        
+        if (!rpcError && rpcData) {
+          console.log('✅ [loadTopLeaders] Dados obtidos via RPC:', rpcData);
+          
+          const topLeadersData: TopLeader[] = rpcData.map(leader => ({
+            leader_id: leader.leader_id,
+            leader_name: leader.leader_name,
+            total_people: Number(leader.total_people),
+            confirmed_votes: Number(leader.confirmed_votes)
+          }));
+          
+          setTopLeaders(topLeadersData);
+          return; // Sucesso, sair da função
+        } else {
+          console.warn('⚠️ [loadTopLeaders] RPC falhou, usando método alternativo:', rpcError);
+        }
+      } catch (rpcError) {
+        console.warn('⚠️ [loadTopLeaders] RPC não disponível, usando método alternativo:', rpcError);
+      }
+      
+      // OPÇÃO 2: Método original SEM LIMITE (fallback)
+      console.log('🔄 [loadTopLeaders] Usando método de agregação no cliente...');
+      
+      // Query SEM limite para pegar todos os dados
       let query = supabase
         .from('people')
         .select(`
           owner_id,
           vote_status,
+          city,
+          state,
           profiles!owner_id(full_name)
         `)
-        .not('owner_id', 'is', null)
-        .limit(1000); // Limite razoável para agregação
+        .not('owner_id', 'is', null);
+        // REMOVIDO: .limit(1000) - Este era o problema!
       
       // Aplicar filtros se for eleição municipal
       if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
-        console.log('🔍 [Dashboard] Aplicando filtros municipais no Top Leaders:', { city: defaultFilters.city, state: defaultFilters.state });
-        // Para eleição municipal, filtrar por cidade e estado (somar apenas bairros da cidade específica)
+        console.log('🔍 [loadTopLeaders] Aplicando filtros municipais:', { 
+          city: defaultFilters.city, 
+          state: defaultFilters.state 
+        });
         query = query.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
       }
       
@@ -361,7 +408,11 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
-      // Agregação no cliente (idealmente seria uma view/RPC no banco)
+      console.log('🔍 [loadTopLeaders] Dados brutos obtidos:', {
+        totalRecords: data?.length || 0
+      });
+
+      // Agregação no cliente
       const leaderStats = new Map<string, { name: string; total: number; confirmed: number }>();
       
       data?.forEach(person => {
@@ -390,10 +441,12 @@ export default function DashboardPage() {
         .sort((a, b) => b.total_people - a.total_people)
         .slice(0, 5); // Top 5
 
+      console.log('✅ [loadTopLeaders] Top 5 líderes calculados:', topLeadersData);
       setTopLeaders(topLeadersData);
+      
     } catch (error) {
-      console.error('Erro ao carregar top líderes:', error);
-      // Não falha o dashboard inteiro se top líderes falhar
+      console.error('❌ [loadTopLeaders] Erro geral:', error);
+      setTopLeaders([]); // Limpar em caso de erro
     }
   };
 

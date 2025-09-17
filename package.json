@@ -8,7 +8,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0"
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0",
+    "sync:all": "node scripts/sync-all.js",
+    "sync:data": "node scripts/sync-supabase.js",
+    "sync:test": "node scripts/test-sync.js",
+    "supabase:setup": "node scripts/setup-local-supabase.js",
+    "supabase:install": "powershell -ExecutionPolicy Bypass -File scripts/install-supabase-cli.ps1",
+    "supabase:local": "node scripts/switch-env.js local",
+    "supabase:online": "node scripts/switch-env.js online",
+    "supabase:status": "node scripts/switch-env.js status"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.10",

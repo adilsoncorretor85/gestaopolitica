@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps } from '@/lib/googleMaps';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { reverseGeocode } from '@/services/geocoding';
+import { MapPin, Loader2 } from 'lucide-react';
 
 export type AddressParts = {
   street: string | null;
@@ -69,6 +72,44 @@ export default function AddressAutocomplete({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [value, setValue] = useState(defaultValue);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  
+  const { getCurrentPosition, clearError } = useGeolocation();
+
+  // Função para usar a localização atual
+  const handleUseCurrentLocation = async () => {
+    try {
+      setIsGettingLocation(true);
+      setLocationError(null);
+      clearError();
+
+      // Obter coordenadas atuais
+      const { latitude, longitude } = await getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 300000 // 5 minutos
+      });
+
+      // Converter coordenadas em endereço
+      const addressParts = await reverseGeocode(latitude, longitude);
+      
+      if (addressParts) {
+        // Atualizar o input com o endereço encontrado
+        setValue(addressParts.formatted);
+        
+        // Chamar callback com os dados
+        onSelect(addressParts);
+      } else {
+        setLocationError('Não foi possível encontrar o endereço para esta localização.');
+      }
+    } catch (error) {
+      console.error('Erro ao obter localização:', error);
+      setLocationError(error instanceof Error ? error.message : 'Erro ao obter localização');
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
 
   useEffect(() => {
     const initializeAutocomplete = async () => {
@@ -162,17 +203,42 @@ export default function AddressAutocomplete({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={isLoading}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading || isGettingLocation}
+          className="w-full px-3 py-2 pr-32 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
         />
-        {isLoading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+        
+        {/* Botão de localização atual */}
+        <button
+          type="button"
+          onClick={handleUseCurrentLocation}
+          disabled={isLoading || isGettingLocation}
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 rounded-md shadow-md hover:shadow-lg flex items-center gap-1.5 text-sm font-medium"
+          title="Puxar minha localização atual"
+        >
+          {isGettingLocation ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MapPin className="h-4 w-4" />
+          )}
+          <span className="hidden sm:inline">Meu local</span>
+        </button>
+        
+        {isLoading && !isGettingLocation && (
+          <div className="absolute right-36 top-1/2 transform -translate-y-1/2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           </div>
         )}
       </div>
+      
+      {/* Mensagem de erro da localização */}
+      {locationError && (
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+          {locationError}
+        </p>
+      )}
+      
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Digite o endereço e selecione da lista. Pressione ESC para limpar.
+        Digite o endereço e selecione da lista, ou clique no botão verde "Meu local" para puxar sua localização atual automaticamente. Pressione ESC para limpar.
       </p>
     </div>
   );

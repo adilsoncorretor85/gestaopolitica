@@ -14,6 +14,7 @@ import Mapa from "@/pages/Mapa";
 import Lideres from "@/pages/Lideres";
 import LideresForm from "@/pages/LideresForm";
 import Projecao from "@/pages/Projecao";
+import AdminTags from "@/pages/AdminTags";
 import Convite from "@/pages/Convite";
 import CompleteProfile from "@/pages/CompleteProfile";
 import ContaBloqueada from "@/pages/ContaBloqueada";
@@ -144,6 +145,17 @@ export default function App() {
               <RouteGuard>
                 <ProtectedAdmin>
                   <Projecao />
+                </ProtectedAdmin>
+              </RouteGuard>
+            }
+          />
+
+          <Route
+            path="/admin/tags"
+            element={
+              <RouteGuard>
+                <ProtectedAdmin>
+                  <AdminTags />
                 </ProtectedAdmin>
               </RouteGuard>
             }

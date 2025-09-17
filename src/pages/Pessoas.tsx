@@ -10,7 +10,13 @@ import { listLeaders, type LeaderRow } from '@/services/admin';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 import { useElection } from '@/contexts/ElectionContext';
 import { normalizeKey } from '@/lib/normalize';
-import { Plus, Search, Phone, MapPin, Edit2, Trash2, ExternalLink, Mail, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { TagList } from '@/components/TagList';
+import { TagEditModal } from '@/components/modals/TagEditModal';
+import { TagFilter } from '@/components/TagFilter';
+import { Badge } from '@/components/ui/badge';
+import { useTags } from '@/hooks/useTags';
+import { Tag, tagsService, SearchPeopleParams } from '@/services/tags';
+import { Plus, Search, Phone, MapPin, Edit2, Trash2, ExternalLink, Mail, Copy, ArrowUpDown, ArrowUp, ArrowDown, Tags, Download, Check } from 'lucide-react';
 
 export default function PessoasPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,6 +29,8 @@ export default function PessoasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState('');
+  const [neighborhoodFilter, setNeighborhoodFilter] = useState('');
+  const [streetFilter, setStreetFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [leaderFilter, setLeaderFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -43,6 +51,21 @@ export default function PessoasPage() {
   const [editingNotes, setEditingNotes] = useState<'add' | 'edit' | null>(null);
   const [notesText, setNotesText] = useState('');
   const [updatingNotes, setUpdatingNotes] = useState(false);
+  
+  // Tags state
+  const [editingPersonTags, setEditingPersonTags] = useState<{ id: string; name: string } | null>(null);
+  const { tags: availableTags } = useTags();
+  
+  // Filtro por tags
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [tagMode, setTagMode] = useState<'ANY' | 'ALL'>('ANY');
+  const [useTagSearch, setUseTagSearch] = useState(false);
+
+  // Seleção múltipla para exportação
+  const [selectedPeopleIds, setSelectedPeopleIds] = useState<Set<string>>(new Set());
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
+  const [selectAllFromFilter, setSelectAllFromFilter] = useState(false);
+  const [loadingSelectAll, setLoadingSelectAll] = useState(false);
 
   // Aplicar filtros padrão da eleição
   useEffect(() => {
@@ -66,7 +89,7 @@ export default function PessoasPage() {
     if (filtersApplied) {
       loadData();
     }
-  }, [search, cityFilter, stateFilter, leaderFilter, page, sortBy, sortOrder, filtersApplied]);
+  }, [search, cityFilter, neighborhoodFilter, streetFilter, stateFilter, leaderFilter, page, sortBy, sortOrder, filtersApplied, selectedTags, tagMode, useTagSearch]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -78,20 +101,57 @@ export default function PessoasPage() {
     try {
       setLoading(true);
       setError('');
-      const { data, error, count } = await listPeople({
-        q: search || undefined,
-        city: cityFilter ? normalizeKey(cityFilter) : undefined,
-        state: stateFilter || undefined,
-        leaderId: leaderFilter || undefined,
-        page,
-        pageSize: 20,
-        sortBy,
-        sortOrder
-      });
+      
+      // Se tem tags selecionadas ou useTagSearch está ativo, usar RPC search_people_with_tags
+      if (selectedTags.length > 0 || useTagSearch) {
+        const searchParams: SearchPeopleParams = {
+          q: search || '',
+          tag_ids: selectedTags.map(tag => tag.id),
+          mode: tagMode,
+          limit: 20,
+          offset: (page - 1) * 20
+        };
+        
+        const data = await tagsService.searchPeopleWithTags(searchParams);
+        const totalCount = data.length > 0 ? data[0].total_count : 0;
+        
+        setPeople(data.map(item => ({
+          id: item.id,
+          owner_id: item.owner_id,
+          full_name: item.full_name,
+          whatsapp: item.whatsapp || '',
+          email: item.email || '',
+          city: item.city || '',
+          state: item.state || '',
+          vote_status: item.vote_status || 'INDEFINIDO',
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          contacted_at: item.created_at, // Placeholder - pode ser ajustado depois
+          notes: '', // Placeholder
+          latitude: null, // Placeholder  
+          longitude: null, // Placeholder
+          tags: item.tags || []
+        } as Person & { tags: Tag[] })));
+        setTotal(totalCount);
+      } else {
+        // Usar a busca tradicional
+        const { data, error, count } = await listPeople({
+          q: search || undefined,
+          city: cityFilter ? normalizeKey(cityFilter) : undefined,
+          neighborhood: neighborhoodFilter || undefined,
+          street: streetFilter || undefined,
+          state: stateFilter || undefined,
+          leaderId: leaderFilter || undefined,
+          page,
+          pageSize: 20,
+          sortBy,
+          sortOrder
+        });
 
-      if (error) throw error;
-      setPeople(data || []);
-      setTotal(count || 0);
+        if (error) throw error;
+        setPeople(data || []);
+        setTotal(count || 0);
+      }
     } catch (error) {
       console.error('Erro ao carregar pessoas:', error);
       setError(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -138,6 +198,253 @@ export default function PessoasPage() {
     setSelectedPerson(null);
     setEditingNotes(null);
     setNotesText('');
+  };
+  
+  const handleEditTags = (personId: string, personName: string) => {
+    setEditingPersonTags({ id: personId, name: personName });
+  };
+
+  // Funções do filtro por tags
+  const handleTagsChange = (tags: Tag[]) => {
+    setSelectedTags(tags);
+    setPage(1); // Resetar para primeira página
+    if (tags.length > 0) {
+      setUseTagSearch(true);
+      } else if (!search && !cityFilter && !neighborhoodFilter && !streetFilter && !stateFilter && !leaderFilter) {
+      setUseTagSearch(false);
+    }
+  };
+
+  const handleTagModeChange = (mode: 'ANY' | 'ALL') => {
+    setTagMode(mode);
+    setPage(1); // Resetar para primeira página
+  };
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setCityFilter('');
+    setNeighborhoodFilter('');
+    setStreetFilter('');
+    setStateFilter('');
+    setLeaderFilter('');
+    setSelectedTags([]);
+    setUseTagSearch(false);
+    setPage(1);
+    setOverrode(true);
+  };
+
+  // Funções de seleção múltipla
+  const handleSelectPerson = (personId: string) => {
+    const newSelected = new Set(selectedPeopleIds);
+    if (newSelected.has(personId)) {
+      newSelected.delete(personId);
+    } else {
+      newSelected.add(personId);
+    }
+    setSelectedPeopleIds(newSelected);
+    setSelectAllChecked(newSelected.size === people.length && people.length > 0);
+  };
+
+  const handleSelectAll = () => {
+    if (selectAllChecked) {
+      setSelectedPeopleIds(new Set());
+      setSelectAllChecked(false);
+      setSelectAllFromFilter(false);
+    } else {
+      const allIds = new Set(people.map(person => person.id));
+      setSelectedPeopleIds(allIds);
+      setSelectAllChecked(true);
+      setSelectAllFromFilter(false);
+    }
+  };
+
+  // Limpar seleções quando a lista muda
+  useEffect(() => {
+    setSelectedPeopleIds(new Set());
+    setSelectAllChecked(false);
+    setSelectAllFromFilter(false);
+  }, [people]);
+
+  // Função para selecionar todas as pessoas do filtro atual
+  const selectAllFromCurrentFilter = async () => {
+    if (loadingSelectAll) return;
+    
+    try {
+      setLoadingSelectAll(true);
+      
+      // Buscar todas as pessoas com os filtros atuais (sem paginação)
+      if (selectedTags.length > 0 || useTagSearch) {
+        // Usar busca por tags
+        const searchParams: SearchPeopleParams = {
+          q: search || '',
+          tag_ids: selectedTags.map(tag => tag.id),
+          mode: tagMode,
+          limit: 10000, // Limite alto para pegar todos
+          offset: 0
+        };
+        
+        const data = await tagsService.searchPeopleWithTags(searchParams);
+        const allIds = new Set(data.map((person: any) => person.id));
+        setSelectedPeopleIds(allIds);
+        setSelectAllFromFilter(true);
+        setSelectAllChecked(true);
+        
+        setToast({ 
+          message: `${allIds.size} pessoa(s) selecionada(s) de todos os resultados do filtro!`, 
+          type: 'success' 
+        });
+      } else {
+        // Busca tradicional
+        const { data, error } = await listPeople({
+          q: search || undefined,
+          city: cityFilter ? normalizeKey(cityFilter) : undefined,
+          neighborhood: neighborhoodFilter || undefined,
+          street: streetFilter || undefined,
+          state: stateFilter || undefined,
+          leaderId: leaderFilter || undefined,
+          page: 1,
+          pageSize: 10000, // Limite alto para pegar todos
+          sortBy,
+          sortOrder
+        });
+
+        if (error) throw error;
+        
+        const allIds = new Set((data || []).map(person => person.id));
+        setSelectedPeopleIds(allIds);
+        setSelectAllFromFilter(true);
+        setSelectAllChecked(true);
+        
+        setToast({ 
+          message: `${allIds.size} pessoa(s) selecionada(s) de todos os resultados do filtro!`, 
+          type: 'success' 
+        });
+      }
+      
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      console.error('Erro ao selecionar todos:', error);
+      setToast({ 
+        message: 'Erro ao selecionar todas as pessoas. Tente novamente.', 
+        type: 'error' 
+      });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setLoadingSelectAll(false);
+    }
+  };
+
+  // Função para exportar CSV
+  const exportToCSV = async () => {
+    if (selectedPeopleIds.size === 0) {
+      alert('Selecione pelo menos uma pessoa para exportar.');
+      return;
+    }
+
+    try {
+      let selectedPeople: any[] = [];
+      
+      if (selectAllFromFilter) {
+        // Se selecionou todos do filtro, buscar novamente com os filtros atuais
+        if (selectedTags.length > 0 || useTagSearch) {
+          const searchParams: SearchPeopleParams = {
+            q: search || '',
+            tag_ids: selectedTags.map(tag => tag.id),
+            mode: tagMode,
+            limit: 10000,
+            offset: 0
+          };
+          selectedPeople = await tagsService.searchPeopleWithTags(searchParams);
+        } else {
+          const { data, error } = await listPeople({
+            q: search || undefined,
+            city: cityFilter ? normalizeKey(cityFilter) : undefined,
+            neighborhood: neighborhoodFilter || undefined,
+            street: streetFilter || undefined,
+            state: stateFilter || undefined,
+            leaderId: leaderFilter || undefined,
+            page: 1,
+            pageSize: 10000,
+            sortBy,
+            sortOrder
+          });
+          
+          if (error) throw error;
+          selectedPeople = data || [];
+        }
+      } else {
+        // Apenas pessoas da página atual
+        selectedPeople = people.filter(person => selectedPeopleIds.has(person.id));
+      }
+    
+    // Cabeçalho do CSV
+    const headers = [
+      'Nome Completo',
+      'WhatsApp', 
+      'Email',
+      'Cidade',
+      'Bairro',
+      'Estado',
+      'Status do Voto',
+      'Data do Contato',
+      'Tags',
+      'Observações'
+    ];
+
+    // Dados do CSV
+    const csvData = selectedPeople.map(person => {
+      const tags = (person as any).tags 
+        ? (person as any).tags.map((tag: any) => tag.name).join('; ')
+        : '';
+      
+      return [
+        person.full_name || '',
+        person.whatsapp || '',
+        person.email || '',
+        person.city || '',
+        person.neighborhood || '',
+        person.state || '',
+        person.vote_status || '',
+        person.contacted_at ? new Date(person.contacted_at).toLocaleDateString('pt-BR') : '',
+        tags,
+        person.notes || ''
+      ];
+    });
+
+    // Combinar cabeçalho e dados
+    const allData = [headers, ...csvData];
+    
+    // Converter para CSV
+    const csvContent = allData.map(row => 
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`)
+        .join(',')
+    ).join('\n');
+
+    // Criar e baixar arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pessoas-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+      // Feedback para o usuário
+      setToast({ 
+        message: `${selectedPeople.length} pessoa(s) exportada(s) com sucesso!`, 
+        type: 'success' 
+      });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      console.error('Erro ao exportar CSV:', error);
+      setToast({ 
+        message: 'Erro ao exportar dados. Tente novamente.', 
+        type: 'error' 
+      });
+      setTimeout(() => setToast(null), 3000);
+    }
   };
 
   // Função para atualizar status do voto
@@ -419,24 +726,58 @@ export default function PessoasPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pessoas</h1>
                 <p className="text-gray-600 dark:text-gray-400">Gerencie os contatos cadastrados</p>
+                {selectedPeopleIds.size > 0 && (
+                  <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                    {selectedPeopleIds.size} pessoa(s) selecionada(s)
+                    {selectAllFromFilter && (
+                      <span className="text-purple-600 dark:text-purple-400 ml-1">
+                        (todas do filtro)
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
-              <Link
-                to="/pessoas/nova"
-                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Cadastrar Pessoa</span>
-              </Link>
+              <div className="flex items-center space-x-3">
+                {total > people.length && !selectAllFromFilter && (
+                  <button
+                    onClick={selectAllFromCurrentFilter}
+                    disabled={loadingSelectAll}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>
+                      {loadingSelectAll ? 'Selecionando...' : `Selecionar todas (${total})`}
+                    </span>
+                  </button>
+                )}
+                {selectedPeopleIds.size > 0 && (
+                  <button
+                    onClick={exportToCSV}
+                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Exportar CSV ({selectedPeopleIds.size})</span>
+                  </button>
+                )}
+                <Link
+                  to="/pessoas/nova"
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Cadastrar Pessoa</span>
+                </Link>
+              </div>
             </div>
 
             {/* Filtros */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Linha superior com filtros principais */}
+              <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="text"
-                    placeholder="Buscar por nome, cidade ou estado..."
+                    placeholder="Buscar por nome, cidade, bairro, rua ou estado..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -449,6 +790,28 @@ export default function PessoasPage() {
                   value={cityFilter}
                   onChange={(e) => {
                     setCityFilter(e.target.value);
+                    setOverrode(true);
+                  }}
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Bairro"
+                  value={neighborhoodFilter}
+                  onChange={(e) => {
+                    setNeighborhoodFilter(e.target.value);
+                    setOverrode(true);
+                  }}
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Rua"
+                  value={streetFilter}
+                  onChange={(e) => {
+                    setStreetFilter(e.target.value);
                     setOverrode(true);
                   }}
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -511,6 +874,32 @@ export default function PessoasPage() {
                   </select>
                 </div>
               </div>
+              
+              {/* Linha inferior com filtro de tags */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-center">
+                <div className="lg:col-span-2">
+                  <TagFilter
+                    availableTags={availableTags}
+                    selectedTags={selectedTags}
+                    onTagsChange={handleTagsChange}
+                    mode={tagMode}
+                    onModeChange={handleTagModeChange}
+                    loading={loading}
+                  />
+                </div>
+                
+                {/* Botão para limpar filtros */}
+                {(search || cityFilter || neighborhoodFilter || streetFilter || stateFilter || leaderFilter || selectedTags.length > 0) && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={clearAllFilters}
+                      className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      Limpar todos os filtros
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Lista */}
@@ -535,6 +924,17 @@ export default function PessoasPage() {
                     <table className="w-full">
                       <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={selectAllChecked}
+                                onChange={handleSelectAll}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <span className="ml-2">Selecionar</span>
+                            </div>
+                          </th>
                           <th 
                             className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                             onClick={() => handleSortChange('full_name')}
@@ -557,6 +957,9 @@ export default function PessoasPage() {
                             </div>
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Tags
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Status
                           </th>
                           <th 
@@ -574,10 +977,23 @@ export default function PessoasPage() {
                         {people.map((person) => (
                           <tr 
                             key={person.id} 
-                            className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                            onClick={() => handleRowClick(person)}
+                            className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                           >
                             <td className="px-6 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedPeopleIds.has(person.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectPerson(person.id);
+                                }}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                            </td>
+                            <td 
+                              className="px-6 py-4 cursor-pointer"
+                              onClick={() => handleRowClick(person)}
+                            >
                               <div>
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">
                                   {person.full_name}
@@ -587,7 +1003,10 @@ export default function PessoasPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td 
+                              className="px-6 py-4 cursor-pointer"
+                              onClick={() => handleRowClick(person)}
+                            >
                               <div className="flex items-center space-x-2">
                                 <Phone className="h-4 w-4 text-gray-400" />
                                 <span className="text-sm text-gray-900 dark:text-white font-mono">
@@ -617,7 +1036,10 @@ export default function PessoasPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            <td 
+                              className="px-6 py-4 cursor-pointer"
+                              onClick={() => handleRowClick(person)}
+                            >
                               <div className="flex items-center space-x-1">
                                 <MapPin className="h-3 w-3 text-gray-400" />
                                 <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -626,6 +1048,29 @@ export default function PessoasPage() {
                                     : person.city || person.state || '-'
                                   }
                                 </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {(person as any).tags && (person as any).tags.length > 0 ? (
+                                  (person as any).tags.slice(0, 3).map((tag: Tag) => (
+                                    <Badge
+                                      key={tag.id}
+                                      variant="secondary"
+                                      className="text-xs"
+                                      style={{ backgroundColor: tag.color + '20', borderColor: tag.color }}
+                                    >
+                                      {tag.name}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )}
+                                {(person as any).tags && (person as any).tags.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{(person as any).tags.length - 3}
+                                  </Badge>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -652,19 +1097,37 @@ export default function PessoasPage() {
                     {people.map((person) => (
                       <div 
                         key={person.id}
-                        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                        onClick={() => handleRowClick(person)}
+                        className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <div className="space-y-3">
-                          {/* Nome e Email */}
-                          <div>
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                              {person.full_name}
-                            </h3>
-                            {person.email && (
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{person.email}</p>
-                            )}
+                        {/* Header com checkbox e nome */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedPeopleIds.has(person.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleSelectPerson(person.id);
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                            />
+                            <div 
+                              className="flex-1 cursor-pointer"
+                              onClick={() => handleRowClick(person)}
+                            >
+                              <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                                {person.full_name}
+                              </h3>
+                              {person.email && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{person.email}</p>
+                              )}
+                            </div>
                           </div>
+                        </div>
+                        <div 
+                          className="space-y-3 cursor-pointer"
+                          onClick={() => handleRowClick(person)}
+                        >
 
                           {/* WhatsApp */}
                           <div className="flex items-center justify-between">
@@ -925,6 +1388,33 @@ export default function PessoasPage() {
                 </div>
               )}
 
+              {/* Tags */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Tags</h3>
+                <div className="space-y-3">
+                  {/* Botão para editar tags */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Tags aplicadas a esta pessoa
+                    </span>
+                    <button
+                      onClick={() => handleEditTags(selectedPerson.id!, selectedPerson.full_name)}
+                      className="flex items-center space-x-1 px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    >
+                      <Tags className="h-3 w-3" />
+                      <span>Gerenciar Tags</span>
+                    </button>
+                  </div>
+                  
+                  {/* Lista de tags (placeholder - será substituída pela integração real) */}
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                      Sistema de tags em desenvolvimento...
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Observações */}
               <div>
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Observações</h3>
@@ -998,6 +1488,16 @@ export default function PessoasPage() {
           </div>
         )}
       </Drawer>
+
+      {/* Modal de edição de tags */}
+      {editingPersonTags && (
+        <TagEditModal
+          isOpen={!!editingPersonTags}
+          onClose={() => setEditingPersonTags(null)}
+          personId={editingPersonTags.id}
+          personName={editingPersonTags.name}
+        />
+      )}
 
       {/* Toast de Feedback */}
       {toast && (

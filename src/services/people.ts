@@ -19,6 +19,8 @@ export async function listPeople(params?: {
   leaderId?: string;
   q?: string;
   city?: string;
+  neighborhood?: string;
+  street?: string;
   state?: string;
   page?: number;
   pageSize?: number;
@@ -53,6 +55,14 @@ export async function listPeople(params?: {
             // Busca por cidade usando ILIKE
             query = query.ilike("city", `%${params.city}%`);
           }
+          if (params?.neighborhood) {
+            // Busca por bairro usando ILIKE
+            query = query.ilike("neighborhood", `%${params.neighborhood}%`);
+          }
+          if (params?.street) {
+            // Busca por rua usando ILIKE
+            query = query.ilike("street", `%${params.street}%`);
+          }
           if (params?.state) {
             const uf = params.state.toUpperCase();
             const est = ESTADOS_BRASIL.find(e =>
@@ -84,8 +94,47 @@ export async function listPeople(params?: {
           console.log('[listPeople] Dados ordenados por FTS:', sortedData.length);
           return { data: sortedData, error: null, count };
         } else {
-          console.log('[listPeople] Nenhum resultado FTS, retornando vazio');
-          return { data: [], error: null, count: 0 };
+          console.log('[listPeople] Nenhum resultado FTS, tentando busca simples como fallback');
+          // Fallback: busca simples com ILIKE quando FTS não encontra resultados
+          const offset = (page - 1) * size;
+          let query = supabase.from("people")
+            .select("*", { count: "exact" })
+            .ilike("full_name", `%${params.q}%`)
+            .order(sortBy, { ascending: sortOrder === 'asc' })
+            .range(offset, offset + size - 1);
+
+          if (params?.leaderId) query = query.eq("owner_id", params.leaderId);
+          if (params?.city) {
+            query = query.ilike("city", `%${params.city}%`);
+          }
+          if (params?.neighborhood) {
+            query = query.ilike("neighborhood", `%${params.neighborhood}%`);
+          }
+          if (params?.street) {
+            query = query.ilike("street", `%${params.street}%`);
+          }
+          if (params?.state) {
+            const uf = params.state.toUpperCase();
+            const est = ESTADOS_BRASIL.find(e =>
+              e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === params.state!.toLowerCase()
+            );
+            if (est) {
+              console.log('🔍 listPeople - Filtro de estado (fallback):', { original: params.state, uf, est });
+              query = query.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
+            } else {
+              console.log('🔍 listPeople - Filtro de estado (fallback) - estado não encontrado:', params.state);
+              query = query.ilike("state", `%${params.state}%`);
+            }
+          }
+
+          const { data, error, count } = await query;
+          
+          if (error) {
+            throw new Error(handleSupabaseError(error, 'listar pessoas'));
+          }
+
+          console.log('[listPeople] Resultados fallback:', data?.length || 0);
+          return { data: data || [], error: null, count };
         }
       } catch (ftsError) {
         console.error('[listPeople] Erro no FTS, tentando busca simples:', ftsError);
@@ -102,6 +151,14 @@ export async function listPeople(params?: {
         if (params?.city) {
           // Busca por cidade usando ILIKE
           query = query.ilike("city", `%${params.city}%`);
+        }
+        if (params?.neighborhood) {
+          // Busca por bairro usando ILIKE
+          query = query.ilike("neighborhood", `%${params.neighborhood}%`);
+        }
+        if (params?.street) {
+          // Busca por rua usando ILIKE
+          query = query.ilike("street", `%${params.street}%`);
         }
         if (params?.state) {
           const uf = params.state.toUpperCase();
@@ -138,6 +195,14 @@ export async function listPeople(params?: {
     if (params?.city) {
       // Busca por cidade usando ILIKE
       q = q.ilike("city", `%${params.city}%`);
+    }
+    if (params?.neighborhood) {
+      // Busca por bairro usando ILIKE
+      q = q.ilike("neighborhood", `%${params.neighborhood}%`);
+    }
+    if (params?.street) {
+      // Busca por rua usando ILIKE
+      q = q.ilike("street", `%${params.street}%`);
     }
     if (params?.state) {
       const uf = params.state.toUpperCase();

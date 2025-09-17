@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Shield, X, MapPin, BarChart3 } from 'lucide-react';
+import { Home, Users, Shield, X, MapPin, BarChart3, Tags } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 
 interface SidebarProps {
@@ -18,6 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
     { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: Home },
     { id: 'pessoas', label: 'Pessoas', to: '/pessoas', icon: Users },
     { id: 'lideres', label: 'Líderes', to: '/lideres', icon: Shield, onlyAdmin: true },
+    { id: 'tags', label: 'Tags', to: '/admin/tags', icon: Tags, onlyAdmin: true },
     { id: 'projecao', label: 'Projeção', to: '/projecao', icon: BarChart3, onlyAdmin: true },
     { id: 'mapa', label: 'Mapa', to: '/mapa', icon: MapPin },
   ];
