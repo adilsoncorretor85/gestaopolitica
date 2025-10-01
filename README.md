@@ -1,183 +1,262 @@
-# Supabase CLI
+# 🏛️ Sistema de Gestão Política
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+Sistema completo para gestão de campanhas políticas, desenvolvido com React, TypeScript e Supabase.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## 🚀 Funcionalidades
 
-This repository contains all the functionality for Supabase CLI.
+### 📊 Dashboard
+- **Visão geral** com estatísticas em tempo real
+- **Contadores** de líderes ativos, pessoas cadastradas e votos confirmados
+- **Metas e projeções** por líder e região
+- **Contagem regressiva** para eleições
+- **Cards de aniversariantes** do dia
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+### 👥 Gestão de Pessoas
+- **Cadastro completo** com validação de nome completo obrigatório
+- **Busca avançada** por nome, cidade, bairro, líder responsável
+- **Filtros múltiplos** e ordenação personalizada
+- **Sistema de tags** para categorização
+- **Status de voto** (Confirmado, Provável, Improvável, Não vai votar)
+- **Histórico de contatos** e anotações
+- **Integração com WhatsApp** e redes sociais
+- **Geolocalização** com Google Maps
 
-## Getting started
+### 🎯 Gestão de Líderes
+- **Sistema de convites** por email
+- **Perfis completos** com dados pessoais e de contato
+- **Metas individuais** por líder
+- **Sistema de lideranças** (quem lidera quem)
+- **Status de ativação** (Ativo/Inativo)
+- **Auditoria** de ações
 
-### Install the CLI
+### 🗺️ Mapa Interativo
+- **Visualização geográfica** de todos os contatos
+- **Clusters inteligentes** para melhor performance
+- **Filtros por região** e status
+- **Integração com Google Maps**
+- **Busca por endereço** com autocomplete
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+### 📈 Projeções e Metas
+- **Metas por cidade** e bairro
+- **Projeções de votos** baseadas em dados históricos
+- **Acompanhamento de progresso** em tempo real
+- **Relatórios detalhados** por região
+
+### 🏷️ Sistema de Tags
+- **Categorização flexível** de pessoas
+- **Filtros por tags** (qualquer/ todas)
+- **Gestão centralizada** de tags
+- **Aplicação em massa**
+
+### ⚙️ Administração
+- **Controle de acesso** por roles (ADMIN/LEADER)
+- **Configurações de eleição** (data, tipo, filtros)
+- **Auditoria completa** de ações
+- **Backup e sincronização** de dados
+
+## 🛠️ Tecnologias
+
+### Frontend
+- **React 18** com TypeScript
+- **Vite** para build e desenvolvimento
+- **Tailwind CSS** para estilização
+- **React Hook Form** + **Zod** para validação
+- **React Router** para navegação
+- **TanStack Query** para gerenciamento de estado
+- **Google Maps API** para mapas
+- **Lucide React** para ícones
+
+### Backend
+- **Supabase** (PostgreSQL + Auth + Edge Functions)
+- **Row Level Security (RLS)** para segurança
+- **Edge Functions** para lógica de negócio
+- **Real-time subscriptions** para atualizações
+
+### Validação e Segurança
+- **Zod** para validação de schemas
+- **React Hook Form** para formulários
+- **Validação em 3 camadas**: Frontend, Backend e Database
+- **Autenticação JWT** com Supabase Auth
+- **Controle de acesso** baseado em roles
+
+## 📋 Pré-requisitos
+
+- Node.js 18+
+- npm ou yarn
+- Conta no Supabase
+- Chave da API do Google Maps
+
+## 🚀 Instalação
+
+1. **Clone o repositório**
+```bash
+git clone https://github.com/adilsoncorretor85/gestaopolitica.git
+cd gestaopolitica
+```
+
+2. **Instale as dependências**
+```bash
+npm install
+```
+
+3. **Configure as variáveis de ambiente**
+```bash
+cp .env.example .env.local
+```
+
+Edite o arquivo `.env.local` com suas credenciais:
+```env
+VITE_SUPABASE_URL=sua_url_do_supabase
+VITE_SUPABASE_ANON_KEY=sua_chave_anonima
+VITE_GOOGLE_MAPS_API_KEY=sua_chave_do_google_maps
+```
+
+4. **Configure o banco de dados**
+- Execute o SQL do arquivo `docs/db-setup.md` no Supabase SQL Editor
+- Configure as Edge Functions no painel do Supabase
+
+5. **Execute o projeto**
+```bash
+npm run dev
+```
+
+## 📁 Estrutura do Projeto
+
+```
+src/
+├── components/          # Componentes reutilizáveis
+│   ├── modals/         # Modais do sistema
+│   ├── drawers/        # Drawers laterais
+│   └── ...
+├── contexts/           # Contextos React
+├── hooks/              # Hooks customizados
+├── lib/                # Utilitários e configurações
+├── pages/              # Páginas da aplicação
+├── services/           # Serviços de API
+├── types/              # Definições TypeScript
+└── utils/              # Funções utilitárias
+```
+
+## 🔐 Sistema de Autenticação
+
+### Roles
+- **ADMIN**: Acesso total ao sistema
+- **LEADER**: Acesso limitado aos próprios dados
+
+### Fluxo de Convite
+1. ADMIN convida líder via email
+2. Líder recebe link de convite
+3. Líder define senha e ativa conta
+4. Sistema cria perfil automaticamente
+
+## 📊 Validações Implementadas
+
+### Nome Completo (Obrigatório)
+- **Mínimo 3 caracteres**
+- **Pelo menos 2 palavras** (nome e sobrenome)
+- **Validação em 3 camadas**:
+  - Frontend: Zod + React Hook Form
+  - Backend: Validação nos serviços
+  - Database: Constraint no PostgreSQL
+
+### Mensagens de Erro Específicas
+- "Nome é obrigatório"
+- "Nome deve ter pelo menos 3 caracteres"
+- "Informe o nome completo (nome e sobrenome)"
+
+## 🗄️ Banco de Dados
+
+### Tabelas Principais
+- **profiles**: Perfis de usuário
+- **people**: Contatos cadastrados
+- **leader_profiles**: Dados dos líderes
+- **invite_tokens**: Tokens de convite
+- **audit_logs**: Log de auditoria
+- **org_settings**: Configurações gerais
+- **leader_targets**: Metas por líder
+
+### Segurança
+- **Row Level Security (RLS)** ativado
+- **Políticas de acesso** por role
+- **Auditoria** de todas as ações
+
+## 🚀 Scripts Disponíveis
 
 ```bash
-npm i supabase --save-dev
+# Desenvolvimento
+npm run dev
+
+# Build para produção
+npm run build
+
+# Preview da build
+npm run preview
+
+# Verificação de tipos
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Sincronização com Supabase
+npm run sync:data
 ```
 
-To install the beta release channel:
+## 📱 Responsividade
 
-```bash
-npm i supabase@beta --save-dev
-```
+O sistema é totalmente responsivo e funciona em:
+- 📱 **Mobile** (320px+)
+- 📱 **Tablet** (768px+)
+- 💻 **Desktop** (1024px+)
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+## 🔧 Configurações Avançadas
 
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
+### Google Maps
+- Configuração de clusters
+- Autocomplete de endereços
+- Geolocalização automática
+- Integração com ViaCEP
 
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+### Supabase
+- Edge Functions para lógica complexa
+- Real-time subscriptions
+- Backup automático
+- Migrations versionadas
 
-<details>
-  <summary><b>macOS</b></summary>
+## 📈 Performance
 
-  Available via [Homebrew](https://brew.sh). To install:
+- **Lazy loading** de componentes
+- **Virtualização** de listas grandes
+- **Debounce** em buscas
+- **Cache** com TanStack Query
+- **Otimização** de imagens e assets
 
-  ```sh
-  brew install supabase/tap/supabase
-  ```
+## 🛡️ Segurança
 
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
+- **Autenticação JWT** com Supabase
+- **Controle de acesso** granular
+- **Validação** em múltiplas camadas
+- **Sanitização** de inputs
+- **Auditoria** completa de ações
 
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
+## 🤝 Contribuição
 
-<details>
-  <summary><b>Windows</b></summary>
+1. Fork o projeto
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
 
-  Available via [Scoop](https://scoop.sh). To install:
+## 📄 Licença
 
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
 
-  To upgrade:
+## 📞 Suporte
 
-  ```powershell
-  scoop update supabase
-  ```
-</details>
+Para suporte e dúvidas:
+- 📧 Email: [seu-email@exemplo.com]
+- 🐛 Issues: [GitHub Issues](https://github.com/adilsoncorretor85/gestaopolitica/issues)
 
-<details>
-  <summary><b>Linux</b></summary>
+---
 
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
-```bash
-supabase bootstrap
-```
-
-Or using npx:
-
-```bash
-npx supabase bootstrap
-```
-
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
-
-## Docs
-
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
-
-## Breaking changes
-
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
-```
+**Desenvolvido com ❤️ para campanhas políticas eficientes**

@@ -24,6 +24,37 @@ function maskCep(s: string) {
   return d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
 }
 
+// Schema de validação para pessoa com mensagens de erro específicas
+const personSchema = z.object({
+  full_name: z.string()
+    .min(1, 'Nome é obrigatório')
+    .min(3, 'Nome deve ter pelo menos 3 caracteres')
+    .refine((name) => {
+      // Verifica se tem pelo menos 2 palavras (nome e sobrenome)
+      const words = name.trim().split(/\s+/).filter(word => word.length > 0);
+      return words.length >= 2;
+    }, 'Informe o nome completo (nome e sobrenome)'),
+  whatsapp: z.string()
+    .min(1, 'WhatsApp é obrigatório')
+    .min(10, 'WhatsApp deve ter pelo menos 10 dígitos'),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  facebook: z.string().optional(),
+  instagram: z.string().optional(),
+  cep: z.string().optional(),
+  street: z.string().optional(),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  notes: z.string().optional(),
+  contacted_at: z.string().optional(),
+  vote_status: z.string().optional(),
+  owner_id: z.string().optional(),
+});
+
+type PersonFormData = z.infer<typeof personSchema>;
+
 export default function PessoasFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();

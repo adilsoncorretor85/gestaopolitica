@@ -1,0 +1,33 @@
+From 69182ee1389595ff0c453b8ee2ca0dad546e88f0 Mon Sep 17 00:00:00 2001
+From: adilsoncorretor85 <adilsoncorretor85@gmail.com>
+Date: Wed, 1 Oct 2025 19:37:19 -0300
+Subject: [PATCH] =?UTF-8?q?feat:=20implementar=20valida=C3=83=C2=A7=C3=83?=
+ =?UTF-8?q?=C2=A3o=20de=20nome=20completo=20e=20atualizar=20README?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Adicionar validaÃ§Ã£o Zod no formulÃ¡rio de pessoas
+- Mensagens de erro especÃ­ficas para nome completo
+- README completo com documentaÃ§Ã£o do sistema
+- IntegraÃ§Ã£o react-hook-form com validaÃ§Ã£o em tempo real
+---
+ src/pages/PessoasForm.tsx | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/pages/PessoasForm.tsx b/src/pages/PessoasForm.tsx
+index 1498abf..1490367 100644
+--- a/src/pages/PessoasForm.tsx
++++ b/src/pages/PessoasForm.tsx
+@@ -1,5 +1,8 @@
+ import React, { useState, useEffect, useRef } from 'react';
+ import { useParams, useNavigate, Link } from 'react-router-dom';
++import { useForm } from 'react-hook-form';
++import { zodResolver } from '@hookform/resolvers/zod';
++import { z } from 'zod';
+ import Header from '@/components/Header';
+ import Sidebar from '@/components/Sidebar';
+ import MapPicker from '@/components/MapPicker';
+-- 
+2.51.0.windows.1
+
