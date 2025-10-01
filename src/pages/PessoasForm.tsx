@@ -91,6 +91,30 @@ export default function PessoasFormPage() {
     longitude: null
   });
 
+  // Estado para validação em tempo real do nome completo
+  const [nameError, setNameError] = useState<string>('');
+
+  // Função para validar nome completo
+  const validateFullName = (name: string) => {
+    if (!name || name.trim().length === 0) {
+      return 'Nome é obrigatório';
+    }
+    if (name.trim().length < 3) {
+      return 'Nome deve ter pelo menos 3 caracteres';
+    }
+    const words = name.trim().split(/\s+/).filter(word => word.length > 0);
+    if (words.length < 2) {
+      return 'Informe o nome completo (nome e sobrenome)';
+    }
+    return '';
+  };
+
+  // Função para lidar com o evento onBlur do campo nome
+  const handleNameBlur = () => {
+    const error = validateFullName(formData.full_name || '');
+    setNameError(error);
+  };
+
   useEffect(() => {
     if (id) {
       loadPerson();
@@ -316,6 +340,11 @@ export default function PessoasFormPage() {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
+    
+    // Limpar erro do nome quando o usuário começar a digitar
+    if (name === 'full_name' && nameError) {
+      setNameError('');
+    }
   };
 
   if (loading) {
@@ -373,9 +402,21 @@ export default function PessoasFormPage() {
                         name="full_name"
                         value={formData.full_name || ''}
                         onChange={handleChange}
+                        onBlur={handleNameBlur}
                         required
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          nameError 
+                            ? 'border-red-500 dark:border-red-400' 
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                        placeholder="Digite o nome completo (nome e sobrenome)"
                       />
+                      {nameError && (
+                        <p className="text-red-500 text-sm mt-1 flex items-center">
+                          <span className="mr-1">⚠️</span>
+                          {nameError}
+                        </p>
+                      )}
                     </div>
 
                     <div>
