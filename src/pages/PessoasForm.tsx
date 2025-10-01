@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import MapPicker from '@/components/MapPicker';
