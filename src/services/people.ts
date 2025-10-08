@@ -432,7 +432,8 @@ export async function createPerson(p: PersonInsertWithTags): Promise<{ data: Per
     }
     
     // Set owner_id to current user and normalize state
-    const personWithOwner = { ...p, owner_id: user.id, state: toUF(p.state) };
+    const { tagIds, ...personData } = p; // Remove tagIds do payload
+    const personWithOwner = { ...personData, owner_id: user.id, state: toUF(p.state) };
     
     const { data, error } = await supabase
       .from("people")
@@ -539,7 +540,8 @@ export async function updatePerson(id: string, p: PersonUpdateWithTags): Promise
       }
     }
     
-    const payload = { ...p, state: toUF(p.state ?? null) };
+    const { tagIds, ...personData } = p; // Remove tagIds do payload
+    const payload = { ...personData, state: toUF(p.state ?? null) };
     
     const { data, error } = await supabase
       .from("people")

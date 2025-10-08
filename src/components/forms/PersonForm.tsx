@@ -81,6 +81,14 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
   const [showAddressDetails, setShowAddressDetails] = useState(false);
   const [showLeaderSelector, setShowLeaderSelector] = useState(false);
   const [nameError, setNameError] = useState<string>('');
+
+  // Mostrar detalhes de endereço quando mostrar detalhes avançados
+  useEffect(() => {
+    if (showAdvanced) {
+      setShowAddressDetails(true);
+    }
+  }, [showAdvanced]);
+
   
   // Estado para tags
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
@@ -124,6 +132,47 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
            owner_id: person?.owner_id || profile?.id || '',
          }
   });
+
+  // Monitorar mudanças no CEP e buscar endereço automaticamente
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name === 'cep' && value.cep) {
+        const cep = value.cep.replace(/\D/g, '');
+        if (cep.length === 8) {
+          // Limpar timeout anterior se existir
+          if (cepRef.current) {
+            clearTimeout(cepRef.current);
+          }
+          
+          // Aguardar 500ms antes de buscar para evitar muitas requisições
+          cepRef.current = setTimeout(async () => {
+            setLoadingCep(true);
+            setErrorCep(null);
+            
+            try {
+              const address = await fetchAddressByCep(cep);
+              if (address) {
+                setValue('street', address.street);
+                setValue('neighborhood', address.neighborhood);
+                setValue('city', address.city);
+                setValue('state', address.state);
+                setValue('cep', address.cep);
+                setShowAddressDetails(true);
+              } else {
+                setErrorCep('CEP não encontrado');
+              }
+            } catch (error) {
+              setErrorCep('Erro ao buscar CEP');
+            } finally {
+              setLoadingCep(false);
+            }
+          }, 500);
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [watch, setValue]);
 
   // Função para validar nome completo
   const validateFullName = (name: string) => {
@@ -249,7 +298,7 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         ...(data.city && { city: data.city }),
         ...(data.state && { state: data.state }),
         ...(data.notes && { notes: data.notes }),
-        ...(data.vote_status && { vote_status: data.vote_status }),
+        vote_status: data.vote_status || 'INDEFINIDO',
         ...(coords && { latitude: coords.lat, longitude: coords.lng }),
       };
 
