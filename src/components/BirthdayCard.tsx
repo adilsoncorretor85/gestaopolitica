@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Cake, Calendar, Phone, Mail, MapPin, MessageCircle, Copy } from 'lucide-react';
 import { getTodayBirthdays, getUpcomingBirthdays, type BirthdayPerson } from '@/services/birthday';
+import { formatNameWithTreatment } from '@/lib/treatmentUtils';
 
 const BirthdayCard: React.FC = () => {
   const [todayBirthdays, setTodayBirthdays] = useState<BirthdayPerson[]>([]);
@@ -164,7 +165,7 @@ const BirthdayCard: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="font-medium text-gray-900 dark:text-white">{person.full_name}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white">{formatNameWithTreatment(person.treatment, person.full_name)}</h4>
                         <span className="text-sm text-green-600 dark:text-green-400 font-medium">
                           {person.age} anos
                         </span>
@@ -193,7 +194,7 @@ const BirthdayCard: React.FC = () => {
                       {person.phone && (
                         <div className="mt-3 flex gap-2">
                           <button
-                            onClick={() => handleWhatsAppClick(person.phone!, person.full_name, true)}
+                            onClick={() => handleWhatsAppClick(person.phone!, formatNameWithTreatment(person.treatment, person.full_name), true)}
                             className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                             title="Abrir WhatsApp com mensagem de parabéns pré-formatada"
                           >
@@ -201,7 +202,7 @@ const BirthdayCard: React.FC = () => {
                             <span>WhatsApp</span>
                           </button>
                           <button
-                            onClick={() => handleCopyMessage(person.phone!, person.full_name, true)}
+                            onClick={() => handleCopyMessage(person.phone!, formatNameWithTreatment(person.treatment, person.full_name), true)}
                             className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                             title="Copiar mensagem para área de transferência"
                           >
@@ -258,7 +259,7 @@ const BirthdayCard: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="font-medium text-gray-900 dark:text-white">{person.full_name}</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-white">{formatNameWithTreatment(person.treatment, person.full_name)}</h4>
                           <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                             {person.age} anos
                           </span>
@@ -290,7 +291,7 @@ const BirthdayCard: React.FC = () => {
                         {person.phone && (
                           <div className="mt-3 flex gap-2">
                             <button
-                              onClick={() => handleWhatsAppClick(person.phone!, person.full_name, isToday)}
+                              onClick={() => handleWhatsAppClick(person.phone!, formatNameWithTreatment(person.treatment, person.full_name), isToday)}
                               className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                               title={isToday ? "Abrir WhatsApp com mensagem de parabéns pré-formatada" : "Abrir WhatsApp com mensagem de parabéns antecipado"}
                             >
@@ -298,7 +299,7 @@ const BirthdayCard: React.FC = () => {
                               <span>WhatsApp</span>
                             </button>
                             <button
-                              onClick={() => handleCopyMessage(person.phone!, person.full_name, isToday)}
+                              onClick={() => handleCopyMessage(person.phone!, formatNameWithTreatment(person.treatment, person.full_name), isToday)}
                               className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                               title="Copiar mensagem para área de transferência"
                             >

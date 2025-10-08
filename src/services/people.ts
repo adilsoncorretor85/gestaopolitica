@@ -23,20 +23,42 @@ export interface PersonUpdateWithTags extends PersonUpdate {
 }
 
 // Função para verificar duplicatas no frontend (validação em tempo real)
-export async function checkWhatsAppDuplicate(whatsapp: string): Promise<{ isDuplicate: boolean; message?: string }> {
+export async function checkWhatsAppDuplicate(whatsapp: string, currentPersonId?: string): Promise<{ isDuplicate: boolean; message?: string }> {
   try {
     if (!whatsapp || whatsapp.replace(/\D/g, '').length < 10) {
       return { isDuplicate: false };
     }
     
     const normalizedWhatsapp = whatsapp.replace(/\D/g, '');
-    const existingInfo = await checkExistingPerson(normalizedWhatsapp, '');
+    const supabase = getSupabaseClient();
     
-    if (existingInfo.exists) {
-      const roleText = existingInfo.ownerRole === 'ADMIN' ? 'administrador' : 'líder';
+    // Buscar pessoa existente com informações do owner
+    const { data: existingPerson, error } = await supabase
+      .from("people")
+      .select(`
+        id,
+        whatsapp,
+        full_name,
+        owner:profiles!owner_id(
+          id,
+          full_name,
+          role
+        )
+      `)
+      .eq('whatsapp', normalizedWhatsapp)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Erro ao verificar duplicata:', error);
+      return { isDuplicate: false };
+    }
+    
+    // Se encontrou uma pessoa e não é a mesma que está sendo editada
+    if (existingPerson && existingPerson.id !== currentPersonId) {
+      const roleText = existingPerson.owner?.role === 'ADMIN' ? 'administrador' : 'líder';
       return {
         isDuplicate: true,
-        message: `Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${existingInfo.ownerName}.`
+        message: `Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${existingPerson.owner?.full_name || 'usuário'}.`
       };
     }
     

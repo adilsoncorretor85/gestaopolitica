@@ -11,6 +11,7 @@ import { listLeaders, type LeaderRow } from '@/services/admin';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 import { useElection } from '@/contexts/ElectionContext';
 import { normalizeKey } from '@/lib/normalize';
+import { formatNameWithTreatment } from '@/lib/treatmentUtils';
 import { TagList } from '@/components/TagList';
 import { TagEditModal } from '@/components/modals/TagEditModal';
 import { TagFilter } from '@/components/TagFilter';
@@ -997,7 +998,7 @@ export default function PessoasPage() {
                             >
                               <div>
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {person.full_name}
+                                  {formatNameWithTreatment(person.treatment, person.full_name)}
                                 </div>
                                 {person.email && (
                                   <div className="text-sm text-gray-500 dark:text-gray-400">{person.email}</div>
@@ -1117,7 +1118,7 @@ export default function PessoasPage() {
                               onClick={() => handleRowClick(person)}
                             >
                               <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                                {person.full_name}
+                                {formatNameWithTreatment(person.treatment, person.full_name)}
                               </h3>
                               {person.email && (
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{person.email}</p>
@@ -1225,7 +1226,7 @@ export default function PessoasPage() {
       <Drawer
         isOpen={drawerOpen}
         onClose={handleCloseDrawer}
-        title={selectedPerson?.full_name || 'Detalhes do Contato'}
+        title={selectedPerson ? formatNameWithTreatment(selectedPerson.treatment, selectedPerson.full_name) : 'Detalhes do Contato'}
       >
         {selectedPerson && (
           <div className="space-y-6">
@@ -1252,7 +1253,7 @@ export default function PessoasPage() {
               {/* Nome */}
               <div>
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Nome</h3>
-                <p className="text-gray-900 dark:text-white">{selectedPerson.full_name}</p>
+                <p className="text-gray-900 dark:text-white">{formatNameWithTreatment(selectedPerson.treatment, selectedPerson.full_name)}</p>
               </div>
 
               {/* WhatsApp */}
@@ -1399,7 +1400,7 @@ export default function PessoasPage() {
                       Tags aplicadas a esta pessoa
                     </span>
                     <button
-                      onClick={() => handleEditTags(selectedPerson.id!, selectedPerson.full_name)}
+                      onClick={() => handleEditTags(selectedPerson.id!, formatNameWithTreatment(selectedPerson.treatment, selectedPerson.full_name))}
                       className="flex items-center space-x-1 px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                     >
                       <Tags className="h-3 w-3" />

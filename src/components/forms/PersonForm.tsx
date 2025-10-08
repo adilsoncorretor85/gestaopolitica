@@ -9,6 +9,7 @@ import EssentialFields from './EssentialFields';
 import AddressDetails from './AddressDetails';
 import AdvancedDetails from './AdvancedDetails';
 import TagSelectorField from './TagSelectorField';
+import TreatmentSelector from './TreatmentSelector';
 import MapPicker from '@/components/MapPicker';
 import AddressAutocomplete, { type AddressParts } from '@/components/AddressAutocomplete';
 import { useToast } from '@/components/ui/toast';
@@ -17,6 +18,7 @@ import { listLeaders, type LeaderRow } from '@/services/admin';
 import { fetchAddressByCep } from '@/services/viacep';
 import { geocodeAddress } from '@/services/geocoding';
 import { Tag } from '@/services/tags';
+import { normalizeTreatment } from '@/lib/treatmentUtils';
 import useAuth from '@/hooks/useAuth';
 
 // Função utilitária para obter a data atual no formato YYYY-MM-DD
@@ -34,6 +36,8 @@ const personSchema = z.object({
   whatsapp: z.string()
     .min(1, 'WhatsApp é obrigatório')
     .min(10, 'WhatsApp deve ter pelo menos 10 dígitos'),
+  treatment: z.string().optional(),
+  gender: z.enum(['M', 'F', 'O']).optional(),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   facebook: z.string().optional(),
   instagram: z.string().optional(),
@@ -98,25 +102,27 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
     reset
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
-    defaultValues: {
-      full_name: person?.full_name || '',
-      whatsapp: person?.whatsapp || '',
-      email: person?.email || '',
-      facebook: person?.facebook || '',
-      instagram: person?.instagram || '',
-      birth_date: person?.birth_date || '',
-      cep: person?.cep || '',
-      street: person?.street || '',
-      number: person?.number || '',
-      complement: person?.complement || '',
-      neighborhood: person?.neighborhood || '',
-      city: person?.city || '',
-      state: person?.state || '',
-      notes: person?.notes || '',
-      contacted_at: person?.contacted_at || getCurrentDate(),
-      vote_status: person?.vote_status || 'INDEFINIDO',
-      owner_id: person?.owner_id || profile?.id || '',
-    }
+         defaultValues: {
+           full_name: person?.full_name || '',
+           whatsapp: person?.whatsapp || '',
+           treatment: person?.treatment || '',
+           gender: person?.gender || undefined,
+           email: person?.email || '',
+           facebook: person?.facebook || '',
+           instagram: person?.instagram || '',
+           birth_date: person?.birth_date || '',
+           cep: person?.cep || '',
+           street: person?.street || '',
+           number: person?.number || '',
+           complement: person?.complement || '',
+           neighborhood: person?.neighborhood || '',
+           city: person?.city || '',
+           state: person?.state || '',
+           notes: person?.notes || '',
+           contacted_at: person?.contacted_at || getCurrentDate(),
+           vote_status: person?.vote_status || 'INDEFINIDO',
+           owner_id: person?.owner_id || profile?.id || '',
+         }
   });
 
   // Função para validar nome completo
@@ -220,12 +226,17 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
     try {
       setSaving(true);
       
+      // Normalizar tratamento
+      const normalizedTreatment = normalizeTreatment(data.treatment);
+      
       // Preparar payload mínimo
       const basePayload = {
         full_name: data.full_name,
         whatsapp: data.whatsapp,
         owner_id: data.owner_id || profile?.id,
         contacted_at: data.contacted_at || getCurrentDate(),
+        ...(normalizedTreatment && { treatment: normalizedTreatment }),
+        ...(data.gender && { gender: data.gender }),
         ...(data.email && { email: data.email }),
         ...(data.facebook && { facebook: data.facebook }),
         ...(data.instagram && { instagram: data.instagram }),
@@ -279,12 +290,15 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         <EssentialFields
           register={register}
           errors={errors}
+          setValue={setValue}
+          watch={watch}
           showAdvanced={showAdvanced}
           onToggleAdvanced={() => setShowAdvanced(!showAdvanced)}
           onAddressSelect={handleAddressSelect}
           nameError={nameError}
           onNameBlur={handleNameBlur}
           watchWhatsApp={() => watch('whatsapp')}
+          currentPersonId={person?.id}
         />
 
         {/* Detalhes de Endereço */}

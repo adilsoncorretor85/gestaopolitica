@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { UseFormRegister, FieldErrors } from 'react-hook-form';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import TreatmentSelector from './TreatmentSelector';
 import { checkWhatsAppDuplicate } from '@/services/people';
 
 interface EssentialFieldsProps {
   register: UseFormRegister<any>;
   errors: FieldErrors<any>;
+  setValue: UseFormSetValue<any>;
+  watch: (name: string) => any;
   showAdvanced: boolean;
   onToggleAdvanced: () => void;
   onAddressSelect: (address: any) => void;
   nameError?: string;
   onNameBlur: () => void;
   watchWhatsApp?: () => string;
+  currentPersonId?: string;
 }
 
 export default function EssentialFields({
   register,
   errors,
+  setValue,
+  watch,
   showAdvanced,
   onToggleAdvanced,
   onAddressSelect,
   nameError,
   onNameBlur,
-  watchWhatsApp
+  watchWhatsApp,
+  currentPersonId
 }: EssentialFieldsProps) {
   const [whatsappError, setWhatsappError] = useState<string>('');
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
@@ -41,7 +48,7 @@ export default function EssentialFields({
     const timeoutId = setTimeout(async () => {
       setCheckingDuplicate(true);
       try {
-        const result = await checkWhatsAppDuplicate(whatsapp);
+        const result = await checkWhatsAppDuplicate(whatsapp, currentPersonId);
         if (result.isDuplicate) {
           setWhatsappError(result.message || 'WhatsApp já cadastrado');
         } else {
@@ -64,59 +71,124 @@ export default function EssentialFields({
           Informações Básicas
         </h3>
         
-        {/* Nome Completo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Nome Completo *
-          </label>
-          <input
-            type="text"
-            {...register('full_name')}
-            onBlur={onNameBlur}
-            autoFocus
-            className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              nameError || errors.full_name
-                ? 'border-red-500 dark:border-red-400' 
-                : 'border-gray-300 dark:border-gray-600'
-            }`}
-            placeholder="Digite o nome completo (nome e sobrenome)"
-          />
-          {(nameError || errors.full_name) && (
-            <p className="text-red-500 text-sm mt-1 flex items-center">
-              <span className="mr-1">⚠️</span>
-              {nameError || errors.full_name?.message}
-            </p>
-          )}
-        </div>
+        {/* Tratamento e Nome Completo - lado a lado */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Tratamento */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Tratamento
+            </label>
+            <TreatmentSelector
+              value={watch('treatment') || ''}
+              onChange={(value) => setValue('treatment', value)}
+            />
+            {errors.treatment && (
+              <p className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="mr-1">⚠️</span>
+                {errors.treatment.message}
+              </p>
+            )}
+          </div>
 
-        {/* WhatsApp */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            WhatsApp *
-          </label>
-          <div className="relative">
+          {/* Nome Completo */}
+          <div className="md:col-span-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nome Completo *
+            </label>
             <input
-              type="tel"
-              {...register('whatsapp')}
+              type="text"
+              {...register('full_name')}
+              onBlur={onNameBlur}
+              autoFocus
               className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.whatsapp || whatsappError
+                nameError || errors.full_name
                   ? 'border-red-500 dark:border-red-400' 
                   : 'border-gray-300 dark:border-gray-600'
               }`}
-              placeholder="(11) 99999-9999"
+              placeholder="Digite o nome completo (nome e sobrenome)"
             />
-            {checkingDuplicate && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              </div>
+            {(nameError || errors.full_name) && (
+              <p className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="mr-1">⚠️</span>
+                {nameError || errors.full_name?.message}
+              </p>
             )}
           </div>
-          {(errors.whatsapp || whatsappError) && (
-            <p className="text-red-500 text-sm mt-1 flex items-center">
-              <span className="mr-1">⚠️</span>
-              {whatsappError || errors.whatsapp?.message}
-            </p>
-          )}
+        </div>
+
+        {/* Sexo e WhatsApp - lado a lado */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Sexo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Sexo
+            </label>
+            <div className="flex gap-3">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="M"
+                  {...register('gender')}
+                  className="mr-1 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">M</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="F"
+                  {...register('gender')}
+                  className="mr-1 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">F</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="O"
+                  {...register('gender')}
+                  className="mr-1 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Outro</span>
+              </label>
+            </div>
+            {errors.gender && (
+              <p className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="mr-1">⚠️</span>
+                {errors.gender.message}
+              </p>
+            )}
+          </div>
+
+          {/* WhatsApp */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              WhatsApp *
+            </label>
+            <div className="relative">
+              <input
+                type="tel"
+                {...register('whatsapp')}
+                className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.whatsapp || whatsappError
+                    ? 'border-red-500 dark:border-red-400' 
+                    : 'border-gray-300 dark:border-gray-600'
+                }`}
+                placeholder="(11) 99999-9999"
+              />
+              {checkingDuplicate && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                </div>
+              )}
+            </div>
+            {(errors.whatsapp || whatsappError) && (
+              <p className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="mr-1">⚠️</span>
+                {whatsappError || errors.whatsapp?.message}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Data de Nascimento */}
