@@ -73,10 +73,16 @@ export async function checkWhatsAppDuplicate(whatsapp: string, currentPersonId?:
 function toUF(s?: string | null): string | null {
   if (!s) return null;
   const txt = s.trim();
+  devLog('🔍 toUF - Normalizando estado:', { original: s, trimmed: txt });
+  
   const hit = ESTADOS_BRASIL.find(
     e => e.sigla.toLowerCase() === txt.toLowerCase() || e.nome.toLowerCase() === txt.toLowerCase()
   );
-  return hit ? hit.sigla : txt.toUpperCase();
+  
+  const result = hit ? hit.sigla : null;
+  devLog('🔍 toUF - Resultado:', { found: !!hit, result, estado: hit });
+  
+  return result;
 }
 
 export async function listPeople(params?: {
