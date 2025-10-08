@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -278,8 +279,8 @@ export default function LideresFormPage() {
           
           // Log para debug
           if (result?.acceptUrl) {
-            console.log('Link de convite:', result.acceptUrl);
-            console.log('Email status:', result.emailStatus);
+            devLog('Link de convite:', result.acceptUrl);
+            devLog('Email status:', result.emailStatus);
           }
           
           // Se foi preenchida uma liderança, criar após o convite
@@ -297,7 +298,7 @@ export default function LideresFormPage() {
                 reach_size: leadershipData.reach_size,
                 extra: leadershipData.extra
               });
-              console.log('Liderança criada com sucesso');
+              devLog('Liderança criada com sucesso');
             } catch (leadershipError: any) {
               console.error('Erro ao criar liderança:', leadershipError);
               // Não falha o convite por causa da liderança
@@ -329,7 +330,7 @@ export default function LideresFormPage() {
     try {
       setSaving(true);
       
-      console.log('Iniciando desativação do líder:', id);
+      devLog('Iniciando desativação do líder:', id);
       
       // Bane o usuário usando a Edge Function
       const result = await toggleUserBan({
@@ -338,7 +339,7 @@ export default function LideresFormPage() {
         reason: 'Desativado pelo administrador',
       });
       
-      console.log('Resultado da desativação:', result);
+      devLog('Resultado da desativação:', result);
       
       alert('Líder desativado com sucesso.');
       navigate('/lideres');

@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -9,7 +10,7 @@ export async function syncPublicSettings(client?: SupabaseClient): Promise<boole
   try {
     const supabase = client || getSupabaseClient();
     
-    console.log('🔄 [syncPublicSettings] Iniciando sincronização...');
+    devLog('🔄 [syncPublicSettings] Iniciando sincronização...');
     
     // 1. Buscar a configuração mais recente de election_settings
     const { data: electionData, error: electionError } = await supabase
@@ -25,11 +26,11 @@ export async function syncPublicSettings(client?: SupabaseClient): Promise<boole
     }
 
     if (!electionData) {
-      console.warn('⚠️ [syncPublicSettings] Nenhuma configuração de eleição encontrada');
+      devLog('⚠️ [syncPublicSettings] Nenhuma configuração de eleição encontrada');
       return false;
     }
 
-    console.log('📋 [syncPublicSettings] Configuração encontrada:', {
+    devLog('📋 [syncPublicSettings] Configuração encontrada:', {
       id: electionData.id,
       election_name: electionData.election_name,
       election_date: electionData.election_date,
@@ -53,7 +54,7 @@ export async function syncPublicSettings(client?: SupabaseClient): Promise<boole
       scope_city_ibge: electionData.scope_city_ibge || electionData.city_ibge,
     };
 
-    console.log('📤 [syncPublicSettings] Dados para public_settings:', publicSettingsPayload);
+    devLog('📤 [syncPublicSettings] Dados para public_settings:', publicSettingsPayload);
 
     // 3. Primeiro, verificar se o registro existe
     const { data: existingData, error: checkError } = await supabase
@@ -67,19 +68,19 @@ export async function syncPublicSettings(client?: SupabaseClient): Promise<boole
       return false;
     }
 
-    console.log('🔍 [syncPublicSettings] Registro existente:', existingData);
+    devLog('🔍 [syncPublicSettings] Registro existente:', existingData);
 
     // 4. Atualizar ou inserir public_settings
     let result;
     if (existingData) {
-      console.log('💾 [syncPublicSettings] Atualizando registro existente...');
+      devLog('💾 [syncPublicSettings] Atualizando registro existente...');
       result = await supabase
         .from('public_settings')
         .update(publicSettingsPayload)
         .eq('id', 1)
         .select();
     } else {
-      console.log('💾 [syncPublicSettings] Inserindo novo registro...');
+      devLog('💾 [syncPublicSettings] Inserindo novo registro...');
       result = await supabase
         .from('public_settings')
         .insert(publicSettingsPayload)
@@ -91,7 +92,7 @@ export async function syncPublicSettings(client?: SupabaseClient): Promise<boole
       return false;
     }
 
-    console.log('✅ [syncPublicSettings] Sincronização concluída com sucesso:', result.data);
+    devLog('✅ [syncPublicSettings] Sincronização concluída com sucesso:', result.data);
     return true;
   } catch (error) {
     console.error('❌ [syncPublicSettings] Erro inesperado:', error);
@@ -111,7 +112,7 @@ export async function checkSettingsSync(client?: SupabaseClient): Promise<{
   try {
     const supabase = client || getSupabaseClient();
     
-    console.log('🔍 [checkSettingsSync] Verificando sincronização...');
+    devLog('🔍 [checkSettingsSync] Verificando sincronização...');
     
     // Buscar dados de ambas as tabelas
     const [electionResult, publicResult] = await Promise.all([
@@ -170,7 +171,7 @@ export async function checkSettingsSync(client?: SupabaseClient): Promise<{
 
     const isSynced = discrepancies.length === 0;
 
-    console.log('📊 [checkSettingsSync] Resultado:', {
+    devLog('📊 [checkSettingsSync] Resultado:', {
       isSynced,
       discrepancies,
       electionData: {
@@ -212,7 +213,7 @@ export async function forceUpdatePublicSettings(
   try {
     const supabase = client || getSupabaseClient();
     
-    console.log('🔄 [forceUpdatePublicSettings] Forçando atualização com dados:', data);
+    devLog('🔄 [forceUpdatePublicSettings] Forçando atualização com dados:', data);
     
     const payload = {
       id: 1,
@@ -224,7 +225,7 @@ export async function forceUpdatePublicSettings(
       scope_city: data.scope_city || null,
     };
 
-    console.log('📤 [forceUpdatePublicSettings] Payload final:', payload);
+    devLog('📤 [forceUpdatePublicSettings] Payload final:', payload);
 
     // Verificar se o registro existe
     const { data: existingData, error: checkError } = await supabase
@@ -240,14 +241,14 @@ export async function forceUpdatePublicSettings(
 
     let result;
     if (existingData) {
-      console.log('💾 [forceUpdatePublicSettings] Atualizando registro existente...');
+      devLog('💾 [forceUpdatePublicSettings] Atualizando registro existente...');
       result = await supabase
         .from('public_settings')
         .update(payload)
         .eq('id', 1)
         .select();
     } else {
-      console.log('💾 [forceUpdatePublicSettings] Inserindo novo registro...');
+      devLog('💾 [forceUpdatePublicSettings] Inserindo novo registro...');
       result = await supabase
         .from('public_settings')
         .insert(payload)
@@ -259,7 +260,7 @@ export async function forceUpdatePublicSettings(
       return false;
     }
 
-    console.log('✅ [forceUpdatePublicSettings] Atualização forçada concluída:', result.data);
+    devLog('✅ [forceUpdatePublicSettings] Atualização forçada concluída:', result.data);
     return true;
   } catch (error) {
     console.error('❌ [forceUpdatePublicSettings] Erro inesperado:', error);

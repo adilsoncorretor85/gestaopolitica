@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export type LeaderRow = {
@@ -17,7 +18,7 @@ type ToggleBanInput = {
 export async function toggleUserBan(input: ToggleBanInput) {
   const supabase = getSupabaseClient();
   
-  console.log('Chamando Edge Function admin_ban_user com:', input);
+  devLog('Chamando Edge Function admin_ban_user com:', input);
   
   const { data, error } = await supabase.functions.invoke('admin_ban_user', {
     body: {
@@ -27,7 +28,7 @@ export async function toggleUserBan(input: ToggleBanInput) {
     }
   });
 
-  console.log('Resposta da Edge Function:', { data, error });
+  devLog('Resposta da Edge Function:', { data, error });
 
   if (error) {
     console.error('Erro na Edge Function:', error);

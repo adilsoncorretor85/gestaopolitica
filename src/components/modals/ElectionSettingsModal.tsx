@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useEffect, useState } from "react";
 import { upsertElectionCurrent, getElectionSettings, type ElectionSettings, type ElectionLevel } from "@/services/election";
 import { fetchCitiesByUF, UFS } from "@/lib/br";
@@ -99,7 +100,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
       return;
     }
     
-    console.log('🔍 Iniciando salvamento das configurações de eleição...');
+    devLog('🔍 Iniciando salvamento das configurações de eleição...');
     
     // Validações antes de salvar
     if (!name.trim()) {
@@ -141,12 +142,12 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
         city: level === 'MUNICIPAL' ? (city?.name ?? null) : null,
       };
       
-      console.log('📤 Payload a ser enviado:', payload);
-      console.log('🔍 Chamando upsertElectionCurrent...');
+      devLog('📤 Payload a ser enviado:', payload);
+      devLog('🔍 Chamando upsertElectionCurrent...');
       
       const saved = await upsertElectionCurrent(supabase, payload);
       
-      console.log('✅ Configurações salvas com sucesso:', saved);
+      devLog('✅ Configurações salvas com sucesso:', saved);
       
       onSaved?.(saved);
       onClose();

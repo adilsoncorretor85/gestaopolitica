@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase } from '@/lib/supabaseClient';
@@ -184,14 +185,14 @@ export default function Mapa() {
 
   // Aplicar filtros padrão da eleição
   useEffect(() => {
-    console.log('Mapa - defaultFilters:', defaultFilters, 'overrode:', overrode);
+    devLog('Mapa - defaultFilters:', defaultFilters, 'overrode:', overrode);
     if (!overrode && defaultFilters) {
       if (defaultFilters.state) {
-        console.log('Aplicando filtro de estado:', defaultFilters.state);
+        devLog('Aplicando filtro de estado:', defaultFilters.state);
         setSelectedUF(defaultFilters.state);
       }
       if (defaultFilters.city) {
-        console.log('Aplicando filtro de cidade:', defaultFilters.city);
+        devLog('Aplicando filtro de cidade:', defaultFilters.city);
         setSelectedCity(defaultFilters.city);
         setSelectedCityKey(normalizeKey(defaultFilters.city));
       }
@@ -367,7 +368,7 @@ export default function Mapa() {
         .limit(2000);
 
       if (error) {
-        console.warn("[MAP] falha ao buscar líderes p/ filtro:", error);
+        devLog("[MAP] falha ao buscar líderes p/ filtro:", error);
         setLeadersOptions([]);
         return;
       }
@@ -534,9 +535,9 @@ export default function Mapa() {
       }
       if (peopleErr) console.error("[MAP] erro pessoas:", peopleErr);
       
-      console.log("[MAP] Pessoas encontradas:", peopleData?.length || 0);
+      devLog("[MAP] Pessoas encontradas:", peopleData?.length || 0);
       if (peopleData && peopleData.length > 0) {
-        console.log("[MAP] Primeira pessoa:", {
+        devLog("[MAP] Primeira pessoa:", {
           nome: peopleData[0].full_name,
           cidade: peopleData[0].city,
           estado: peopleData[0].state,
@@ -561,7 +562,7 @@ export default function Mapa() {
         tags: r.tags || null, // incluir tags se vieram do RPC
       }));
       
-      console.log("[MAP] Pessoas mapeadas:", people.length);
+      devLog("[MAP] Pessoas mapeadas:", people.length);
 
       // Popular opções cascateadas (com base no dataset atual)
       if (!cancelled) {

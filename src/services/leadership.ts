@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { ProfileLeadership, LeadershipFormValues } from '@/types/leadership';
 import { ROLE_OPTIONS } from '@/types/leadership';
@@ -162,52 +163,52 @@ export async function upsertProfileLeadership(profileId: string, payload: Leader
 
   // Log de desenvolvimento para Mentor
   if (payload.role_code === 'INF_MENTOR' && import.meta.env.DEV) {
-    console.log('upsert mentor leadership -> payload extra:', extra);
+    devLog('upsert mentor leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Celebridade
   if (payload.role_code === 'MID_CELEBRIDADE' && import.meta.env.DEV) {
-    console.log('upsert celebrity leadership -> payload extra:', extra);
+    devLog('upsert celebrity leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Jornalista
   if (payload.role_code === 'MID_JORNALISTA' && import.meta.env.DEV) {
-    console.log('upsert journalist leadership -> payload extra:', extra);
+    devLog('upsert journalist leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Influenciador digital
   if (payload.role_code === 'MID_INFLUENCER' && import.meta.env.DEV) {
-    console.log('upsert influencer leadership -> payload extra:', extra);
+    devLog('upsert influencer leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Presidente de entidade
   if (payload.role_code === 'POL_PRESIDENTE_ENTIDADE' && import.meta.env.DEV) {
-    console.log('upsert president entity leadership -> payload extra:', extra);
+    devLog('upsert president entity leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Liderança partidária
   if (payload.role_code === 'POL_PARTIDARIA' && import.meta.env.DEV) {
-    console.log('upsert party leadership -> payload extra:', extra);
+    devLog('upsert party leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Influenciador cultural
   if (payload.role_code === 'SOC_CULTURAL' && import.meta.env.DEV) {
-    console.log('upsert cultural influencer leadership -> payload extra:', extra);
+    devLog('upsert cultural influencer leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Educador
   if (payload.role_code === 'SOC_EDUCADOR' && import.meta.env.DEV) {
-    console.log('upsert educator leadership -> payload extra:', extra);
+    devLog('upsert educator leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Líder Comunitário
   if (payload.role_code === 'COM_LIDER' && import.meta.env.DEV) {
-    console.log('upsert community leader leadership -> payload extra:', extra);
+    devLog('upsert community leader leadership -> payload extra:', extra);
   }
 
   // Log de desenvolvimento para Militar/Forças de segurança
   if (payload.role_code === 'PUB_CHEFIA' && import.meta.env.DEV) {
-    console.log('upsert military leadership -> payload extra:', extra);
+    devLog('upsert military leadership -> payload extra:', extra);
   }
 
   // upsert idempotente por profile_id (há índice único em profile_id)

@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { supabase as sbDefault } from '@/lib/supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -32,12 +33,12 @@ export async function getPublicSettings(
       .maybeSingle();
 
     if (error) {
-      console.warn('[getPublicSettings] erro:', error);
+      devLog('[getPublicSettings] erro:', error);
       return null;
     }
     return data as PublicSettings;
   } catch (err) {
-    console.warn('[getPublicSettings] erro inesperado:', err);
+    devLog('[getPublicSettings] erro inesperado:', err);
     return null;
   }
 }

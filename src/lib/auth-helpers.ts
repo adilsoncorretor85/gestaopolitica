@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { supabase } from './supabaseClient';
 
 /**
@@ -11,7 +12,7 @@ export async function activateLeaderIfPending(): Promise<void> {
     const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
     
     if (!user?.id) {
-      console.warn('[activateLeaderIfPending] Nenhum usuário autenticado');
+      devLog('[activateLeaderIfPending] Nenhum usuário autenticado');
       return;
     }
 
@@ -23,24 +24,24 @@ export async function activateLeaderIfPending(): Promise<void> {
       .maybeSingle() || { data: null, error: null }; // 👈 evita erro "0 rows"
 
     if (fetchError) {
-      console.warn('[activateLeaderIfPending] Erro ao buscar perfil do líder:', fetchError);
+      devLog('[activateLeaderIfPending] Erro ao buscar perfil do líder:', fetchError);
       return;
     }
 
     if (!leaderProfile) {
-      console.warn('[activateLeaderIfPending] Perfil de líder não encontrado para o usuário:', user.id);
+      devLog('[activateLeaderIfPending] Perfil de líder não encontrado para o usuário:', user.id);
       return;
     }
 
     // Se já está ativo, não faz nada
     if (leaderProfile.status === 'ACTIVE') {
-      console.log('[activateLeaderIfPending] Líder já está ativo:', leaderProfile.email);
+      devLog('[activateLeaderIfPending] Líder já está ativo:', leaderProfile.email);
       return;
     }
 
     // Se não está PENDING, não faz nada (pode ser INACTIVE por banimento ou já ativo)
     if (leaderProfile.status !== 'PENDING') {
-      console.log('[activateLeaderIfPending] Líder não está pendente (status:', leaderProfile.status, '):', leaderProfile.email);
+      devLog('[activateLeaderIfPending] Líder não está pendente (status:', leaderProfile.status, '):', leaderProfile.email);
       return;
     }
 
@@ -61,7 +62,7 @@ export async function activateLeaderIfPending(): Promise<void> {
       return;
     }
 
-    console.log('[activateLeaderIfPending] ✅ Líder ativado com sucesso:', leaderProfile.email);
+    devLog('[activateLeaderIfPending] ✅ Líder ativado com sucesso:', leaderProfile.email);
 
   } catch (error) {
     console.error('[activateLeaderIfPending] Erro inesperado:', error);

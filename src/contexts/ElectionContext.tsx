@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getElectionSettings, type ElectionSettings } from '@/services/election';
 import { getPublicSettings } from '@/services/publicSettings';
+import { devLog } from '@/lib/logger';
 
 type Filters = { state?: string; city?: string };
 type Ctx = {
@@ -53,31 +54,31 @@ export function ElectionProvider({
         const e = await getElectionSettings(supabase);
         setElection(e);
       } catch (error) {
-        console.error('Erro ao carregar configurações de eleição:', error);
+        devLog('Erro ao carregar configurações de eleição:', error);
         setElection(null);
       }
     })();
   }, [supabase]);
 
   const defaultFilters = useMemo<Filters>(() => {
-    console.log('ElectionContext - election:', election);
+    devLog('ElectionContext - election:', election);
     if (!election?.election_level) return {};
     if (election.election_level === 'MUNICIPAL') {
       // Municipal: filtra por cidade específica
       const filters = { state: election.scope_state ?? undefined, city: election.scope_city ?? undefined };
-      console.log('ElectionContext - MUNICIPAL filters:', filters);
+      devLog('ElectionContext - MUNICIPAL filters:', filters);
       return filters;
     }
     if (election.election_level === 'ESTADUAL') {
       // Estadual: filtra por estado (permite meta por cidade)
       const filters = { state: election.scope_state ?? undefined };
-      console.log('ElectionContext - ESTADUAL filters:', filters);
+      devLog('ElectionContext - ESTADUAL filters:', filters);
       return filters;
     }
     if (election.election_level === 'FEDERAL') {
       // Federal: filtra por estado (sem meta por cidade)
       const filters = { state: election.scope_state ?? undefined };
-      console.log('ElectionContext - FEDERAL filters:', filters);
+      devLog('ElectionContext - FEDERAL filters:', filters);
       return filters;
     }
     return {};

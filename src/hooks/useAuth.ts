@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
 import { ensureLeaderActivated } from "@/services/leadership";
+import { devLog } from "@/lib/logger";
 
 export type Profile = {
   id: string;
@@ -25,11 +26,11 @@ export default function useAuth(): UseAuth {
   const [loading, setLoading] = useState<boolean>(true);
   
   // Debug: verificar se o hook está sendo chamado
-  console.log('🔍 [useAuth] Hook sendo executado');
-  console.log('🔍 [useAuth] Estado inicial:', { user, session, profile, loading });
+  devLog('useAuth: Hook sendo executado');
+  devLog('useAuth: Estado inicial:', { user, session, profile, loading });
 
   const load = useCallback(async () => {
-    console.log('🔍 [useAuth] Função load sendo executada');
+    devLog('useAuth: Função load sendo executada');
     setLoading(true);
 
     try {
@@ -39,7 +40,7 @@ export default function useAuth(): UseAuth {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error('Erro ao obter sessão:', handleSupabaseError(sessionError, 'obter sessão'));
+        devLog('Erro ao obter sessão:', handleSupabaseError(sessionError, 'obter sessão'));
         setUser(null);
         setSession(null);
         setProfile(null);
@@ -67,14 +68,14 @@ export default function useAuth(): UseAuth {
           // ✅ ativa líder quando já logado (hard refresh, deep link, etc.)
           ensureLeaderActivated();
         } else {
-          console.error('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
+          devLog('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
           setProfile(null);
         }
       } else {
         setProfile(null);
       }
     } catch (error) {
-      console.error('Erro no useAuth:', error);
+      devLog('Erro no useAuth:', error);
       setUser(null);
       setSession(null);
       setProfile(null);
@@ -115,7 +116,7 @@ export default function useAuth(): UseAuth {
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error('Erro ao configurar listener de auth:', error);
+      devLog('Erro ao configurar listener de auth:', error);
     }
   }, [load]);
 
@@ -123,7 +124,7 @@ export default function useAuth(): UseAuth {
   const isAdmin = !!profile && profile.role === "ADMIN";
   
   // Debug: verificar o cálculo do isAdmin
-  console.log('🔍 [useAuth] Cálculo do isAdmin:', {
+  devLog('useAuth: Cálculo do isAdmin:', {
     hasProfile: !!profile,
     profileRole: profile?.role,
     finalIsAdmin: isAdmin

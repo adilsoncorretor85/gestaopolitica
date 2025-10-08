@@ -169,7 +169,9 @@ Deno.serve(async (req)=>{
   } catch (err) {
     // Erro estruturado (Response) já lançado acima
     if (err instanceof Response) return err;
-    console.error("leader_actions error:", err);
+    if (Deno.env.get('ENVIRONMENT') === 'development') {
+      console.error("leader_actions error:", err);
+    }
     return Response.json({
       ok: false,
       error: err?.message ?? "Internal error"

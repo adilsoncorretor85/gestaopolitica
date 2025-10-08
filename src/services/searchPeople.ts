@@ -1,4 +1,5 @@
 // src/services/searchPeople.ts
+import { devLog } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface PersonSearchRow {
@@ -18,7 +19,7 @@ export async function searchPeople(
   const query = q.trim();
   if (!query) return [];
 
-  console.log('[searchPeople] Executando RPC search_people com:', { query, limit, offset });
+  devLog('[searchPeople] Executando RPC search_people com:', { query, limit, offset });
 
   const { data, error } = await supabase.rpc('search_people', {
     q: query,
@@ -31,7 +32,7 @@ export async function searchPeople(
     throw error;
   }
 
-  console.log('[searchPeople] Dados retornados:', data?.length || 0);
+  devLog('[searchPeople] Dados retornados:', data?.length || 0);
   return (data ?? []) as PersonSearchRow[];
 }
 

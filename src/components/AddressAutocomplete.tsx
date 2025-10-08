@@ -24,6 +24,37 @@ type Props = {
   className?: string;
 };
 
+// Mapeamento de estados brasileiros
+const ESTADOS_MAP: { [key: string]: string } = {
+  'Acre': 'AC',
+  'Alagoas': 'AL',
+  'Amapá': 'AP',
+  'Amazonas': 'AM',
+  'Bahia': 'BA',
+  'Ceará': 'CE',
+  'Distrito Federal': 'DF',
+  'Espírito Santo': 'ES',
+  'Goiás': 'GO',
+  'Maranhão': 'MA',
+  'Mato Grosso': 'MT',
+  'Mato Grosso do Sul': 'MS',
+  'Minas Gerais': 'MG',
+  'Pará': 'PA',
+  'Paraíba': 'PB',
+  'Paraná': 'PR',
+  'Pernambuco': 'PE',
+  'Piauí': 'PI',
+  'Rio de Janeiro': 'RJ',
+  'Rio Grande do Norte': 'RN',
+  'Rio Grande do Sul': 'RS',
+  'Rondônia': 'RO',
+  'Roraima': 'RR',
+  'Santa Catarina': 'SC',
+  'São Paulo': 'SP',
+  'Sergipe': 'SE',
+  'Tocantins': 'TO'
+};
+
 // Função para parsear os componentes de endereço do Google
 function parseAddressComponents(components: google.maps.GeocoderAddressComponent[]): AddressParts {
   const parts: AddressParts = {
@@ -52,7 +83,17 @@ function parseAddressComponents(components: google.maps.GeocoderAddressComponent
     } else if (types.includes('administrative_area_level_2') && !parts.city) {
       parts.city = component.long_name;
     } else if (types.includes('administrative_area_level_1')) {
-      parts.state = component.long_name;
+      // Tentar usar short_name primeiro, se não funcionar, mapear pelo nome
+      const stateShort = component.short_name;
+      const stateLong = component.long_name;
+      
+      if (stateShort && stateShort.length === 2) {
+        parts.state = stateShort.toUpperCase();
+      } else if (ESTADOS_MAP[stateLong]) {
+        parts.state = ESTADOS_MAP[stateLong];
+      } else {
+        parts.state = stateLong;
+      }
     } else if (types.includes('postal_code')) {
       parts.cep = component.long_name;
     }

@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSupabaseClient } from '@/lib/supabaseClient';
@@ -47,14 +48,14 @@ export default function RouteGuard({ children }: RouteGuardProps) {
 
         // Verifica se é líder e se está ativo
         if (profile?.role === 'LEADER') {
-          console.log('Verificando status do líder:', user.id);
+          devLog('Verificando status do líder:', user.id);
           
           // 1. Verifica se está banido no Supabase Auth
           const { data: authUser } = await supabase.auth.getUser();
-          console.log('Auth user ban status:', authUser?.user?.banned_until);
+          devLog('Auth user ban status:', authUser?.user?.banned_until);
           
           if (authUser?.user?.banned_until && new Date(authUser.user.banned_until) > new Date()) {
-            console.log('Usuário banido no Auth, redirecionando...');
+            devLog('Usuário banido no Auth, redirecionando...');
             setIsBlocked(true);
             navigate('/conta-bloqueada');
             return;
@@ -73,11 +74,11 @@ export default function RouteGuard({ children }: RouteGuardProps) {
             return;
           }
 
-          console.log('Status do líder no banco:', leaderProfile?.status);
+          devLog('Status do líder no banco:', leaderProfile?.status);
 
           // Se o líder está inativo, faz signOut e redireciona para página de bloqueio
           if (leaderProfile?.status === 'INACTIVE') {
-            console.log('Líder inativo, fazendo signOut e redirecionando...');
+            devLog('Líder inativo, fazendo signOut e redirecionando...');
             await supabase.auth.signOut();
             setIsBlocked(true);
             navigate('/conta-bloqueada');

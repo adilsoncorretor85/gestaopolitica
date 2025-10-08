@@ -1,9 +1,51 @@
+import { devLog } from '@/lib/logger';
 import { getSupabaseClient, handleSupabaseError } from "@/lib/supabaseClient";
 import type { Person, PersonInsert, PersonUpdate } from '@/types/database';
 import { searchPeople } from './searchPeople';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
+import { Tag } from './tags';
 
 export type { Person, PersonInsert, PersonUpdate };
+
+// Interface estendida para Person com tags
+export interface PersonWithTags extends Person {
+  tags?: Tag[];
+}
+
+// Interface para criação de pessoa com tags
+export interface PersonInsertWithTags extends PersonInsert {
+  tagIds?: string[];
+}
+
+// Interface para atualização de pessoa com tags
+export interface PersonUpdateWithTags extends PersonUpdate {
+  tagIds?: string[];
+}
+
+// Função para verificar duplicatas no frontend (validação em tempo real)
+export async function checkWhatsAppDuplicate(whatsapp: string): Promise<{ isDuplicate: boolean; message?: string }> {
+  try {
+    if (!whatsapp || whatsapp.replace(/\D/g, '').length < 10) {
+      return { isDuplicate: false };
+    }
+    
+    const normalizedWhatsapp = whatsapp.replace(/\D/g, '');
+    const existingInfo = await checkExistingPerson(normalizedWhatsapp, '');
+    
+    if (existingInfo.exists) {
+      const roleText = existingInfo.ownerRole === 'ADMIN' ? 'administrador' : 'líder';
+      return {
+        isDuplicate: true,
+        message: `Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${existingInfo.ownerName}.`
+      };
+    }
+    
+    return { isDuplicate: false };
+  } catch (error) {
+    console.error('Erro ao verificar duplicata:', error);
+    return { isDuplicate: false };
+  }
+}
 
 // Função para normalizar estado (UF ou nome) para UF
 function toUF(s?: string | null): string | null {
@@ -28,7 +70,7 @@ export async function listPeople(params?: {
   sortOrder?: 'asc' | 'desc';
 }) {
   try {
-    console.log('🔍 listPeople - Parâmetros recebidos:', params);
+    devLog('🔍 listPeople - Parâmetros recebidos:', params);
     const supabase = getSupabaseClient();
 
     const page = params?.page ?? 1, size = params?.pageSize ?? 20;
@@ -37,12 +79,12 @@ export async function listPeople(params?: {
     
     // Se há busca por texto, tentar FTS primeiro, depois fallback
     if (params?.q && params.q.trim()) {
-      console.log('[listPeople] Realizando busca para:', params.q);
+      devLog('[listPeople] Realizando busca para:', params.q);
       
       try {
         const offset = (page - 1) * size;
         const ftsResults = await searchPeople(supabase, params.q, size, offset);
-        console.log('[listPeople] Resultados FTS:', ftsResults.length);
+        devLog('[listPeople] Resultados FTS:', ftsResults.length);
         
         // Buscar dados completos das pessoas encontradas
         if (ftsResults.length > 0) {
@@ -70,10 +112,10 @@ export async function listPeople(params?: {
             );
             // Buscar tanto por UF quanto por nome completo
             if (est) {
-              console.log('🔍 listPeople - Filtro de estado (FTS):', { original: params.state, uf, est });
+              devLog('🔍 listPeople - Filtro de estado (FTS):', { original: params.state, uf, est });
               query = query.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
             } else {
-              console.log('🔍 listPeople - Filtro de estado (FTS) - estado não encontrado:', params.state);
+              devLog('🔍 listPeople - Filtro de estado (FTS) - estado não encontrado:', params.state);
               query = query.ilike("state", `%${params.state}%`);
             }
           }
@@ -91,10 +133,10 @@ export async function listPeople(params?: {
             return bRank - aRank; // Maior rank primeiro
           }) : [];
 
-          console.log('[listPeople] Dados ordenados por FTS:', sortedData.length);
+          devLog('[listPeople] Dados ordenados por FTS:', sortedData.length);
           return { data: sortedData, error: null, count };
         } else {
-          console.log('[listPeople] Nenhum resultado FTS, tentando busca simples como fallback');
+          devLog('[listPeople] Nenhum resultado FTS, tentando busca simples como fallback');
           // Fallback: busca simples com ILIKE quando FTS não encontra resultados
           const offset = (page - 1) * size;
           let query = supabase.from("people")
@@ -119,10 +161,10 @@ export async function listPeople(params?: {
               e.sigla.toUpperCase() === uf || e.nome.toLowerCase() === params.state!.toLowerCase()
             );
             if (est) {
-              console.log('🔍 listPeople - Filtro de estado (fallback):', { original: params.state, uf, est });
+              devLog('🔍 listPeople - Filtro de estado (fallback):', { original: params.state, uf, est });
               query = query.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
             } else {
-              console.log('🔍 listPeople - Filtro de estado (fallback) - estado não encontrado:', params.state);
+              devLog('🔍 listPeople - Filtro de estado (fallback) - estado não encontrado:', params.state);
               query = query.ilike("state", `%${params.state}%`);
             }
           }
@@ -133,7 +175,7 @@ export async function listPeople(params?: {
             throw new Error(handleSupabaseError(error, 'listar pessoas'));
           }
 
-          console.log('[listPeople] Resultados fallback:', data?.length || 0);
+          devLog('[listPeople] Resultados fallback:', data?.length || 0);
           return { data: data || [], error: null, count };
         }
       } catch (ftsError) {
@@ -167,10 +209,10 @@ export async function listPeople(params?: {
           );
           // Buscar tanto por UF quanto por nome completo
           if (est) {
-            console.log('🔍 listPeople - Filtro de estado (fallback):', { original: params.state, uf, est });
+            devLog('🔍 listPeople - Filtro de estado (fallback):', { original: params.state, uf, est });
             query = query.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
           } else {
-            console.log('🔍 listPeople - Filtro de estado (fallback) - estado não encontrado:', params.state);
+            devLog('🔍 listPeople - Filtro de estado (fallback) - estado não encontrado:', params.state);
             query = query.ilike("state", `%${params.state}%`);
           }
         }
@@ -181,7 +223,7 @@ export async function listPeople(params?: {
           throw new Error(handleSupabaseError(error, 'listar pessoas'));
         }
 
-        console.log('[listPeople] Fallback executado com sucesso:', data?.length || 0);
+        devLog('[listPeople] Fallback executado com sucesso:', data?.length || 0);
         return { data, error: null, count };
       }
     }
@@ -211,10 +253,10 @@ export async function listPeople(params?: {
       );
       // Buscar tanto por UF quanto por nome completo
       if (est) {
-        console.log('🔍 listPeople - Filtro de estado (normal):', { original: params.state, uf, est });
+        devLog('🔍 listPeople - Filtro de estado (normal):', { original: params.state, uf, est });
         q = q.or(`state.ilike.%${est.sigla}%,state.ilike.%${est.nome}%`);
       } else {
-        console.log('🔍 listPeople - Filtro de estado (normal) - estado não encontrado:', params.state);
+        devLog('🔍 listPeople - Filtro de estado (normal) - estado não encontrado:', params.state);
         q = q.ilike("state", `%${params.state}%`);
       }
     }
@@ -225,7 +267,7 @@ export async function listPeople(params?: {
       throw new Error(handleSupabaseError(error, 'listar pessoas'));
     }
 
-    console.log('🔍 listPeople - Resultado final:', { count: count || 0, dataLength: data?.length || 0 });
+    devLog('🔍 listPeople - Resultado final:', { count: count || 0, dataLength: data?.length || 0 });
     
     return { data, error: null, count };
   } catch (error) {
@@ -237,7 +279,7 @@ export async function listPeople(params?: {
   }
 }
 
-export async function getPerson(id: string): Promise<{ data: Person | null; error: string | null }> {
+export async function getPerson(id: string): Promise<{ data: PersonWithTags | null; error: string | null }> {
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.from("people").select("*").eq("id", id).maybeSingle(); // 👈 evita erro "0 rows"
@@ -246,7 +288,31 @@ export async function getPerson(id: string): Promise<{ data: Person | null; erro
       throw new Error(handleSupabaseError(error, 'buscar pessoa'));
     }
     
-    return { data, error: null };
+    if (!data) {
+      return { data: null, error: null };
+    }
+    
+    // Buscar tags da pessoa
+    try {
+      const { data: tagsData, error: tagsError } = await supabase.rpc('get_person_tags', {
+        person_id: id
+      });
+      
+      if (tagsError) {
+        devLog('Erro ao buscar tags da pessoa:', tagsError);
+      }
+      
+      return { 
+        data: { 
+          ...data, 
+          tags: tagsData || [] 
+        }, 
+        error: null 
+      };
+    } catch (tagsError) {
+      devLog('Erro ao buscar tags da pessoa:', tagsError);
+      return { data, error: null };
+    }
   } catch (error) {
     return { 
       data: null, 
@@ -274,7 +340,7 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
       .select(`
         id,
         whatsapp,
-        phone,
+        full_name,
         owner:profiles!owner_id(
           id,
           full_name,
@@ -282,13 +348,14 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
         )
       `);
     
+    // Buscar por WhatsApp normalizado
     if (normalizedWhatsapp) {
       query.eq('whatsapp', normalizedWhatsapp);
     } else if (normalizedPhone) {
-      query.eq('whatsapp', normalizedPhone); // Usar whatsapp em vez de phone
+      query.eq('whatsapp', normalizedPhone);
     }
     
-    const { data, error } = await query.limit(1).maybeSingle(); // 👈 evita erro "0 rows"
+    const { data, error } = await query.limit(1).maybeSingle();
     
     if (error && error.code !== 'PGRST116') {
       console.error('Erro ao verificar pessoa existente:', error);
@@ -296,10 +363,13 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
     }
     
     if (data && data.owner) {
+      // Tratar tanto array quanto objeto único
+      const owner = Array.isArray(data.owner) ? data.owner[0] : data.owner;
+      
       return {
         exists: true,
-        ownerName: data.owner?.[0]?.full_name || data.owner.full_name,
-        ownerRole: data.owner?.[0]?.role || data.owner.role
+        ownerName: owner?.full_name || 'Usuário',
+        ownerRole: owner?.role || 'LEADER'
       };
     }
     
@@ -310,7 +380,7 @@ async function checkExistingPerson(whatsapp: string, phone: string): Promise<{ e
   }
 }
 
-export async function createPerson(p: PersonInsert): Promise<{ data: Person | null; error: string | null }> {
+export async function createPerson(p: PersonInsertWithTags): Promise<{ data: PersonWithTags | null; error: string | null }> {
   try {
     const supabase = getSupabaseClient();
 
@@ -318,6 +388,19 @@ export async function createPerson(p: PersonInsert): Promise<{ data: Person | nu
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('Usuário não autenticado');
+    }
+    
+    // Validação proativa: verificar se já existe pessoa com o mesmo WhatsApp
+    if (p.whatsapp) {
+      const normalizedWhatsapp = p.whatsapp.replace(/\D/g, '');
+      if (normalizedWhatsapp.length >= 10) {
+        const existingInfo = await checkExistingPerson(normalizedWhatsapp, '');
+        
+        if (existingInfo.exists) {
+          const roleText = existingInfo.ownerRole === 'ADMIN' ? 'administrador' : 'líder';
+          throw new Error(`Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${existingInfo.ownerName}.`);
+        }
+      }
     }
     
     // Set owner_id to current user and normalize state
@@ -351,7 +434,47 @@ export async function createPerson(p: PersonInsert): Promise<{ data: Person | nu
       throw new Error(errorMessage);
     }
     
-    return { data, error: null };
+    if (!data) {
+      return { data: null, error: 'Erro ao criar pessoa' };
+    }
+    
+    // Aplicar tags se fornecidas
+    if (p.tagIds && p.tagIds.length > 0) {
+      try {
+        for (const tagId of p.tagIds) {
+          const { error: tagError } = await supabase.rpc('apply_tag_to_person', {
+            p_person_id: data.id,
+            p_tag_id: tagId
+          });
+          
+          if (tagError) {
+            devLog('Erro ao aplicar tag:', tagError);
+            // Não falha a criação da pessoa se a tag falhar
+          }
+        }
+      } catch (tagError) {
+        devLog('Erro ao aplicar tags:', tagError);
+        // Não falha a criação da pessoa se as tags falharem
+      }
+    }
+    
+    // Buscar tags aplicadas para retornar
+    let tags: Tag[] = [];
+    try {
+      const { data: tagsData, error: tagsError } = await supabase.rpc('get_person_tags', {
+        person_id: data.id
+      });
+      
+      if (tagsError) {
+        devLog('Erro ao buscar tags da pessoa:', tagsError);
+      } else {
+        tags = tagsData || [];
+      }
+    } catch (tagsError) {
+      devLog('Erro ao buscar tags da pessoa:', tagsError);
+    }
+    
+    return { data: { ...data, tags }, error: null };
   } catch (error) {
     return { 
       data: null, 
@@ -360,9 +483,33 @@ export async function createPerson(p: PersonInsert): Promise<{ data: Person | nu
   }
 }
 
-export async function updatePerson(id: string, p: PersonUpdate): Promise<{ data: Person | null; error: string | null }> {
+export async function updatePerson(id: string, p: PersonUpdateWithTags): Promise<{ data: PersonWithTags | null; error: string | null }> {
   try {
     const supabase = getSupabaseClient();
+    
+    // Validação proativa: verificar se já existe pessoa com o mesmo WhatsApp (exceto a própria pessoa)
+    if (p.whatsapp) {
+      const normalizedWhatsapp = p.whatsapp.replace(/\D/g, '');
+      if (normalizedWhatsapp.length >= 10) {
+        const existingInfo = await checkExistingPerson(normalizedWhatsapp, '');
+        
+        if (existingInfo.exists) {
+          // Verificar se não é a própria pessoa sendo atualizada
+          const { data: currentPerson } = await supabase
+            .from("people")
+            .select("whatsapp")
+            .eq("id", id)
+            .single();
+          
+          const currentWhatsapp = currentPerson?.whatsapp?.replace(/\D/g, '');
+          
+          if (currentWhatsapp !== normalizedWhatsapp) {
+            const roleText = existingInfo.ownerRole === 'ADMIN' ? 'administrador' : 'líder';
+            throw new Error(`Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${existingInfo.ownerName}.`);
+          }
+        }
+      }
+    }
     
     const payload = { ...p, state: toUF(p.state ?? null) };
     
@@ -381,7 +528,60 @@ export async function updatePerson(id: string, p: PersonUpdate): Promise<{ data:
       throw new Error(handleSupabaseError(error, 'atualizar pessoa'));
     }
     
-    return { data, error: null };
+    if (!data) {
+      return { data: null, error: 'Pessoa não encontrada' };
+    }
+    
+    // Atualizar tags se fornecidas
+    if (p.tagIds !== undefined) {
+      try {
+        // Primeiro, remover todas as tags existentes
+        const { error: removeError } = await supabase
+          .from('people_tags')
+          .delete()
+          .eq('person_id', id);
+        
+        if (removeError) {
+          devLog('Erro ao remover tags existentes:', removeError);
+        }
+        
+        // Depois, aplicar as novas tags
+        if (p.tagIds.length > 0) {
+          for (const tagId of p.tagIds) {
+            const { error: tagError } = await supabase.rpc('apply_tag_to_person', {
+              p_person_id: id,
+              p_tag_id: tagId
+            });
+            
+            if (tagError) {
+              devLog('Erro ao aplicar tag:', tagError);
+              // Não falha a atualização da pessoa se a tag falhar
+            }
+          }
+        }
+      } catch (tagError) {
+        devLog('Erro ao atualizar tags:', tagError);
+        // Não falha a atualização da pessoa se as tags falharem
+      }
+    }
+    
+    // Buscar tags aplicadas para retornar
+    let tags: Tag[] = [];
+    try {
+      const { data: tagsData, error: tagsError } = await supabase.rpc('get_person_tags', {
+        person_id: id
+      });
+      
+      if (tagsError) {
+        devLog('Erro ao buscar tags da pessoa:', tagsError);
+      } else {
+        tags = tagsData || [];
+      }
+    } catch (tagsError) {
+      devLog('Erro ao buscar tags da pessoa:', tagsError);
+    }
+    
+    return { data: { ...data, tags }, error: null };
   } catch (error) {
     return { 
       data: null, 

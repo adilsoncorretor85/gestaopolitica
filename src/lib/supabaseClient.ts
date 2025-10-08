@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { logger, supabaseLog } from './logger';
 
-console.log('🔍 [supabaseClient] Carregando configuração do Supabase');
+supabaseLog('Carregando configuração do Supabase');
 
 // Em Vite, use import.meta.env (NÃO use process.env)
 const env = import.meta.env;
@@ -8,12 +9,10 @@ const env = import.meta.env;
 const url  = env?.VITE_SUPABASE_URL as string | undefined;
 const anon = env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// Logs de diagnóstico removidos por segurança
-
 if (!url || !anon) {
-  console.error('ENV faltando: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env na RAIZ do projeto.');
-  console.error('URL:', url);
-  console.error('ANON:', anon ? 'definida' : 'não definida');
+  logger.error('ENV faltando: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env na RAIZ do projeto.');
+  logger.error('URL:', url);
+  logger.error('ANON:', anon ? 'definida' : 'não definida');
 }
 
 export const supabase: SupabaseClient | null =
@@ -32,9 +31,7 @@ export function handleSupabaseError(error: any, context: string = 'operação'):
   if (!error) return 'Erro desconhecido';
   
   // Log detalhado apenas em desenvolvimento
-  if (import.meta.env.DEV) {
-    console.error(`[${context}] Erro Supabase:`, error);
-  }
+  logger.error(`[${context}] Erro Supabase:`, error);
   
   // Mensagens seguras para o usuário (não vazam estrutura interna)
   if (error.code === 'PGRST301' || error.message?.includes('permission denied')) {

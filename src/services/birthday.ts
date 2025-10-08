@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export type BirthdayPerson = {
@@ -13,13 +14,13 @@ export type BirthdayPerson = {
 };
 
 /**
- * Busca líderes que fazem aniversário hoje
+ * Busca líderes e pessoas que fazem aniversário hoje
  */
 export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
   try {
     const supabase = getSupabaseClient();
     
-    console.log('🎂 [getTodayBirthdays] Buscando aniversariantes do dia...');
+    devLog('🎂 [getTodayBirthdays] Buscando aniversariantes do dia...');
     
     // Buscar configuração de eleição para obter o fuso horário
     const { getElectionSettings } = await import('@/services/election');
@@ -27,8 +28,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
     const timezone = election?.timezone || 'America/Sao_Paulo';
     
     // Buscar líderes que fazem aniversário hoje
-    // Usando EXTRACT para comparar mês e dia da data de nascimento
-    const { data, error } = await supabase
+    const { data: leadersData, error: leadersError } = await supabase
       .from('leader_profiles')
       .select(`
         id,
@@ -43,17 +43,48 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
       .not('birth_date', 'is', null)
       .eq('status', 'ACTIVE');
 
-    if (error) {
-      console.error('❌ [getTodayBirthdays] Erro ao buscar aniversariantes:', error);
+    // Buscar pessoas (contatos) que fazem aniversário hoje
+    const { data: peopleData, error: peopleError } = await supabase
+      .from('people')
+      .select(`
+        id,
+        birth_date,
+        email,
+        whatsapp,
+        neighborhood,
+        city,
+        state,
+        full_name
+      `)
+      .not('birth_date', 'is', null);
+
+    if (leadersError) {
+      console.error('❌ [getTodayBirthdays] Erro ao buscar líderes aniversariantes:', leadersError);
+    }
+
+    if (peopleError) {
+      console.error('❌ [getTodayBirthdays] Erro ao buscar pessoas aniversariantes:', peopleError);
+    }
+
+    // Combinar dados de líderes e pessoas
+    const allData = [
+      ...(leadersData || []).map(leader => ({
+        ...leader,
+        full_name: leader.profiles?.full_name || '',
+        phone: leader.phone
+      })),
+      ...(peopleData || []).map(person => ({
+        ...person,
+        phone: person.whatsapp
+      }))
+    ];
+
+    if (!allData || allData.length === 0) {
+      devLog('🎂 [getTodayBirthdays] Nenhum dado retornado');
       return [];
     }
 
-    if (!data) {
-      console.log('🎂 [getTodayBirthdays] Nenhum dado retornado');
-      return [];
-    }
-
-    console.log('🎂 [getTodayBirthdays] Dados encontrados:', data.length, 'líderes com data de nascimento');
+    devLog('🎂 [getTodayBirthdays] Dados encontrados:', allData.length, 'pessoas com data de nascimento');
 
     // Obter a data atual no fuso horário configurado
     const now = new Date();
@@ -68,53 +99,53 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
     const todayMonth = today.getMonth() + 1; // getMonth() retorna 0-11
     const todayDay = today.getDate();
     
-    console.log('🎂 [getTodayBirthdays] Data de hoje no fuso horário', timezone, ':', today.toLocaleDateString('pt-BR'), `(mês: ${todayMonth}, dia: ${todayDay})`);
+    devLog('🎂 [getTodayBirthdays] Data de hoje no fuso horário', timezone, ':', today.toLocaleDateString('pt-BR'), `(mês: ${todayMonth}, dia: ${todayDay})`);
 
     // Filtrar apenas os que fazem aniversário hoje
-    const todayBirthdays = data
-      .filter(leader => {
-        if (!leader.birth_date) return false;
+    const todayBirthdays = allData
+      .filter(person => {
+        if (!person.birth_date) return false;
         
-        const birthDate = new Date(leader.birth_date);
+        const birthDate = new Date(person.birth_date);
         const birthMonth = birthDate.getMonth() + 1;
         const birthDay = birthDate.getDate();
         
         return birthMonth === todayMonth && birthDay === todayDay;
       })
-      .map(leader => {
-        const birthDate = new Date(leader.birth_date!);
+      .map(person => {
+        const birthDate = new Date(person.birth_date!);
         const age = today.getFullYear() - birthDate.getFullYear();
         
         // Ajustar idade se ainda não fez aniversário este ano
         const monthDiff = today.getMonth() - birthDate.getMonth();
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
           return {
-            id: leader.id,
-            full_name: (leader.profiles as any)?.full_name || 'Nome não informado',
-            birth_date: leader.birth_date!,
+            id: person.id,
+            full_name: person.full_name || 'Nome não informado',
+            birth_date: person.birth_date!,
             age: age - 1,
-            phone: leader.phone,
-            email: leader.email,
-            neighborhood: leader.neighborhood,
-            city: leader.city,
-            state: leader.state,
+            phone: person.phone,
+            email: person.email,
+            neighborhood: person.neighborhood,
+            city: person.city,
+            state: person.state,
           };
         }
         
         return {
-          id: leader.id,
-          full_name: (leader.profiles as any)?.full_name || 'Nome não informado',
-          birth_date: leader.birth_date!,
+          id: person.id,
+          full_name: person.full_name || 'Nome não informado',
+          birth_date: person.birth_date!,
           age,
-          phone: leader.phone,
-          email: leader.email,
-          neighborhood: leader.neighborhood,
-          city: leader.city,
-          state: leader.state,
+          phone: person.phone,
+          email: person.email,
+          neighborhood: person.neighborhood,
+          city: person.city,
+          state: person.state,
         };
       });
 
-    console.log('🎂 [getTodayBirthdays] Aniversariantes encontrados hoje:', todayBirthdays.length);
+    devLog('🎂 [getTodayBirthdays] Aniversariantes encontrados hoje:', todayBirthdays.length);
     return todayBirthdays;
   } catch (error) {
     console.error('Erro ao buscar aniversariantes:', error);
@@ -123,7 +154,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
 }
 
 /**
- * Busca aniversariantes dos próximos 7 dias
+ * Busca aniversariantes dos próximos 7 dias (líderes e pessoas)
  */
 export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPerson[]> {
   try {
@@ -134,7 +165,8 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
     const election = await getElectionSettings(supabase);
     const timezone = election?.timezone || 'America/Sao_Paulo';
     
-    const { data, error } = await supabase
+    // Buscar líderes
+    const { data: leadersData, error: leadersError } = await supabase
       .from('leader_profiles')
       .select(`
         id,
@@ -149,12 +181,43 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
       .not('birth_date', 'is', null)
       .eq('status', 'ACTIVE');
 
-    if (error) {
-      console.error('Erro ao buscar próximos aniversariantes:', error);
-      return [];
+    // Buscar pessoas (contatos)
+    const { data: peopleData, error: peopleError } = await supabase
+      .from('people')
+      .select(`
+        id,
+        birth_date,
+        email,
+        whatsapp,
+        neighborhood,
+        city,
+        state,
+        full_name
+      `)
+      .not('birth_date', 'is', null);
+
+    if (leadersError) {
+      console.error('Erro ao buscar líderes próximos aniversariantes:', leadersError);
     }
 
-    if (!data) return [];
+    if (peopleError) {
+      console.error('Erro ao buscar pessoas próximos aniversariantes:', peopleError);
+    }
+
+    // Combinar dados de líderes e pessoas
+    const allData = [
+      ...(leadersData || []).map(leader => ({
+        ...leader,
+        full_name: leader.profiles?.full_name || '',
+        phone: leader.phone
+      })),
+      ...(peopleData || []).map(person => ({
+        ...person,
+        phone: person.whatsapp
+      }))
+    ];
+
+    if (!allData || allData.length === 0) return [];
 
     // Obter a data atual no fuso horário configurado
     const now = new Date();
@@ -168,10 +231,10 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
     const today = new Date(todayInTimezone);
     const upcomingBirthdays: BirthdayPerson[] = [];
 
-    data.forEach(leader => {
-      if (!leader.birth_date) return;
+    allData.forEach(person => {
+      if (!person.birth_date) return;
       
-      const birthDate = new Date(leader.birth_date);
+      const birthDate = new Date(person.birth_date);
       const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
       
       // Se o aniversário já passou este ano, considerar o próximo ano
@@ -185,15 +248,15 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         const age = thisYearBirthday.getFullYear() - birthDate.getFullYear();
         
         upcomingBirthdays.push({
-          id: leader.id,
-          full_name: (leader.profiles as any)?.full_name || 'Nome não informado',
-          birth_date: leader.birth_date,
+          id: person.id,
+          full_name: person.full_name || 'Nome não informado',
+          birth_date: person.birth_date,
           age,
-          phone: leader.phone,
-          email: leader.email,
-          neighborhood: leader.neighborhood,
-          city: leader.city,
-          state: leader.state,
+          phone: person.phone,
+          email: person.email,
+          neighborhood: person.neighborhood,
+          city: person.city,
+          state: person.state,
         });
       }
     });

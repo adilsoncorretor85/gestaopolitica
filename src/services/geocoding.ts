@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { loadGoogleMaps } from '@/lib/googleMaps';
 import type { AddressParts } from '@/components/AddressAutocomplete';
 
@@ -70,7 +71,7 @@ export async function geocodeAddress(address: {
     const fullAddress = addressParts.join(', ');
     
     if (!fullAddress.trim()) {
-      console.warn('Endereço vazio fornecido para geocoding');
+      devLog('Endereço vazio fornecido para geocoding');
       return null;
     }
     

@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -61,10 +62,10 @@ export default function Projecao() {
   useEffect(() => {
     if (election?.election_level === 'MUNICIPAL' && election?.scope_city && election?.scope_state) {
       const cityKey = `${election.scope_city}-${election.scope_state}`;
-      console.log('🔍 [Projecao] Definindo cidade selecionada para eleição municipal:', cityKey);
+      devLog('🔍 [Projecao] Definindo cidade selecionada para eleição municipal:', cityKey);
       setSelectedCity(cityKey);
     } else if (election?.election_level === 'ESTADUAL') {
-      console.log('🔍 [Projecao] Eleição estadual - mostrando todas as cidades');
+      devLog('🔍 [Projecao] Eleição estadual - mostrando todas as cidades');
       setSelectedCity('__all__');
     }
   }, [election]);

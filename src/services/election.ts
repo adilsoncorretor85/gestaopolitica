@@ -1,4 +1,5 @@
 // src/services/election.ts
+import { devLog } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type ElectionLevel = 'MUNICIPAL' | 'ESTADUAL' | 'FEDERAL';
@@ -27,11 +28,11 @@ export async function getElectionSettings(
   supabase: SupabaseClient
 ): Promise<ElectionSettings | null> {
   try {
-    console.log('🔍 getElectionSettings: Iniciando busca via RPC...');
+    devLog('🔍 getElectionSettings: Iniciando busca via RPC...');
     // Tentar usar a função RPC primeiro (mais eficiente)
     const { data: rpcData, error: rpcError } = await supabase.rpc('get_current_election');
     
-    console.log('📊 getElectionSettings: Resultado RPC:', { rpcData, rpcError });
+    devLog('📊 getElectionSettings: Resultado RPC:', { rpcData, rpcError });
     
     if (!rpcError && rpcData) {
       const r = rpcData as any;
@@ -47,12 +48,12 @@ export async function getElectionSettings(
         created_at: r.created_at,
         updated_at: r.updated_at,
       };
-      console.log('✅ getElectionSettings: Dados RPC processados:', result);
+      devLog('✅ getElectionSettings: Dados RPC processados:', result);
       return result;
     }
     
     // Fallback para query direta se RPC não existir
-    console.warn('⚠️ getElectionSettings: RPC get_current_election não disponível, usando query direta:', rpcError);
+    devLog('⚠️ getElectionSettings: RPC get_current_election não disponível, usando query direta:', rpcError);
     
     const { data, error } = await supabase
       .from('election_settings')
@@ -61,11 +62,11 @@ export async function getElectionSettings(
       .limit(1)
       .maybeSingle();
 
-    console.log('📊 getElectionSettings: Resultado query direta:', { data, error });
+    devLog('📊 getElectionSettings: Resultado query direta:', { data, error });
 
     if (error) throw error;
     if (!data) {
-      console.warn('⚠️ getElectionSettings: Nenhum dado encontrado na query direta');
+      devLog('⚠️ getElectionSettings: Nenhum dado encontrado na query direta');
       return null;
     }
 
@@ -82,7 +83,7 @@ export async function getElectionSettings(
       created_at: r.created_at,
       updated_at: r.updated_at,
     };
-    console.log('✅ getElectionSettings: Dados query direta processados:', result);
+    devLog('✅ getElectionSettings: Dados query direta processados:', result);
     return result;
   } catch (error) {
     console.error('❌ getElectionSettings: Erro ao buscar configurações de eleição:', error);
@@ -171,7 +172,7 @@ export function formatCountdownWithTimezone(dateISO: string, timezone: string = 
 
     return past ? `Encerrada há ${text}` : `Faltam ${text}`;
   } catch (error) {
-    console.warn('⚠️ Erro ao calcular countdown com timezone, usando fallback:', error);
+    devLog('⚠️ Erro ao calcular countdown com timezone, usando fallback:', error);
     // Fallback para a função original se houver erro
     return formatCountdown(dateISO);
   }
@@ -184,11 +185,11 @@ export async function upsertElectionCurrent(
   supabase: SupabaseClient,
   payload: Partial<ElectionSettings>
 ) {
-  console.log('🔍 [upsertElectionCurrent] Iniciando upsert...');
-  console.log('📤 [upsertElectionCurrent] Payload recebido:', payload);
+  devLog('🔍 [upsertElectionCurrent] Iniciando upsert...');
+  devLog('📤 [upsertElectionCurrent] Payload recebido:', payload);
   
   // Buscar registro atual
-  console.log('🔍 [upsertElectionCurrent] Buscando registro atual...');
+  devLog('🔍 [upsertElectionCurrent] Buscando registro atual...');
   const { data: current, error: currentError } = await supabase
     .from('election_settings')
     .select('id')
@@ -201,13 +202,13 @@ export async function upsertElectionCurrent(
     throw currentError;
   }
 
-  console.log('📋 [upsertElectionCurrent] Registro atual encontrado:', current);
+  devLog('📋 [upsertElectionCurrent] Registro atual encontrado:', current);
 
   let result: ElectionSettings;
 
   // Se existe registro atual, atualizar; senão, inserir novo
   if (current?.id) {
-    console.log('💾 [upsertElectionCurrent] Atualizando registro existente...');
+    devLog('💾 [upsertElectionCurrent] Atualizando registro existente...');
     const { data, error } = await supabase
       .from('election_settings')
       .update(payload)
@@ -220,10 +221,10 @@ export async function upsertElectionCurrent(
       throw error;
     }
 
-    console.log('✅ [upsertElectionCurrent] Atualização bem-sucedida:', data);
+    devLog('✅ [upsertElectionCurrent] Atualização bem-sucedida:', data);
     result = data as ElectionSettings;
   } else {
-    console.log('💾 [upsertElectionCurrent] Inserindo novo registro...');
+    devLog('💾 [upsertElectionCurrent] Inserindo novo registro...');
     const { data, error } = await supabase
       .from('election_settings')
       .insert(payload)
@@ -241,13 +242,13 @@ export async function upsertElectionCurrent(
       throw error;
     }
 
-    console.log('✅ [upsertElectionCurrent] Inserção bem-sucedida:', data);
+    devLog('✅ [upsertElectionCurrent] Inserção bem-sucedida:', data);
     result = data as ElectionSettings;
   }
 
   // Atualizar public_settings manualmente
   try {
-    console.log('🔄 [upsertElectionCurrent] Atualizando public_settings...');
+    devLog('🔄 [upsertElectionCurrent] Atualizando public_settings...');
     const publicSettingsPayload = {
       election_name: result.election_name,
       election_date: result.election_date,
@@ -263,13 +264,13 @@ export async function upsertElectionCurrent(
       .upsert({ id: 1, ...publicSettingsPayload });
 
     if (publicError) {
-      console.warn('⚠️ [upsertElectionCurrent] Erro ao atualizar public_settings:', publicError);
+      devLog('⚠️ [upsertElectionCurrent] Erro ao atualizar public_settings:', publicError);
       // Não falha a operação principal se public_settings falhar
     } else {
-      console.log('✅ [upsertElectionCurrent] public_settings atualizado com sucesso');
+      devLog('✅ [upsertElectionCurrent] public_settings atualizado com sucesso');
     }
   } catch (publicError) {
-    console.warn('⚠️ [upsertElectionCurrent] Erro inesperado ao atualizar public_settings:', publicError);
+    devLog('⚠️ [upsertElectionCurrent] Erro inesperado ao atualizar public_settings:', publicError);
   }
 
   return result;

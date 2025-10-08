@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, Users, Shield, X, MapPin, BarChart3, Tags } from 'lucide-react';
@@ -31,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
   };
 
   // Debug info (remover em produção)
-  console.log('Sidebar - Profile:', profile, 'IsAdmin:', isAdmin);
+  devLog('Sidebar - Profile:', profile, 'IsAdmin:', isAdmin);
 
   return (
     <>

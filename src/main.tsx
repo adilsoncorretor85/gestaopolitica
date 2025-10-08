@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -15,7 +16,7 @@ const queryClient = new QueryClient({
   },
 });
 
-console.log('🔍 [main.tsx] Iniciando aplicação');
+devLog('🔍 [main.tsx] Iniciando aplicação');
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

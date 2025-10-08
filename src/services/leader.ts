@@ -1,4 +1,5 @@
 // src/services/leader.ts
+import { devLog } from '@/lib/logger';
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export type LeaderListItem = {
@@ -62,7 +63,7 @@ export type LeaderInsert = {
 };
 
 export async function listLeaders() {
-  console.log('listLeaders chamada');
+  devLog('listLeaders chamada');
   
   // Usar query direta com join para profiles
   try {
@@ -89,7 +90,7 @@ export async function listLeaders() {
       throw error;
     }
     
-    console.log('Query direta funcionou, dados brutos:', data);
+    devLog('Query direta funcionou, dados brutos:', data);
     
     // Transformar para o formato esperado
     const transformed = (data ?? []).map((leader: any) => ({
@@ -108,9 +109,9 @@ export async function listLeaders() {
       state: leader.state || null,
     }));
     
-    console.log('Dados transformados:', transformed);
+    devLog('Dados transformados:', transformed);
     const leaders = transformed as LeaderListItem[];
-    console.log('Leaders com IDs:', leaders.map(l => ({ id: l.id, name: l.full_name })));
+    devLog('Leaders com IDs:', leaders.map(l => ({ id: l.id, name: l.full_name })));
     return leaders;
   } catch (directError) {
     console.error('Query falhou:', directError);

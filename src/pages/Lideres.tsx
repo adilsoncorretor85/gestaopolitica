@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -40,8 +41,8 @@ export default function LideresPage() {
         return false;
       });
       setRows(filtered);
-      console.log(`Líderes ${tab}:`, data);
-      console.log('Status dos líderes:', data.map(l => ({ name: l.full_name, status: l.status, is_pending: l.is_pending, is_active: l.is_active })));
+      devLog(`Líderes ${tab}:`, data);
+      devLog('Status dos líderes:', data.map(l => ({ name: l.full_name, status: l.status, is_pending: l.is_pending, is_active: l.is_active })));
     } catch (error) {
       console.error('Erro ao carregar líderes:', error);
       setError(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -63,7 +64,7 @@ export default function LideresPage() {
       
       alert(result?.message || 'Convite reenviado com sucesso!');
       if (result?.acceptUrl) {
-        console.log('Link de convite:', result.acceptUrl);
+        devLog('Link de convite:', result.acceptUrl);
       }
       
       // Recarregar a lista
@@ -109,7 +110,7 @@ export default function LideresPage() {
   }
 
   // Se não for admin, não mostrar a página
-  console.log('Renderizando página - isAdmin:', isAdmin, 'loading:', loading, 'rows.length:', rows.length);
+  devLog('Renderizando página - isAdmin:', isAdmin, 'loading:', loading, 'rows.length:', rows.length);
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -331,10 +332,10 @@ export default function LideresPage() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('🔍 Botão "Nível de liderança" clicado!');
-                                    console.log('Leader:', leader);
-                                    console.log('Leader ID (leader_profiles.id):', leader.id);
-                                    console.log('Leader full_name:', leader.full_name);
+                                    devLog('🔍 Botão "Nível de liderança" clicado!');
+                                    devLog('Leader:', leader);
+                                    devLog('Leader ID (leader_profiles.id):', leader.id);
+                                    devLog('Leader full_name:', leader.full_name);
                                     
                                     // Validar se é um UUID válido
                                     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -344,10 +345,10 @@ export default function LideresPage() {
                                       return;
                                     }
                                     
-                                    console.log('✅ Leader ID válido, abrindo modal...');
+                                    devLog('✅ Leader ID válido, abrindo modal...');
                                     setLeadershipLeaderId(leader.id); // Usar leader.id (leader_profiles.id)
                                     setLeadershipOpen(true);
-                                    console.log('✅ Modal deve estar aberto agora');
+                                    devLog('✅ Modal deve estar aberto agora');
                                   }}
                                   className="inline-flex items-center gap-1 text-violet-500 hover:text-violet-400 p-2 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors"
                                   title="Nível de liderança"

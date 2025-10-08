@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -5,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
 import Drawer from '@/components/Drawer';
 import useAuth from '@/hooks/useAuth';
-import { listPeople, deletePerson, updatePerson, type Person } from '@/services/people';
+import { listPeople, deletePerson, updatePerson, type Person, type PersonWithTags } from '@/services/people';
 import { listLeaders, type LeaderRow } from '@/services/admin';
 import { ESTADOS_BRASIL } from '@/data/estadosBrasil';
 import { useElection } from '@/contexts/ElectionContext';
@@ -69,14 +70,14 @@ export default function PessoasPage() {
 
   // Aplicar filtros padrão da eleição
   useEffect(() => {
-    console.log('Pessoas - defaultFilters:', defaultFilters, 'overrode:', overrode);
+    devLog('Pessoas - defaultFilters:', defaultFilters, 'overrode:', overrode);
     if (!overrode && defaultFilters) {
       if (defaultFilters.state) {
-        console.log('Aplicando filtro de estado:', defaultFilters.state);
+        devLog('Aplicando filtro de estado:', defaultFilters.state);
         setStateFilter(defaultFilters.state);
       }
       if (defaultFilters.city) {
-        console.log('Aplicando filtro de cidade:', defaultFilters.city);
+        devLog('Aplicando filtro de cidade:', defaultFilters.city);
         setCityFilter(defaultFilters.city);
       }
       setFiltersApplied(true);
@@ -393,8 +394,8 @@ export default function PessoasPage() {
 
     // Dados do CSV
     const csvData = selectedPeople.map(person => {
-      const tags = (person as any).tags 
-        ? (person as any).tags.map((tag: any) => tag.name).join('; ')
+      const tags = (person as PersonWithTags).tags 
+        ? (person as PersonWithTags).tags!.map((tag: Tag) => tag.name).join('; ')
         : '';
       
       return [
@@ -1052,8 +1053,8 @@ export default function PessoasPage() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex flex-wrap gap-1 max-w-xs">
-                                {(person as any).tags && (person as any).tags.length > 0 ? (
-                                  (person as any).tags.slice(0, 3).map((tag: Tag) => (
+                                {(person as PersonWithTags).tags && (person as PersonWithTags).tags!.length > 0 ? (
+                                  (person as PersonWithTags).tags!.slice(0, 3).map((tag: Tag) => (
                                     <Badge
                                       key={tag.id}
                                       variant="secondary"
@@ -1066,9 +1067,9 @@ export default function PessoasPage() {
                                 ) : (
                                   <span className="text-xs text-gray-400">-</span>
                                 )}
-                                {(person as any).tags && (person as any).tags.length > 3 && (
+                                {(person as PersonWithTags).tags && (person as PersonWithTags).tags!.length > 3 && (
                                   <Badge variant="outline" className="text-xs">
-                                    +{(person as any).tags.length - 3}
+                                    +{(person as PersonWithTags).tags!.length - 3}
                                   </Badge>
                                 )}
                               </div>

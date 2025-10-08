@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
@@ -27,18 +28,18 @@ const formatNumber = (num: number | string): string => {
 };
 
 export default function DashboardPage() {
-  console.log('🔍 [Dashboard] Componente sendo renderizado');
+  devLog('🔍 [Dashboard] Componente sendo renderizado');
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  console.log('🔍 [Dashboard] Antes de chamar useAuth');
+  devLog('🔍 [Dashboard] Antes de chamar useAuth');
   const { profile, isAdmin: isAdminUser, loading: authLoading } = useAuth();
   const { election, defaultFilters } = useElection();
-  console.log('🔍 [Dashboard] Depois de chamar useAuth');
+  devLog('🔍 [Dashboard] Depois de chamar useAuth');
   
   // Debug: verificar se está sendo reconhecido como admin
-  console.log('🔍 [Dashboard] Verificação de admin:', {
+  devLog('🔍 [Dashboard] Verificação de admin:', {
     profile,
     isAdminUser,
     profileRole: profile?.role,
@@ -67,7 +68,7 @@ export default function DashboardPage() {
   const [countdownLoading, setCountdownLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    console.log('🔍 [Dashboard] useEffect (auth loading/isAdmin/profile/election)');
+    devLog('🔍 [Dashboard] useEffect (auth loading/isAdmin/profile/election)');
     if (authLoading) return; // aguarda auth resolver
     
     // Carregar configurações de eleição para todos os usuários
@@ -100,7 +101,7 @@ export default function DashboardPage() {
       const { loadCountdownData } = await import('@/services/publicSettings');
       const countdownData = await loadCountdownData();
       
-      console.log('🔍 [Dashboard] Dados do countdown carregados:', countdownData);
+      devLog('🔍 [Dashboard] Dados do countdown carregados:', countdownData);
       
       if (countdownData) {
         const { formatCountdownWithTimezone } = await import('@/services/election');
@@ -112,7 +113,7 @@ export default function DashboardPage() {
         const publicSettings = await getPublicSettings();
         
         // Debug: verificar os dados que estão sendo exibidos
-        console.log('🔍 [Dashboard] Dados para exibição:', {
+        devLog('🔍 [Dashboard] Dados para exibição:', {
           name: countdownData.name,
           date: countdownData.date,
           formattedDate: new Date(countdownData.date).toLocaleDateString('pt-BR'),
@@ -129,7 +130,7 @@ export default function DashboardPage() {
         const electionDate = new Date(countdownData.date + 'T00:00:00');
         setElectionLabel(`${electionType} • ${electionDate.toLocaleDateString('pt-BR')}`);
       } else {
-        console.warn('⚠️ [Dashboard] Nenhum dado de countdown encontrado');
+        devLog('⚠️ [Dashboard] Nenhum dado de countdown encontrado');
         setCountdownText("Erro ao carregar");
         setElectionLabel("Erro na configuração");
       }
@@ -144,23 +145,23 @@ export default function DashboardPage() {
   };
 
   const refreshElectionSettings = async () => {
-    console.log('🔄 [Dashboard] Forçando refresh das configurações de eleição...');
+    devLog('🔄 [Dashboard] Forçando refresh das configurações de eleição...');
     
     try {
       // Primeiro, verificar se há discrepâncias
       const { checkSettingsSync, syncPublicSettings, forceUpdatePublicSettings } = await import('@/services/syncElectionSettings');
       const syncResult = await checkSettingsSync();
       
-      console.log('🔍 [Dashboard] Resultado da verificação de sincronização:', syncResult);
+      devLog('🔍 [Dashboard] Resultado da verificação de sincronização:', syncResult);
       
       if (!syncResult.isSynced) {
-        console.log('⚠️ [Dashboard] Discrepâncias encontradas, sincronizando...');
+        devLog('⚠️ [Dashboard] Discrepâncias encontradas, sincronizando...');
         const syncSuccess = await syncPublicSettings();
         
         if (syncSuccess) {
-          console.log('✅ [Dashboard] Sincronização bem-sucedida');
+          devLog('✅ [Dashboard] Sincronização bem-sucedida');
         } else {
-          console.warn('⚠️ [Dashboard] Falha na sincronização, tentando atualização forçada...');
+          devLog('⚠️ [Dashboard] Falha na sincronização, tentando atualização forçada...');
           
           // Se a sincronização falhar, tentar atualização forçada com dados corretos
           if (syncResult.electionData) {
@@ -174,9 +175,9 @@ export default function DashboardPage() {
             });
             
             if (forceSuccess) {
-              console.log('✅ [Dashboard] Atualização forçada bem-sucedida');
+              devLog('✅ [Dashboard] Atualização forçada bem-sucedida');
             } else {
-              console.warn('⚠️ [Dashboard] Falha na atualização forçada');
+              devLog('⚠️ [Dashboard] Falha na atualização forçada');
             }
           }
         }
@@ -199,7 +200,7 @@ export default function DashboardPage() {
       
       if (isAdminUser) {
         // Para ADMIN: carregar estatísticas gerais com filtros de eleição
-        console.log('🔍 [Dashboard] Filtros de eleição:', { election, defaultFilters });
+        devLog('🔍 [Dashboard] Filtros de eleição:', { election, defaultFilters });
         
         // Construir filtros baseados na eleição
         let peopleQuery = supabase.from('people').select('id', { count: 'exact', head: true });
@@ -208,7 +209,7 @@ export default function DashboardPage() {
         
         // Aplicar filtros se for eleição municipal
         if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
-          console.log('🔍 [Dashboard] Aplicando filtros municipais:', { city: defaultFilters.city, state: defaultFilters.state });
+          devLog('🔍 [Dashboard] Aplicando filtros municipais:', { city: defaultFilters.city, state: defaultFilters.state });
           // Para eleição municipal, filtrar por cidade e estado (somar apenas bairros da cidade específica)
           peopleQuery = peopleQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
           confirmedQuery = confirmedQuery.eq('city', defaultFilters.city).eq('state', defaultFilters.state);
@@ -223,7 +224,7 @@ export default function DashboardPage() {
           probableQuery
         ]);
         
-        console.log('🔍 [Dashboard] Dados do admin carregados:', {
+        devLog('🔍 [Dashboard] Dados do admin carregados:', {
           leaderCounters,
           goalData,
           effectiveTotalGoal: goalData.effective_total_goal,
@@ -235,7 +236,7 @@ export default function DashboardPage() {
         const confirmedVotes = confirmedQ.count ?? 0;
         const probableVotes = probableQ.count ?? 0;
 
-        console.log('🔍 [Dashboard] DEBUG - Contagem de pessoas:', {
+        devLog('🔍 [Dashboard] DEBUG - Contagem de pessoas:', {
           totalQ: totalQ,
           totalQCount: totalQ.count,
           totalPeople: totalPeople,
@@ -243,7 +244,7 @@ export default function DashboardPage() {
           probableQ: probableQ
         });
 
-        console.log('Dashboard - Admin logado:', {
+        devLog('Dashboard - Admin logado:', {
           leaderCounters,
           goalData,
           totalPeople,
@@ -264,15 +265,15 @@ export default function DashboardPage() {
         await loadTopLeaders();
       } else {
         // Para LÍDER: carregar apenas suas próprias estatísticas
-        console.log('🔍 [Dashboard] isAdminUser é FALSE - executando lógica de líder');
+        devLog('🔍 [Dashboard] isAdminUser é FALSE - executando lógica de líder');
         if (!profile?.id) { setLoading(false); return; }
         
-        console.log('🔍 Carregando estatísticas do líder...');
-        console.log('🔍 Profile ID:', profile.id);
-        console.log('🔍 Profile Role:', profile.role);
-        console.log('🔍 Is Admin:', isAdminUser);
+        devLog('🔍 Carregando estatísticas do líder...');
+        devLog('🔍 Profile ID:', profile.id);
+        devLog('🔍 Profile Role:', profile.role);
+        devLog('🔍 Is Admin:', isAdminUser);
         
-        console.log('🔍 [Dashboard] DEBUG - Contagem para LÍDER:', {
+        devLog('🔍 [Dashboard] DEBUG - Contagem para LÍDER:', {
           profileId: profile.id,
           queryFilter: `owner_id = ${profile.id}`
         });
@@ -305,9 +306,9 @@ export default function DashboardPage() {
 
         // Usar meta do líder via hook (já carregada)
         const leaderGoal = leaderGoalData?.goal || 100;
-        console.log('✅ Usando meta do líder via hook:', leaderGoal, 'Fonte:', leaderGoalData?.source);
+        devLog('✅ Usando meta do líder via hook:', leaderGoal, 'Fonte:', leaderGoalData?.source);
         
-        console.log('Dashboard - Líder logado:', {
+        devLog('Dashboard - Líder logado:', {
           profileId: profile.id,
           leaderGoalData,
           leaderGoal,
@@ -339,7 +340,7 @@ export default function DashboardPage() {
     try {
       const supabase = getSupabaseClient();
       
-      console.log('🔍 [loadTopLeaders] Iniciando carregamento dos top líderes...');
+      devLog('🔍 [loadTopLeaders] Iniciando carregamento dos top líderes...');
       
       // OPÇÃO 1: Usar a nova RPC otimizada (recomendado)
       try {
@@ -347,7 +348,7 @@ export default function DashboardPage() {
         
         // Aplicar filtros se for eleição municipal
         if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
-          console.log('🔍 [loadTopLeaders] Aplicando filtros municipais via RPC:', { 
+          devLog('🔍 [loadTopLeaders] Aplicando filtros municipais via RPC:', { 
             city: defaultFilters.city, 
             state: defaultFilters.state 
           });
@@ -361,7 +362,7 @@ export default function DashboardPage() {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_top_leaders', rpcParams);
         
         if (!rpcError && rpcData) {
-          console.log('✅ [loadTopLeaders] Dados obtidos via RPC:', rpcData);
+          devLog('✅ [loadTopLeaders] Dados obtidos via RPC:', rpcData);
           
           const topLeadersData: TopLeader[] = rpcData.map(leader => ({
             leader_id: leader.leader_id,
@@ -373,14 +374,14 @@ export default function DashboardPage() {
           setTopLeaders(topLeadersData);
           return; // Sucesso, sair da função
         } else {
-          console.warn('⚠️ [loadTopLeaders] RPC falhou, usando método alternativo:', rpcError);
+          devLog('⚠️ [loadTopLeaders] RPC falhou, usando método alternativo:', rpcError);
         }
       } catch (rpcError) {
-        console.warn('⚠️ [loadTopLeaders] RPC não disponível, usando método alternativo:', rpcError);
+        devLog('⚠️ [loadTopLeaders] RPC não disponível, usando método alternativo:', rpcError);
       }
       
       // OPÇÃO 2: Método original SEM LIMITE (fallback)
-      console.log('🔄 [loadTopLeaders] Usando método de agregação no cliente...');
+      devLog('🔄 [loadTopLeaders] Usando método de agregação no cliente...');
       
       // Query SEM limite para pegar todos os dados
       let query = supabase
@@ -397,7 +398,7 @@ export default function DashboardPage() {
       
       // Aplicar filtros se for eleição municipal
       if (election?.election_level === 'MUNICIPAL' && defaultFilters.city && defaultFilters.state) {
-        console.log('🔍 [loadTopLeaders] Aplicando filtros municipais:', { 
+        devLog('🔍 [loadTopLeaders] Aplicando filtros municipais:', { 
           city: defaultFilters.city, 
           state: defaultFilters.state 
         });
@@ -408,7 +409,7 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
-      console.log('🔍 [loadTopLeaders] Dados brutos obtidos:', {
+      devLog('🔍 [loadTopLeaders] Dados brutos obtidos:', {
         totalRecords: data?.length || 0
       });
 
@@ -441,7 +442,7 @@ export default function DashboardPage() {
         .sort((a, b) => b.total_people - a.total_people)
         .slice(0, 5); // Top 5
 
-      console.log('✅ [loadTopLeaders] Top 5 líderes calculados:', topLeadersData);
+      devLog('✅ [loadTopLeaders] Top 5 líderes calculados:', topLeadersData);
       setTopLeaders(topLeadersData);
       
     } catch (error) {
@@ -452,15 +453,15 @@ export default function DashboardPage() {
 
   const handleUpdateOrgGoal = async () => {
     try {
-      console.log('🔍 [Dashboard] Atualizando meta da organização...');
+      devLog('🔍 [Dashboard] Atualizando meta da organização...');
       const newGoal = await updateOrgGoalFromElectionType();
       
       if (newGoal > 0) {
-        console.log('✅ [Dashboard] Meta atualizada:', newGoal);
+        devLog('✅ [Dashboard] Meta atualizada:', newGoal);
         // Recarregar estatísticas para mostrar a nova meta
         await loadStats();
       } else {
-        console.warn('⚠️ [Dashboard] Nenhuma meta foi calculada');
+        devLog('⚠️ [Dashboard] Nenhuma meta foi calculada');
       }
     } catch (error) {
       console.error('❌ [Dashboard] Erro ao atualizar meta:', error);

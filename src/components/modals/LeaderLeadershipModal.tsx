@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, Crown } from 'lucide-react';
 import {
@@ -561,25 +562,25 @@ export default function LeaderLeadershipModal({ isOpen, onClose, leaderProfileId
   };
 
   const handlePoliticalOfficeChange = (office: string) => {
-    console.log('🔄 handlePoliticalOfficeChange chamado:', { office, leaderCity, leaderState });
+    devLog('🔄 handlePoliticalOfficeChange chamado:', { office, leaderCity, leaderState });
     setFormData(prev => ({ ...prev, political_office: office }));
     
     // Autopreenchimento da organização baseado no cargo
     if (office && office !== 'Outro' && POL_OFFICE_DEFAULT_ORG[office]) {
       const defaultOrg = POL_OFFICE_DEFAULT_ORG[office]({ city: leaderCity, state: leaderState });
-      console.log('✅ Autopreenchimento:', { office, defaultOrg });
+      devLog('✅ Autopreenchimento:', { office, defaultOrg });
       setFormData(prev => ({ ...prev, organization: defaultOrg }));
     } else if (office === 'Outro') {
       // Limpar organização se for "Outro"
-      console.log('🧹 Limpando organização para "Outro"');
+      devLog('🧹 Limpando organização para "Outro"');
       setFormData(prev => ({ ...prev, organization: '' }));
     } else {
-      console.log('❌ Cargo não encontrado no mapeamento:', office);
+      devLog('❌ Cargo não encontrado no mapeamento:', office);
     }
   };
 
   const handleGovernmentLevelChange = (level: GovernmentLevel) => {
-    console.log('🔄 handleGovernmentLevelChange chamado:', { level, leaderCity, leaderState });
+    devLog('🔄 handleGovernmentLevelChange chamado:', { level, leaderCity, leaderState });
     setFormData(prev => ({ ...prev, government_level: level }));
     
     let defaultOrg = '';
@@ -592,7 +593,7 @@ export default function LeaderLeadershipModal({ isOpen, onClose, leaderProfileId
     }
     
     if (defaultOrg) {
-      console.log('✅ Autopreenchimento organização:', { level, defaultOrg });
+      devLog('✅ Autopreenchimento organização:', { level, defaultOrg });
       setFormData(prev => ({ ...prev, organization: defaultOrg }));
     }
   };

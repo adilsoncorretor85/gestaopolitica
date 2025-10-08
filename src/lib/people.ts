@@ -1,3 +1,4 @@
+import { devLog } from '@/lib/logger';
 import { supabase } from '@/lib/supabaseClient';
 import { PersonInsert, PersonUpdate, Profile } from '@/types/database';
 
@@ -90,7 +91,7 @@ export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedR
       };
     } else {
       // Fallback: busca simples com ILIKE quando FTS não encontra resultados
-      console.log('[getPeople] Nenhum resultado FTS, tentando busca simples como fallback');
+      devLog('[getPeople] Nenhum resultado FTS, tentando busca simples como fallback');
       
       let query = supabase.from('people').select(`
         *,
@@ -116,7 +117,7 @@ export async function getPeople(filters: PeopleFilters = {}): Promise<PaginatedR
         throw error;
       }
 
-      console.log('[getPeople] Resultados fallback:', data?.length || 0);
+      devLog('[getPeople] Resultados fallback:', data?.length || 0);
       
       return {
         data: data as PersonWithProfile[] || [],
