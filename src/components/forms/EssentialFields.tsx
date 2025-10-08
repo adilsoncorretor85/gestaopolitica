@@ -39,30 +39,54 @@ export default function EssentialFields({
   useEffect(() => {
     if (!watchWhatsApp) return;
     
-    const whatsapp = watchWhatsApp();
-    if (!whatsapp || whatsapp.replace(/\D/g, '').length < 10) {
-      setWhatsappError('');
-      return;
-    }
-
-    const timeoutId = setTimeout(async () => {
-      setCheckingDuplicate(true);
-      try {
-        const result = await checkWhatsAppDuplicate(whatsapp, currentPersonId);
-        if (result.isDuplicate) {
-          setWhatsappError(result.message || 'WhatsApp já cadastrado');
-        } else {
+    let lastWhatsapp = '';
+    
+    const checkWhatsapp = () => {
+      const whatsapp = watchWhatsApp();
+      const normalizedWhatsapp = whatsapp?.replace(/\D/g, '') || '';
+      
+      // Só verificar se o WhatsApp mudou e tem pelo menos 10 dígitos
+      if (normalizedWhatsapp !== lastWhatsapp) {
+        lastWhatsapp = normalizedWhatsapp;
+        
+        if (normalizedWhatsapp.length < 10) {
           setWhatsappError('');
+          return;
         }
-      } catch (error) {
-        console.error('Erro ao verificar duplicata:', error);
-      } finally {
-        setCheckingDuplicate(false);
-      }
-    }, 500); // Debounce de 500ms
 
-    return () => clearTimeout(timeoutId);
-  }, [watchWhatsApp]);
+        const timeoutId = setTimeout(async () => {
+          // Verificar novamente se o WhatsApp ainda é o mesmo
+          if (lastWhatsapp === normalizedWhatsapp) {
+            setCheckingDuplicate(true);
+            try {
+              const result = await checkWhatsAppDuplicate(whatsapp, currentPersonId);
+              if (result.isDuplicate) {
+                setWhatsappError(result.message || 'WhatsApp já cadastrado');
+              } else {
+                setWhatsappError('');
+              }
+            } catch (error) {
+              console.error('Erro ao verificar duplicata:', error);
+            } finally {
+              setCheckingDuplicate(false);
+            }
+          }
+        }, 800); // Debounce de 800ms
+
+        return () => clearTimeout(timeoutId);
+      }
+    };
+
+    // Verificar imediatamente
+    checkWhatsapp();
+    
+    // Configurar um intervalo para verificar mudanças
+    const intervalId = setInterval(checkWhatsapp, 1000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [watchWhatsApp, currentPersonId]);
   return (
     <div className="space-y-6">
       {/* Campos Essenciais */}

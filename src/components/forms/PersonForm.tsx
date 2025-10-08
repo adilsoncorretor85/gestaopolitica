@@ -137,43 +137,57 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
 
   // Monitorar mudanças no CEP e buscar endereço automaticamente
   useEffect(() => {
+    let lastCep = '';
+    
     const subscription = watch((value, { name }) => {
       if (name === 'cep' && value.cep) {
         const cep = value.cep.replace(/\D/g, '');
-        if (cep.length === 8) {
+        
+        // Só buscar se o CEP mudou e tem 8 dígitos
+        if (cep.length === 8 && cep !== lastCep) {
+          lastCep = cep;
+          
           // Limpar timeout anterior se existir
           if (cepRef.current) {
             clearTimeout(cepRef.current);
           }
           
-          // Aguardar 500ms antes de buscar para evitar muitas requisições
+          // Aguardar 800ms antes de buscar para evitar muitas requisições
           cepRef.current = setTimeout(async () => {
-            setLoadingCep(true);
-            setErrorCep(null);
-            
-            try {
-              const address = await fetchAddressByCep(cep);
-              if (address) {
-                setValue('street', address.street);
-                setValue('neighborhood', address.neighborhood);
-                setValue('city', address.city);
-                setValue('state', address.state);
-                setValue('cep', address.cep);
-                setShowAddressDetails(true);
-              } else {
-                setErrorCep('CEP não encontrado');
+            // Verificar novamente se o CEP ainda é o mesmo
+            if (lastCep === cep) {
+              setLoadingCep(true);
+              setErrorCep(null);
+              
+              try {
+                const address = await fetchAddressByCep(cep);
+                if (address) {
+                  setValue('street', address.street);
+                  setValue('neighborhood', address.neighborhood);
+                  setValue('city', address.city);
+                  setValue('state', address.state);
+                  setValue('cep', address.cep);
+                  setShowAddressDetails(true);
+                } else {
+                  setErrorCep('CEP não encontrado');
+                }
+              } catch (error) {
+                setErrorCep('Erro ao buscar CEP');
+              } finally {
+                setLoadingCep(false);
               }
-            } catch (error) {
-              setErrorCep('Erro ao buscar CEP');
-            } finally {
-              setLoadingCep(false);
             }
-          }, 500);
+          }, 800);
         }
       }
     });
     
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (cepRef.current) {
+        clearTimeout(cepRef.current);
+      }
+    };
   }, [watch, setValue]);
 
   // Função para validar nome completo
