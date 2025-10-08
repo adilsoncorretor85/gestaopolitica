@@ -147,35 +147,15 @@ export default function EssentialFields({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Sexo
             </label>
-            <div className="flex gap-3">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="M"
-                  {...register('gender')}
-                  className="mr-1 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">M</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="F"
-                  {...register('gender')}
-                  className="mr-1 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">F</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="O"
-                  {...register('gender')}
-                  className="mr-1 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Outro</span>
-              </label>
-            </div>
+            <select
+              {...register('gender')}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Selecione o sexo (opcional)</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+              <option value="O">Outro</option>
+            </select>
             {errors.gender && (
               <p className="text-red-500 text-sm mt-1 flex items-center">
                 <span className="mr-1">⚠️</span>
