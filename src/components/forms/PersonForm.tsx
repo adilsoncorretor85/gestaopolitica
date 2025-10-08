@@ -37,7 +37,9 @@ const personSchema = z.object({
     .min(1, 'WhatsApp é obrigatório')
     .min(10, 'WhatsApp deve ter pelo menos 10 dígitos'),
   treatment: z.string().optional(),
-  gender: z.enum(['M', 'F', 'O']).optional(),
+  gender: z.enum(['M', 'F', 'O'], {
+    errorMap: () => ({ message: 'Favor escolher uma opção de sexo' })
+  }).optional().or(z.literal('')),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   facebook: z.string().optional(),
   instagram: z.string().optional(),
