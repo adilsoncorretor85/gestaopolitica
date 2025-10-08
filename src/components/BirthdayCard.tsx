@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cake, Calendar, Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { Cake, Calendar, Phone, Mail, MapPin, MessageCircle, Copy } from 'lucide-react';
 import { getTodayBirthdays, getUpcomingBirthdays, type BirthdayPerson } from '@/services/birthday';
 
 const BirthdayCard: React.FC = () => {
@@ -45,20 +45,51 @@ const BirthdayCard: React.FC = () => {
     let message: string;
     
     if (isToday) {
+      // Mensagem para aniversário hoje - usando emojis de forma mais compatível
       message = `🎉 Parabéns ${name}! 🎂\n\nQue este novo ano de vida seja repleto de alegrias, conquistas e muitas felicidades!\n\nUm abraço carinhoso! 💙`;
     } else {
+      // Mensagem para aniversário futuro
       message = `Olá ${name}! 👋\n\nVi que seu aniversário está chegando! 🎂\n\nQuero te parabenizar antecipadamente e desejar que este novo ano de vida seja repleto de alegrias, conquistas e muitas felicidades!\n\nUm abraço carinhoso! 💙`;
     }
     
-    // Codifica a mensagem para URL
+    // Debug: log da mensagem para verificar se os emojis estão corretos
+    console.log('Mensagem original:', message);
+    console.log('Mensagem codificada:', encodeURIComponent(message));
+    
+    // Solução mais simples: usar encodeURIComponent padrão
+    // O problema pode estar em outro lugar, não na codificação
     const encodedMessage = encodeURIComponent(message);
     
-    return `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+    const finalUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+    console.log('URL final:', finalUrl);
+    console.log('Mensagem decodificada:', decodeURIComponent(encodedMessage));
+    
+    return finalUrl;
   };
 
   const handleWhatsAppClick = (phone: string, name: string, isToday: boolean = true) => {
     const whatsappLink = generateWhatsAppLink(phone, name, isToday);
     window.open(whatsappLink, '_blank');
+  };
+
+  // Função alternativa para copiar mensagem para área de transferência
+  const handleCopyMessage = async (phone: string, name: string, isToday: boolean = true) => {
+    let message: string;
+    
+    if (isToday) {
+      message = `🎉 Parabéns ${name}! 🎂\n\nQue este novo ano de vida seja repleto de alegrias, conquistas e muitas felicidades!\n\nUm abraço carinhoso! 💙`;
+    } else {
+      message = `Olá ${name}! 👋\n\nVi que seu aniversário está chegando! 🎂\n\nQuero te parabenizar antecipadamente e desejar que este novo ano de vida seja repleto de alegrias, conquistas e muitas felicidades!\n\nUm abraço carinhoso! 💙`;
+    }
+    
+    try {
+      await navigator.clipboard.writeText(message);
+      alert('Mensagem copiada para a área de transferência! Cole no WhatsApp.');
+    } catch (err) {
+      console.error('Erro ao copiar mensagem:', err);
+      // Fallback: mostrar mensagem em um prompt
+      prompt('Copie a mensagem abaixo:', message);
+    }
   };
 
   if (loading) {
@@ -158,16 +189,24 @@ const BirthdayCard: React.FC = () => {
                         </div>
                       </div>
                       
-                      {/* Botão WhatsApp */}
+                      {/* Botões de Ação */}
                       {person.phone && (
-                        <div className="mt-3">
+                        <div className="mt-3 flex gap-2">
                           <button
                             onClick={() => handleWhatsAppClick(person.phone!, person.full_name, true)}
                             className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                             title="Abrir WhatsApp com mensagem de parabéns pré-formatada"
                           >
                             <MessageCircle className="h-4 w-4" />
-                            <span>Enviar Parabéns</span>
+                            <span>WhatsApp</span>
+                          </button>
+                          <button
+                            onClick={() => handleCopyMessage(person.phone!, person.full_name, true)}
+                            className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                            title="Copiar mensagem para área de transferência"
+                          >
+                            <Copy className="h-4 w-4" />
+                            <span>Copiar</span>
                           </button>
                         </div>
                       )}
@@ -247,16 +286,24 @@ const BirthdayCard: React.FC = () => {
                           </div>
                         </div>
                         
-                        {/* Botão WhatsApp */}
+                        {/* Botões de Ação */}
                         {person.phone && (
-                          <div className="mt-3">
+                          <div className="mt-3 flex gap-2">
                             <button
                               onClick={() => handleWhatsAppClick(person.phone!, person.full_name, isToday)}
                               className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                               title={isToday ? "Abrir WhatsApp com mensagem de parabéns pré-formatada" : "Abrir WhatsApp com mensagem de parabéns antecipado"}
                             >
                               <MessageCircle className="h-4 w-4" />
-                              <span>{isToday ? 'Enviar Parabéns' : 'Enviar Mensagem'}</span>
+                              <span>WhatsApp</span>
+                            </button>
+                            <button
+                              onClick={() => handleCopyMessage(person.phone!, person.full_name, isToday)}
+                              className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                              title="Copiar mensagem para área de transferência"
+                            >
+                              <Copy className="h-4 w-4" />
+                              <span>Copiar</span>
                             </button>
                           </div>
                         )}
