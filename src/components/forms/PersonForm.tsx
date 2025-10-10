@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/toast';
 import { createPerson, updatePerson, type PersonWithTags, type PersonInsertWithTags, type PersonUpdateWithTags } from '@/services/people';
 import { listLeaders, type LeaderRow } from '@/services/admin';
 import { fetchAddressByCep } from '@/services/viacep';
-import { geocodeAddress } from '@/services/geocoding';
+import { geocodeAddress, reverseGeocode } from '@/services/geocoding';
 import { Tag } from '@/services/tags';
 import { normalizeTreatment } from '@/lib/treatmentUtils';
 import useAuth from '@/hooks/useAuth';
@@ -49,6 +49,8 @@ const personSchema = z.object({
   neighborhood: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   notes: z.string().optional(),
   contacted_at: z.string().optional(),
   vote_status: z.string().optional(),
@@ -166,6 +168,26 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
                   setValue('state', address.state);
                   setValue('cep', address.cep);
                   setShowAddressDetails(true);
+                  
+                  // Fazer geocoding para obter coordenadas
+                  try {
+                    const coords = await geocodeAddress({
+                      street: address.street,
+                      neighborhood: address.neighborhood,
+                      city: address.city,
+                      state: address.state,
+                      cep: address.cep
+                    });
+                    
+                    if (coords) {
+                      setValue('latitude', coords.latitude);
+                      setValue('longitude', coords.longitude);
+                      setCoords({ lat: coords.latitude, lng: coords.longitude });
+                    }
+                  } catch (geoError) {
+                    console.warn('Erro ao obter coordenadas do CEP:', geoError);
+                    // Não falha o processo se não conseguir as coordenadas
+                  }
                 } else {
                   setErrorCep('CEP não encontrado');
                 }
@@ -244,6 +266,11 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
     setValue('latitude', address.latitude || null);
     setValue('longitude', address.longitude || null);
     
+    // Atualizar coordenadas no estado
+    if (address.latitude && address.longitude) {
+      setCoords({ lat: address.latitude, lng: address.longitude });
+    }
+    
     // Forçar atualização dos campos
     trigger(['cep', 'street', 'number', 'neighborhood', 'city', 'state']);
     
@@ -270,7 +297,7 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
       setCoords({ lat: latitude, lng: longitude });
       
       // Geocodificar para obter endereço
-      const address = await geocodeAddress(latitude, longitude);
+      const address = await reverseGeocode(latitude, longitude);
       if (address) {
         setValue('latitude', latitude);
         setValue('longitude', longitude);
@@ -278,6 +305,7 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         setValue('neighborhood', address.neighborhood || '');
         setValue('city', address.city || '');
         setValue('state', address.state || '');
+        setValue('cep', address.cep || '');
         setShowAddressDetails(true);
       }
     } catch (err) {
@@ -313,7 +341,8 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         ...(data.state && { state: data.state }),
         ...(data.notes && { notes: data.notes }),
         vote_status: data.vote_status || 'INDEFINIDO',
-        ...(coords && { latitude: coords.lat, longitude: coords.lng }),
+        ...(data.latitude && { latitude: data.latitude }),
+        ...(data.longitude && { longitude: data.longitude }),
       };
 
       // Adicionar tags ao payload
@@ -428,10 +457,12 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
       {/* Map Picker Modal */}
       {openMap && (
         <MapPicker
-          isOpen={openMap}
+          open={openMap}
           onClose={() => setOpenMap(false)}
-          onSelect={(coords) => {
+          onConfirm={(coords) => {
             setCoords(coords);
+            setValue('latitude', coords.lat);
+            setValue('longitude', coords.lng);
             setShowAddressDetails(true);
             setOpenMap(false);
           }}
