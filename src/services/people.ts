@@ -49,23 +49,31 @@ export async function checkWhatsAppDuplicate(whatsapp: string, currentPersonId?:
       .maybeSingle();
     
     if (error) {
-      console.error('Erro ao verificar duplicata:', error);
+      if (import.meta.env.DEV) {
+        console.error('Erro ao verificar duplicata:', error);
+      }
       return { isDuplicate: false };
     }
     
     // Se encontrou uma pessoa e não é a mesma que está sendo editada
     if (existingPerson && existingPerson.id !== currentPersonId) {
-      const roleText = existingPerson.owner?.role === 'ADMIN' ? 'administrador' : 'líder';
+      const ownerRole = Array.isArray(existingPerson.owner) 
+        ? (existingPerson.owner[0] as { role?: string })?.role 
+        : (existingPerson.owner as { role?: string })?.role;
+      const roleText = ownerRole === 'ADMIN' ? 'administrador' : 'líder';
       return {
         isDuplicate: true,
-        message: `Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${existingPerson.owner?.full_name || 'usuário'}.`
+        message: `Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${(Array.isArray(existingPerson.owner) ? (existingPerson.owner[0] as { full_name?: string })?.full_name : (existingPerson.owner as { full_name?: string })?.full_name) || 'usuário'}.`
       };
     }
     
     return { isDuplicate: false };
-  } catch (error) {
-    console.error('Erro ao verificar duplicata:', error);
-    return { isDuplicate: false };
+  } catch (error: any) {
+    const errorMessage = handleSupabaseError(error, 'verificar duplicidade de WhatsApp');
+    if (import.meta.env.DEV) {
+      devLog('❌ Erro ao verificar duplicidade de WhatsApp:', error);
+    }
+    return { isDuplicate: false, message: errorMessage };
   }
 }
 
@@ -450,7 +458,7 @@ export async function createPerson(p: PersonInsertWithTags): Promise<{ data: Per
       
       // Se for erro de duplicação, buscar informações do líder que já cadastrou
       if (errorMessage === 'DUPLICATE_ENTRY') {
-        const existingInfo = await checkExistingPerson(p.whatsapp || '', p.phone || '');
+        const existingInfo = await checkExistingPerson(p.whatsapp || '', '');
         
         if (existingInfo.exists && existingInfo.ownerName) {
           const roleText = existingInfo.ownerRole === 'ADMIN' ? 'administrador' : 'líder';
@@ -504,10 +512,12 @@ export async function createPerson(p: PersonInsertWithTags): Promise<{ data: Per
     }
     
     return { data: { ...data, tags }, error: null };
-  } catch (error) {
+  } catch (error: any) {
+    const errorMessage = handleSupabaseError(error, 'criar pessoa');
+    devLog('❌ Erro ao criar pessoa:', error);
     return { 
       data: null, 
-      error: error instanceof Error ? error.message : 'Erro desconhecido'
+      error: errorMessage
     };
   }
 }

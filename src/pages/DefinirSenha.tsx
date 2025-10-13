@@ -12,7 +12,7 @@ export default function DefinirSenha() {
 
   useEffect(() => {
     // cobre fluxo novo (code) e antigo (hash token)
-    supabase.auth.exchangeCodeForSession().finally(() => setReady(true));
+    supabase.auth.exchangeCodeForSession(window.location.search).finally(() => setReady(true));
   }, []);
 
   const submit = async (e: React.FormEvent) => {

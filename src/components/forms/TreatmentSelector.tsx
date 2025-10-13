@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { CANONICAL_TREATMENTS, normalizeTreatment } from '@/lib/treatmentUtils';
 
 interface TreatmentSelectorProps {
@@ -7,7 +7,7 @@ interface TreatmentSelectorProps {
   disabled?: boolean;
 }
 
-export default function TreatmentSelector({ value, onChange, disabled = false }: TreatmentSelectorProps) {
+const TreatmentSelector = ({ value, onChange, disabled = false }: TreatmentSelectorProps) => {
   const [inputValue, setInputValue] = useState(value);
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredTreatments, setFilteredTreatments] = useState(CANONICAL_TREATMENTS);
@@ -25,7 +25,7 @@ export default function TreatmentSelector({ value, onChange, disabled = false }:
       const filtered = CANONICAL_TREATMENTS.filter(treatment =>
         treatment.toLowerCase().includes(inputValue.toLowerCase())
       );
-      setFilteredTreatments(filtered);
+      setFilteredTreatments(filtered as any);
     }
   }, [inputValue]);
 
@@ -109,4 +109,6 @@ export default function TreatmentSelector({ value, onChange, disabled = false }:
       )}
     </div>
   );
-}
+};
+
+export default memo(TreatmentSelector);

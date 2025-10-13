@@ -11,6 +11,7 @@ export type BirthdayPerson = {
   neighborhood: string | null;
   city: string | null;
   state: string | null;
+  treatment: string | null;
 };
 
 /**
@@ -38,6 +39,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         neighborhood,
         city,
         state,
+        treatment,
         profiles!inner(full_name)
       `)
       .not('birth_date', 'is', null)
@@ -54,7 +56,8 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         neighborhood,
         city,
         state,
-        full_name
+        full_name,
+        treatment
       `)
       .not('birth_date', 'is', null);
 
@@ -70,7 +73,16 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
     const allData = [
       ...(leadersData || []).map(leader => ({
         ...leader,
-        full_name: leader.profiles?.full_name || '',
+        full_name: (() => {
+          if (Array.isArray(leader.profiles)) {
+            return leader.profiles[0]?.full_name || '';
+          }
+          if (leader.profiles && typeof leader.profiles === 'object' && 'full_name' in leader.profiles) {
+            const fullName = (leader.profiles as any).full_name;
+            return typeof fullName === 'string' ? fullName : '';
+          }
+          return '';
+        })(),
         phone: leader.phone
       })),
       ...(peopleData || []).map(person => ({
@@ -129,6 +141,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
             neighborhood: person.neighborhood,
             city: person.city,
             state: person.state,
+            treatment: person.treatment || null,
           };
         }
         
@@ -142,6 +155,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
           neighborhood: person.neighborhood,
           city: person.city,
           state: person.state,
+          treatment: person.treatment || null,
         };
       });
 
@@ -176,6 +190,7 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         neighborhood,
         city,
         state,
+        treatment,
         profiles!inner(full_name)
       `)
       .not('birth_date', 'is', null)
@@ -192,7 +207,8 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         neighborhood,
         city,
         state,
-        full_name
+        full_name,
+        treatment
       `)
       .not('birth_date', 'is', null);
 
@@ -208,7 +224,16 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
     const allData = [
       ...(leadersData || []).map(leader => ({
         ...leader,
-        full_name: leader.profiles?.full_name || '',
+        full_name: (() => {
+          if (Array.isArray(leader.profiles)) {
+            return leader.profiles[0]?.full_name || '';
+          }
+          if (leader.profiles && typeof leader.profiles === 'object' && 'full_name' in leader.profiles) {
+            const fullName = (leader.profiles as any).full_name;
+            return typeof fullName === 'string' ? fullName : '';
+          }
+          return '';
+        })(),
         phone: leader.phone
       })),
       ...(peopleData || []).map(person => ({
@@ -257,6 +282,7 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
           neighborhood: person.neighborhood,
           city: person.city,
           state: person.state,
+          treatment: person.treatment || null,
         });
       }
     });

@@ -132,8 +132,9 @@ export default function Mapa() {
     id: authProfile.id,
     role: authProfile.role || 'LEADER',
     full_name: authProfile.full_name || null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    email: (authProfile as any).email || '',
+    created_at: (authProfile as any).created_at || new Date().toISOString(),
+    updated_at: (authProfile as any).updated_at || new Date().toISOString()
   } : undefined;
 
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -420,7 +421,7 @@ export default function Mapa() {
         // Usar RPC para busca com tags
         try {
           const tagIds = selectedTags.map(tag => tag.id);
-          const searchResult = await tagsService.searchPeopleWithTags('', tagIds, tagMode, 5000, 0);
+          const searchResult = await tagsService.searchPeopleWithTags({ tag_ids: tagIds });
           
           // Filtrar resultados baseado nos outros filtros
           peopleData = searchResult.filter((person: any) => {

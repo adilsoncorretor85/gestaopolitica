@@ -60,7 +60,7 @@ export default function LideresPage() {
   const handleReinvite = async (leader: LeaderListItem) => {
     try {
       setActionLoading(`reinvite-${leader.email}`);
-      const result = await resendInvite(leader.email!, leader.full_name || '');
+      const result = await resendInvite({ email: leader.email || '', full_name: leader.full_name || '' });
       
       alert(result?.message || 'Convite reenviado com sucesso!');
       if (result?.acceptUrl) {

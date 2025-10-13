@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
@@ -19,7 +19,7 @@ interface EssentialFieldsProps {
   currentPersonId?: string;
 }
 
-export default function EssentialFields({
+const EssentialFields = ({
   register,
   errors,
   setValue,
@@ -31,7 +31,7 @@ export default function EssentialFields({
   onNameBlur,
   watchWhatsApp,
   currentPersonId
-}: EssentialFieldsProps) {
+}: EssentialFieldsProps) => {
   const [whatsappError, setWhatsappError] = useState<string>('');
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
 
@@ -109,7 +109,12 @@ export default function EssentialFields({
             {errors.treatment && (
               <p className="text-red-500 text-sm mt-1 flex items-center">
                 <span className="mr-1">⚠️</span>
-                {errors.treatment.message}
+                {(() => {
+                  if (typeof errors.treatment === 'object' && errors.treatment && 'message' in errors.treatment) {
+                    return (errors.treatment as any).message;
+                  }
+                  return String(errors.treatment || '');
+                })()}
               </p>
             )}
           </div>
@@ -124,17 +129,25 @@ export default function EssentialFields({
               {...register('full_name')}
               onBlur={onNameBlur}
               autoFocus
-              className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              className={`form-control-accessible w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 nameError || errors.full_name
                   ? 'border-red-500 dark:border-red-400' 
                   : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Digite o nome completo (nome e sobrenome)"
+              aria-describedby={errors.full_name || nameError ? 'full_name-error' : undefined}
+              aria-invalid={errors.full_name || nameError ? 'true' : 'false'}
+              required
             />
             {(nameError || errors.full_name) && (
-              <p className="text-red-500 text-sm mt-1 flex items-center">
-                <span className="mr-1">⚠️</span>
-                {nameError || errors.full_name?.message}
+              <p id="full_name-error" className="text-red-500 text-sm mt-1 flex items-center" role="alert">
+                <span className="mr-1" aria-hidden="true">⚠️</span>
+                {nameError || (() => {
+                  if (typeof errors.full_name === 'object' && errors.full_name && 'message' in errors.full_name) {
+                    return (errors.full_name as any).message;
+                  }
+                  return String(errors.full_name || '');
+                })()}
               </p>
             )}
           </div>
@@ -159,7 +172,12 @@ export default function EssentialFields({
             {errors.gender && (
               <p className="text-red-500 text-sm mt-1 flex items-center">
                 <span className="mr-1">⚠️</span>
-                {errors.gender.message}
+                {(() => {
+                  if (typeof errors.gender === 'object' && errors.gender && 'message' in errors.gender) {
+                    return (errors.gender as any).message;
+                  }
+                  return String(errors.gender || '');
+                })()}
               </p>
             )}
           </div>
@@ -189,7 +207,12 @@ export default function EssentialFields({
             {(errors.whatsapp || whatsappError) && (
               <p className="text-red-500 text-sm mt-1 flex items-center">
                 <span className="mr-1">⚠️</span>
-                {whatsappError || errors.whatsapp?.message}
+                {whatsappError || (() => {
+                  if (typeof errors.whatsapp === 'object' && errors.whatsapp && 'message' in errors.whatsapp) {
+                    return (errors.whatsapp as any).message;
+                  }
+                  return String(errors.whatsapp || '');
+                })()}
               </p>
             )}
           </div>
@@ -244,4 +267,6 @@ export default function EssentialFields({
       </div>
     </div>
   );
-}
+};
+
+export default memo(EssentialFields);

@@ -55,7 +55,7 @@ export default function CityAutocomplete({
         if (filterByState) {
           try {
             const ibgeCities = await fetchCitiesByUF(filterByState);
-            const ibgeCityList = ibgeCities.map(city => ({
+            const ibgeCityList = ibgeCities.map((city: any) => ({
               city: normalizeText(city.name),
               state: filterByState.toUpperCase(),
               originalName: city.name

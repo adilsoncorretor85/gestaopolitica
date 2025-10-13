@@ -8,8 +8,14 @@ import { getPerson, type PersonWithTags } from '@/services/people';
 import { ArrowLeft } from 'lucide-react';
 
 export default function PessoasFormPage() {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const params = useParams();
+  const { id } = params || {};
+  
+  // Verificação de segurança para evitar erro de contexto
+  if (!params) {
+    return <div>Carregando...</div>;
+  }
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pessoas');
   const { profile } = useAuth();
@@ -44,15 +50,13 @@ export default function PessoasFormPage() {
         <Header 
           sidebarOpen={sidebarOpen} 
           setSidebarOpen={setSidebarOpen}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
         />
         <div className="flex">
           <Sidebar 
-            sidebarOpen={sidebarOpen} 
-            setSidebarOpen={setSidebarOpen}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            isOpen={sidebarOpen} 
+            onClose={() => setSidebarOpen(false)}
+            activeTab="pessoas"
+            setActiveTab={() => {}}
           />
           <div className="flex-1 p-6">
             <div className="flex items-center justify-center h-64">
@@ -69,15 +73,13 @@ export default function PessoasFormPage() {
       <Header 
         sidebarOpen={sidebarOpen} 
         setSidebarOpen={setSidebarOpen}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
       />
       <div className="flex">
         <Sidebar 
-          sidebarOpen={sidebarOpen} 
-          setSidebarOpen={setSidebarOpen}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)}
+          activeTab="pessoas"
+          setActiveTab={() => {}}
         />
         <div className="flex-1 p-6">
           <div className="max-w-4xl mx-auto">

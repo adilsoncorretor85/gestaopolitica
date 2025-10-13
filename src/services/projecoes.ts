@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { normalizeKey } from "@/lib/normalize";
 import type {
   CityVotesRow,
   NeighborhoodVotesRow,
@@ -9,10 +10,25 @@ import type {
 } from "@/types/projecoes";
 
 function norm(s: string | null | undefined) {
-  return (s ?? "").trim();
+  if (!s) return '';
+  // Normalizar cidade: remover acentos, converter para minúsculo, remover espaços extras
+  return s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' '); // Normalizar espaços múltiplos
 }
+
 function normUF(uf: string | null | undefined) {
-  return (uf ?? "").trim().toUpperCase();
+  if (!uf) return '';
+  // Normalizar UF: remover acentos, converter para maiúsculo, remover espaços extras
+  return uf
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toUpperCase()
+    .trim()
+    .replace(/\s+/g, ' '); // Normalizar espaços múltiplos
 }
 
 /** Lê votos agregados por cidade a partir da view — mapeia nomes reais */

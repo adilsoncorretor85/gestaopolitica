@@ -67,14 +67,16 @@ export const logger = new LoggerImpl();
 
 // Função helper para logs de desenvolvimento
 export const devLog = (message: string, ...args: any[]): void => {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
     console.log(`[DEV] ${message}`, ...args);
   }
 };
 
-// Função helper para logs de erro (sempre visível)
+// Função helper para logs de erro (apenas em desenvolvimento)
 export const errorLog = (message: string, error?: any): void => {
-  console.error(`[ERROR] ${message}`, error);
+  if (import.meta.env.DEV) {
+    console.error(`[ERROR] ${message}`, error);
+  }
 };
 
 // Função helper para logs de Supabase (apenas em desenvolvimento)

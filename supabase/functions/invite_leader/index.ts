@@ -110,10 +110,7 @@ Deno.serve(async (req)=>{
       });
       if (recErr) {
         emailStatus = 'failed';
-        // Log apenas em desenvolvimento
-        if (Deno.env.get('ENVIRONMENT') === 'development') {
-          console.error('recovery error:', recErr);
-        }
+        console.error('recovery error:', recErr);
       } else {
         emailStatus = 'sent';
         acceptUrl = rec?.properties?.action_link ?? fallbackUrl;
@@ -132,10 +129,7 @@ Deno.serve(async (req)=>{
       });
       if (inviteErr) {
         emailStatus = 'failed';
-        // Log apenas em desenvolvimento
-        if (Deno.env.get('ENVIRONMENT') === 'development') {
-          console.error('invite error:', inviteErr);
-        }
+        console.error('invite error:', inviteErr);
       } else {
         emailStatus = 'sent';
         acceptUrl = invited?.properties?.action_link ?? fallbackUrl;
@@ -197,10 +191,7 @@ Deno.serve(async (req)=>{
       status: 200
     });
   } catch (err) {
-    // Log apenas em desenvolvimento
-    if (Deno.env.get('ENVIRONMENT') === 'development') {
-      console.error('invite_leader error phase=', phase, 'msg=', err?.message);
-    }
+    console.error('invite_leader error phase=', phase, 'msg=', err?.message);
     return new Response(JSON.stringify({
       ok: false,
       phase,

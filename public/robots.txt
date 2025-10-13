@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+
+# Páginas que não devem ser indexadas
+Disallow: /dashboard
+Disallow: /pessoas
+Disallow: /lideres
+Disallow: /admin/
+Disallow: /projecao
+Disallow: /mapa
+Disallow: /login
+Disallow: /reset-password
+Disallow: /definir-senha
+Disallow: /conta-bloqueada
+Disallow: /convite
+Disallow: /complete-profile
+
+# Permitir apenas páginas públicas
+Allow: /
+Allow: /sobre
+Allow: /contato
+
+# Sitemap
+Sitemap: https://gestaopolitica.com.br/sitemap.xml
+
+# Crawl delay (opcional)
+Crawl-delay: 1

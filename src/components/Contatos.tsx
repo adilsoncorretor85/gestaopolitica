@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Vote, Plus, Search, Filter, Phone, Mail, MapPin, User, Edit2, Users } from 'lucide-react';
-import { contatos as initialContatos, liderancas } from '../data/mockData';
-import { Contato } from '../types';
+import { Contato, Lideranca } from '../types';
+
+// Dados temporários para desenvolvimento
+const initialContatos: Contato[] = [];
+const liderancas: Lideranca[] = [];
 import Modal from './Modal';
 import FormContato from './FormContato';
 

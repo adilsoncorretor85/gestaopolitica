@@ -26,7 +26,9 @@ export async function fetchAddressByCep(rawCep: string): Promise<CepAddress | nu
       cep: data.cep || cep,
     };
   } catch (error) {
-    console.error('Erro ao buscar CEP:', error);
+    if (import.meta.env.DEV) {
+      console.error('Erro ao buscar CEP:', error);
+    }
     return null;
   }
 }

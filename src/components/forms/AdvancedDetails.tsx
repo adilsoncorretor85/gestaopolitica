@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { UseFormRegister, FieldErrors } from 'react-hook-form';
 import { User, Users } from 'lucide-react';
 
@@ -12,7 +12,7 @@ interface AdvancedDetailsProps {
   onToggleLeaderSelector: () => void;
 }
 
-export default function AdvancedDetails({
+const AdvancedDetails = ({
   register,
   errors,
   showAdvanced,
@@ -20,7 +20,7 @@ export default function AdvancedDetails({
   currentUser,
   showLeaderSelector,
   onToggleLeaderSelector
-}: AdvancedDetailsProps) {
+}: AdvancedDetailsProps) => {
   if (!showAdvanced) return null;
 
   return (
@@ -74,7 +74,12 @@ export default function AdvancedDetails({
           />
           {errors.email && (
             <p className="text-red-500 text-sm mt-1">
-              {errors.email.message}
+              {(() => {
+                if (typeof errors.email === 'object' && errors.email && 'message' in errors.email) {
+                  return (errors.email as any).message;
+                }
+                return String(errors.email || '');
+              })()}
             </p>
           )}
         </div>
@@ -159,4 +164,6 @@ export default function AdvancedDetails({
       </div>
     </div>
   );
-}
+};
+
+export default memo(AdvancedDetails);

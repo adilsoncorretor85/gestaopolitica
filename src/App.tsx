@@ -1,65 +1,59 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Suspense, lazy } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ElectionProvider } from "@/contexts/ElectionContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
-import Login from "@/pages/Login";
-import ResetPassword from "@/pages/ResetPassword";
-import DefinirSenha from "@/pages/DefinirSenha";
-import Dashboard from "@/pages/Dashboard";
-import Pessoas from "@/pages/Pessoas";
-import PessoasForm from "@/pages/PessoasForm";
-import Mapa from "@/pages/Mapa";
-import Lideres from "@/pages/Lideres";
-import LideresForm from "@/pages/LideresForm";
-import Projecao from "@/pages/Projecao";
-import AdminTags from "@/pages/AdminTags";
-import Convite from "@/pages/Convite";
-import CompleteProfile from "@/pages/CompleteProfile";
-import ContaBloqueada from "@/pages/ContaBloqueada";
+// Lazy loading otimizado para páginas com preload
+const Login = lazy(() => import("@/pages/Login"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const DefinirSenha = lazy(() => import("@/pages/DefinirSenha"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Pessoas = lazy(() => import("@/pages/Pessoas"));
+const PessoasForm = lazy(() => import("@/pages/PessoasForm"));
+const Mapa = lazy(() => import("@/pages/Mapa"));
+const Lideres = lazy(() => import("@/pages/Lideres"));
+const LideresForm = lazy(() => import("@/pages/LideresForm"));
+const Projecao = lazy(() => import("@/pages/Projecao"));
+const AdminTags = lazy(() => import("@/pages/AdminTags"));
+const Convite = lazy(() => import("@/pages/Convite"));
+const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
+const ContaBloqueada = lazy(() => import("@/pages/ContaBloqueada"));
+
+// Preload das páginas mais importantes
+const preloadDashboard = () => import("@/pages/Dashboard");
+const preloadPessoas = () => import("@/pages/Pessoas");
+
+// Preload automático após carregamento inicial
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    preloadDashboard();
+    preloadPessoas();
+  }, 2000);
+}
+
+// Componentes que não precisam de lazy loading (são pequenos)
 import ProtectedAdmin from "@/components/ProtectedAdmin";
 import RouteGuard from "@/components/RouteGuard";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 
 
 export default function App() {
-  if (!supabase) {
-    return (
-      <ThemeProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900">
-                <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-                Configuração Necessária
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                O Supabase não está configurado. Verifique as variáveis de ambiente:
-              </p>
-              <ul className="mt-4 text-sm text-gray-600 dark:text-gray-300 text-left">
-                <li>• VITE_SUPABASE_URL</li>
-                <li>• VITE_SUPABASE_ANON_KEY</li>
-              </ul>
-              <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
-                Copie o arquivo env.example para .env e preencha com seus valores.
-              </p>
-            </div>
-          </div>
-        </div>
-      </ThemeProvider>
-    );
-  }
-
   return (
-    <ThemeProvider>
-      <ElectionProvider supabase={supabase}>
-        <BrowserRouter>
-          <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ElectionProvider supabase={supabase}>
+          <BrowserRouter>
+            {/* Skip Link para acessibilidade */}
+            <a href="#main-content" className="skip-link">
+              Pular para o conteúdo principal
+            </a>
+            <Suspense fallback={<LoadingSpinner text="Carregando página..." />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/definir-senha" element={<DefinirSenha />} />
@@ -179,9 +173,15 @@ export default function App() {
           <Route path="/contacts/*" element={<Navigate to="/pessoas" replace />} />
           
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
         </ElectionProvider>
       </ThemeProvider>
-    );
-  }
+      
+      {/* PWA Components */}
+      <PWAInstallPrompt />
+      <PWAUpdatePrompt />
+    </ErrorBoundary>
+  );
+}

@@ -159,34 +159,34 @@ export async function getLeaderDetail(id: string) {
   const { data: leadershipData } = await getSupabaseClient()
     .from("profile_leaderships")
     .select("role_code, organization, title, extra")
-    .eq("profile_id", data.id)
+    .eq("profile_id", data?.id || '')
     .maybeSingle();
   
   // Transformar os dados para o formato esperado
   const transformedData = {
-    id: data.id,
-    full_name: (data.profiles as any)?.full_name,
-    email: data.email,
-    phone: data.phone,
-    birth_date: data.birth_date,
-    gender: data.gender,
-    cep: data.cep,
-    street: data.street,
-    number: data.number,
-    complement: data.complement,
-    neighborhood: data.neighborhood,
-    city: data.city,
-    state: data.state,
-    notes: data.notes,
-    status: data.status,
-    goal: data.goal,
-    latitude: data.latitude,
-    longitude: data.longitude,
+    id: data?.id || '',
+    full_name: (data?.profiles as any)?.full_name || '',
+    email: data?.email || '',
+    phone: data?.phone || '',
+    birth_date: data?.birth_date || '',
+    gender: data?.gender || '',
+    cep: data?.cep || '',
+    street: data?.street || '',
+    number: data?.number || '',
+    complement: data?.complement || '',
+    neighborhood: data?.neighborhood || '',
+    city: data?.city || '',
+    state: data?.state || '',
+    notes: data?.notes || '',
+    status: data?.status || '',
+    goal: data?.goal || '',
+    latitude: data?.latitude || null,
+    longitude: data?.longitude || null,
     invited_at: null, // Será preenchido se necessário
     accepted_at: null, // Será preenchido se necessário
-    is_active: data.status === 'ACTIVE',
-    created_at: data.created_at,
-    updated_at: data.updated_at
+    is_active: data?.status === 'ACTIVE',
+    created_at: data?.created_at || '',
+    updated_at: data?.updated_at || ''
   };
   
   return {

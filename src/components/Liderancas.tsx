@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Plus, Search, Filter, Phone, Mail, MapPin, Edit2 } from 'lucide-react';
-import { liderancas as initialLiderancas } from '../data/mockData';
+// Dados temporários para desenvolvimento
+const initialLiderancas: Lideranca[] = [];
 import { Lideranca } from '../types';
 import Modal from './Modal';
 import FormLideranca from './FormLideranca';

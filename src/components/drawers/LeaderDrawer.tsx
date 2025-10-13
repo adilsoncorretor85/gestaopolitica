@@ -44,7 +44,7 @@ export default function LeaderDrawer({ open, leaderId, onClose, onEdited }: Lead
       setLoading(true);
       try {
         const data = await getLeaderDetail(leaderId);
-        setLeader(data);
+        setLeader(data as any); // Cast temporário para resolver incompatibilidade de tipos
       } catch (error) {
         console.error('Erro ao carregar líder:', error);
         setToast({ message: 'Erro ao carregar dados do líder', type: 'error' });

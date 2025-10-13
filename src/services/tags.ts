@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
+import { supabase, handleSupabaseError } from '../lib/supabaseClient';
+import { devLog } from '../lib/logger';
 
 export interface Tag {
   id: string;
@@ -67,8 +68,9 @@ export const tagsService = {
     const { data, error } = await supabase.rpc('get_available_tags');
     
     if (error) {
-      console.error('Erro ao buscar tags:', error);
-      throw error;
+      const errorMessage = handleSupabaseError(error, 'buscar tags');
+      devLog('❌ Erro ao buscar tags:', error);
+      throw new Error(errorMessage);
     }
     
     return data || [];

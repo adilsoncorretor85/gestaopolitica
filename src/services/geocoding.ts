@@ -31,14 +31,18 @@ export async function reverseGeocode(
             
             resolve(addressParts);
           } else {
-            console.error('Erro no reverse geocoding:', status);
+            if (import.meta.env.DEV) {
+              console.error('Erro no reverse geocoding:', status);
+            }
             reject(new Error(`Erro ao converter coordenadas em endereço: ${status}`));
           }
         }
       );
     });
   } catch (error) {
-    console.error('Erro ao fazer reverse geocoding:', error);
+    if (import.meta.env.DEV) {
+      console.error('Erro ao fazer reverse geocoding:', error);
+    }
     throw error;
   }
 }
@@ -71,7 +75,9 @@ export async function geocodeAddress(address: {
     const fullAddress = addressParts.join(', ');
     
     if (!fullAddress.trim()) {
-      devLog('Endereço vazio fornecido para geocoding');
+      if (import.meta.env.DEV) {
+        devLog('Endereço vazio fornecido para geocoding');
+      }
       return null;
     }
     
@@ -86,14 +92,18 @@ export async function geocodeAddress(address: {
               longitude: location.lng()
             });
           } else {
-            console.error('Erro no geocoding:', status);
+            if (import.meta.env.DEV) {
+              console.error('Erro no geocoding:', status);
+            }
             resolve(null);
           }
         }
       );
     });
   } catch (error) {
-    console.error('Erro ao fazer geocoding:', error);
+    if (import.meta.env.DEV) {
+      console.error('Erro ao fazer geocoding:', error);
+    }
     return null;
   }
 }

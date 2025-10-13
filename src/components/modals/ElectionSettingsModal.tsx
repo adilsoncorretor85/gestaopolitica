@@ -32,7 +32,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
         const publicSettings = await getPublicSettings(supabase);
         
         if (publicSettings) {
-          setLevel(publicSettings.election_level ?? 'MUNICIPAL');
+          setLevel((publicSettings.election_level ?? 'MUNICIPAL') as any);
           setUf(publicSettings.scope_state ?? '');
           setName(publicSettings.election_name ?? '');
           
@@ -48,7 +48,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
           // Definir cidade se disponível
           if (publicSettings.scope_city && publicSettings.scope_city_ibge) {
             setTimeout(() => {
-              setCity({ ibge: Number(publicSettings.scope_city_ibge), name: publicSettings.scope_city });
+              setCity({ ibge: Number(publicSettings.scope_city_ibge), name: publicSettings.scope_city || '' });
             }, 500);
           }
         } else {
@@ -69,7 +69,7 @@ export default function ElectionSettingsModal({ open, onClose, onSaved }: Props)
             
             if (settings.scope_city && settings.scope_city_ibge) {
               setTimeout(() => {
-                setCity({ ibge: Number(settings.scope_city_ibge), name: settings.scope_city });
+                setCity({ ibge: Number(settings.scope_city_ibge), name: settings.scope_city || '' });
               }, 500);
             }
           }

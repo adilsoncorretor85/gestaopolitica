@@ -1,5 +1,5 @@
 import { devLog } from '@/lib/logger';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import DatabaseStatus from '@/components/DatabaseStatus';
@@ -7,11 +7,15 @@ import useAuth from '@/hooks/useAuth';
 import { useElection } from '@/contexts/ElectionContext';
 import { getLeaderCounters, getGoalSummary, updateOrgGoalFromElectionType, type GoalSummary } from '@/lib/dashboard';
 import { getSupabaseClient, handleSupabaseError } from '@/lib/supabaseClient';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { formatCountdown } from '@/services/election';
 import { useLeaderGoal, useInvalidateLeaderGoal } from '@/hooks/useLeaderGoal';
 import DashboardGoalCard from '@/components/DashboardGoalCard';
 import BirthdayCard from '@/components/BirthdayCard';
-import { Users, UserCheck, Target, TrendingUp, Calendar, Settings, CheckCircle } from 'lucide-react';
+import { Users, UserCheck, Target, TrendingUp, Calendar, Settings, CheckCircle } from '@/lib/iconImports';
+import { DashboardCardSkeleton } from '@/components/ui/skeleton';
+import LoadingSpinner from '@/components/ui/loading-spinner';
+import { usePageSEO } from '@/hooks/useSEO';
 
 // Tipos para o Dashboard
 type TopLeader = {
@@ -28,25 +32,20 @@ const formatNumber = (num: number | string): string => {
 };
 
 export default function DashboardPage() {
-  devLog('🔍 [Dashboard] Componente sendo renderizado');
-  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  devLog('🔍 [Dashboard] Antes de chamar useAuth');
   const { profile, isAdmin: isAdminUser, loading: authLoading } = useAuth();
   const { election, defaultFilters } = useElection();
-  devLog('🔍 [Dashboard] Depois de chamar useAuth');
-  
-  // Debug: verificar se está sendo reconhecido como admin
-  devLog('🔍 [Dashboard] Verificação de admin:', {
-    profile,
-    isAdminUser,
-    profileRole: profile?.role,
-    profileId: profile?.id
-  });
   const { data: leaderGoalData } = useLeaderGoal();
   const invalidateLeaderGoal = useInvalidateLeaderGoal();
+  const { handleError } = useErrorHandler();
+  
+  // SEO para a página Dashboard
+  usePageSEO('Dashboard', {
+    description: 'Painel de controle do sistema de gestão política. Visualize estatísticas, metas e progresso da campanha eleitoral.',
+    keywords: ['dashboard', 'estatísticas', 'metas', 'campanha', 'progresso'],
+  });
   
   const [stats, setStats] = useState({
     activeLeaders: 0,
@@ -68,7 +67,6 @@ export default function DashboardPage() {
   const [countdownLoading, setCountdownLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    devLog('🔍 [Dashboard] useEffect (auth loading/isAdmin/profile/election)');
     if (authLoading) return; // aguarda auth resolver
     
     // Carregar configurações de eleição para todos os usuários
@@ -93,7 +91,7 @@ export default function DashboardPage() {
     return () => subscription.unsubscribe();
   }, [invalidateLeaderGoal]);
 
-  const loadElectionSettings = async () => {
+  const loadElectionSettings = useCallback(async () => {
     try {
       setCountdownLoading(true);
       
@@ -142,9 +140,9 @@ export default function DashboardPage() {
     } finally {
       setCountdownLoading(false);
     }
-  };
+  }, []);
 
-  const refreshElectionSettings = async () => {
+  const refreshElectionSettings = useCallback(async () => {
     devLog('🔄 [Dashboard] Forçando refresh das configurações de eleição...');
     
     try {
@@ -190,9 +188,9 @@ export default function DashboardPage() {
       // Ainda assim, tentar recarregar
       await loadElectionSettings();
     }
-  };
+  }, [loadElectionSettings]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -329,14 +327,17 @@ export default function DashboardPage() {
         setGoalSummary(null); // Líder não vê resumo geral
       }
     } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-      setError(handleSupabaseError(error, 'carregar estatísticas'));
+      const errorMessage = handleError(error, {
+        context: 'carregar estatísticas',
+        showToast: false // Usar o estado de erro do componente
+      });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdminUser, profile?.id, election?.election_level, defaultFilters, leaderGoalData]);
 
-  const loadTopLeaders = async () => {
+  const loadTopLeaders = useCallback(async () => {
     try {
       const supabase = getSupabaseClient();
       
@@ -356,7 +357,7 @@ export default function DashboardPage() {
             ...rpcParams,
             filter_city: defaultFilters.city,
             filter_state: defaultFilters.state
-          };
+          } as any;
         }
         
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_top_leaders', rpcParams);
@@ -449,9 +450,9 @@ export default function DashboardPage() {
       console.error('❌ [loadTopLeaders] Erro geral:', error);
       setTopLeaders([]); // Limpar em caso de erro
     }
-  };
+  }, [election?.election_level, defaultFilters]);
 
-  const handleUpdateOrgGoal = async () => {
+  const handleUpdateOrgGoal = useCallback(async () => {
     try {
       devLog('🔍 [Dashboard] Atualizando meta da organização...');
       const newGoal = await updateOrgGoalFromElectionType();
@@ -466,7 +467,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('❌ [Dashboard] Erro ao atualizar meta:', error);
     }
-  };
+  }, [loadStats]);
 
   // Se houver erro de tabela não existir, mostrar tela de configuração
   if (error && error.includes('does not exist')) {
@@ -479,7 +480,7 @@ export default function DashboardPage() {
     ? Math.round((stats.totalPeople / metaAtual) * 100)
     : 0;
   
-  const estatisticasCards = [
+  const estatisticasCards = useMemo(() => [
     // Mostrar card de lideranças apenas para ADMIN
     ...(isAdminUser ? [{
       titulo: 'Total de Lideranças',
@@ -519,13 +520,20 @@ export default function DashboardPage() {
       descricao: countdownLoading ? "Carregando..." : (countdownText.includes("Hoje") ? "É hoje!" : "para a eleição"),
       extraInfo: electionLabel
     }
-  ];
+  ], [isAdminUser, stats, metaAtual, goalSummary, countdownLoading, countdownText, electionLabel]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Header 
-          profile={profile as any}
+          profile={profile ? {
+            id: profile.id,
+            role: profile.role || 'LEADER',
+            full_name: profile.full_name || null,
+            email: (profile as any).email || '',
+            created_at: (profile as any).created_at || new Date().toISOString(),
+            updated_at: (profile as any).updated_at || new Date().toISOString()
+          } : undefined}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
         />
@@ -539,8 +547,12 @@ export default function DashboardPage() {
           />
           
           <main className="flex-1 overflow-x-hidden">
-            <div className="p-6 flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">Carregando estatísticas...</p>
+            <div className="p-6">
+              <LoadingSpinner 
+                size="lg" 
+                text="Carregando estatísticas do dashboard..."
+                className="min-h-96"
+              />
             </div>
           </main>
         </div>
@@ -551,7 +563,14 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header 
-        profile={profile as any}
+        profile={profile ? {
+          id: profile.id,
+          role: profile.role || 'LEADER',
+          full_name: profile.full_name || null,
+          email: (profile as any).email || '',
+          created_at: (profile as any).created_at || new Date().toISOString(),
+          updated_at: (profile as any).updated_at || new Date().toISOString()
+        } : undefined}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
@@ -564,13 +583,13 @@ export default function DashboardPage() {
           onClose={() => setSidebarOpen(false)}
         />
         
-        <main className="flex-1 overflow-x-hidden">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-                <p className="text-gray-600 dark:text-gray-400">Visão geral da campanha política</p>
-              </div>
+          <main id="main-content" className="flex-1 overflow-x-hidden" role="main" tabIndex={-1}>
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                  <p className="text-gray-600 dark:text-gray-400">Visão geral da campanha política</p>
+                </div>
               <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>Última atualização: hoje</span>
@@ -579,29 +598,35 @@ export default function DashboardPage() {
 
             {/* Cards de Estatísticas */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isAdminUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-              {estatisticasCards.map((card, index) => {
+              {countdownLoading ? (
+                // Mostrar skeleton enquanto carrega countdown
+                Array.from({ length: isAdminUser ? 4 : 3 }).map((_, index) => (
+                  <DashboardCardSkeleton key={index} />
+                ))
+              ) : (
+                estatisticasCards.map((card, index) => {
                 const Icon = card.icon;
                 return (
-                  <div key={index} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                  <div key={index} className="card-accessible bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow" role="region" aria-labelledby={`card-title-${index}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.titulo}</p>
+                          <p id={`card-title-${index}`} className="text-sm font-medium text-gray-600 dark:text-gray-400">{card.titulo}</p>
                           <div className="flex items-center space-x-1">
-                            {card.refreshable && card.onRefresh && (
+                            {(card as any).refreshable && (card as any).onRefresh && (
                               <button
-                                onClick={card.onRefresh}
-                                className="text-xs bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 px-2 py-1 rounded transition-colors"
-                                title="Atualizar configurações de eleição"
+                                onClick={(card as any).onRefresh}
+                                className="btn-accessible text-xs bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 px-2 py-1 rounded transition-colors"
+                                aria-label="Atualizar configurações de eleição"
                               >
                                 ↻
                               </button>
                             )}
-                            {card.editable && card.onUpdate && (
+                            {(card as any).editable && (card as any).onUpdate && (
                               <button
-                                onClick={card.onUpdate}
-                                className="text-xs bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 px-2 py-1 rounded transition-colors"
-                                title="Atualizar meta automaticamente"
+                                onClick={(card as any).onUpdate}
+                                className="btn-accessible text-xs bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 px-2 py-1 rounded transition-colors"
+                                aria-label="Atualizar meta automaticamente"
                               >
                                 ⚙️
                               </button>
@@ -620,7 +645,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 );
-              })}
+                })
+              )}
             </div>
 
             {/* Card de Meta do Líder (apenas para LÍDER) */}

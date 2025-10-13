@@ -38,10 +38,10 @@ export function ElectionProvider({
             timezone: publicSettings.timezone,
             election_level: publicSettings.election_level as 'MUNICIPAL' | 'ESTADUAL' | 'FEDERAL',
             election_type: publicSettings.election_level as 'MUNICIPAL' | 'ESTADUAL' | 'FEDERAL', // Mapear election_level para election_type
-            scope_state: publicSettings.scope_state,
-            scope_city: publicSettings.scope_city,
-            scope_city_ibge: publicSettings.scope_city_ibge,
-            uf: publicSettings.scope_state, // Mapear scope_state para uf
+            scope_state: publicSettings.scope_state || null,
+            scope_city: publicSettings.scope_city || null,
+            scope_city_ibge: publicSettings.scope_city_ibge || null,
+            uf: publicSettings.scope_state || null, // Mapear scope_state para uf
             city: publicSettings.scope_city, // Mapear scope_city para city
             created_at: publicSettings.created_at,
             updated_at: publicSettings.updated_at,

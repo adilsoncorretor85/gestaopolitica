@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useTags } from '@/hooks/useTags';
 import { Tag } from '@/services/tags';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Plus, X } from 'lucide-react';
+import { InlineSpinner } from '@/components/ui/loading-spinner';
 
 interface TagSelectorFieldProps {
-  selectedTags: Tag[];
-  onTagsChange: (tags: Tag[]) => void;
+  selectedTags?: Tag[];
+  onTagsChange?: (tags: Tag[]) => void;
   disabled?: boolean;
 }
 
-export default function TagSelectorField({ 
-  selectedTags, 
-  onTagsChange, 
+const TagSelectorField = ({ 
+  selectedTags = [], 
+  onTagsChange = () => {}, 
   disabled = false 
-}: TagSelectorFieldProps) {
+}: TagSelectorFieldProps) => {
   const { tags: availableTags, loading: tagsLoading } = useTags();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAllTags, setShowAllTags] = useState(false);
@@ -100,8 +101,7 @@ export default function TagSelectorField({
       {/* Lista de tags disponíveis */}
       {tagsLoading ? (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Carregando tags...</span>
+          <InlineSpinner text="Carregando tags..." />
         </div>
       ) : (
         <div className="space-y-2">
@@ -154,4 +154,6 @@ export default function TagSelectorField({
       </div>
     </div>
   );
-}
+};
+
+export default memo(TagSelectorField);

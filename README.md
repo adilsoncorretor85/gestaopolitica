@@ -1,262 +1,287 @@
-# 🏛️ Sistema de Gestão Política
+# 🏛️ Gestão Política - Sistema de Campanha Eleitoral
 
-Sistema completo para gestão de campanhas políticas, desenvolvido com React, TypeScript e Supabase.
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-## 🚀 Funcionalidades
+> Sistema completo para gestão de campanhas políticas do **Vereador Wilian Tonezi - PL**
 
-### 📊 Dashboard
-- **Visão geral** com estatísticas em tempo real
-- **Contadores** de líderes ativos, pessoas cadastradas e votos confirmados
-- **Metas e projeções** por líder e região
-- **Contagem regressiva** para eleições
-- **Cards de aniversariantes** do dia
+## 📋 Índice
+
+- [🎯 Visão Geral](#-visão-geral)
+- [✨ Funcionalidades](#-funcionalidades)
+- [🛠️ Tecnologias](#️-tecnologias)
+- [🚀 Instalação](#-instalação)
+- [⚙️ Configuração](#️-configuração)
+- [📱 PWA](#-pwa)
+- [🧪 Testes](#-testes)
+- [📚 Documentação](#-documentação)
+- [🤝 Contribuição](#-contribuição)
+- [📄 Licença](#-licença)
+
+## 🎯 Visão Geral
+
+O **Sistema de Gestão Política** é uma aplicação web moderna e responsiva desenvolvida para gerenciar campanhas eleitorais de forma eficiente e organizada. O sistema oferece funcionalidades completas para:
+
+- 👥 **Gestão de Contatos**: Cadastro e organização de eleitores
+- 🗺️ **Mapeamento Geográfico**: Visualização de contatos em mapa
+- 📊 **Análise de Dados**: Estatísticas e projeções eleitorais
+- 🏷️ **Sistema de Tags**: Categorização e segmentação
+- 📱 **PWA**: Funciona offline e pode ser instalado como app
+
+## ✨ Funcionalidades
+
+### 🏠 Dashboard
+- **Visão Geral**: Estatísticas em tempo real da campanha
+- **Metas**: Acompanhamento de objetivos eleitorais
+- **Aniversariantes**: Lista de pessoas com aniversário
+- **Contagem Regressiva**: Tempo restante para as eleições
 
 ### 👥 Gestão de Pessoas
-- **Cadastro completo** com validação de nome completo obrigatório
-- **Busca avançada** por nome, cidade, bairro, líder responsável
-- **Filtros múltiplos** e ordenação personalizada
-- **Sistema de tags** para categorização
-- **Status de voto** (Confirmado, Provável, Improvável, Não vai votar)
-- **Histórico de contatos** e anotações
-- **Integração com WhatsApp** e redes sociais
-- **Geolocalização** com Google Maps
-
-### 🎯 Gestão de Líderes
-- **Sistema de convites** por email
-- **Perfis completos** com dados pessoais e de contato
-- **Metas individuais** por líder
-- **Sistema de lideranças** (quem lidera quem)
-- **Status de ativação** (Ativo/Inativo)
-- **Auditoria** de ações
+- **Cadastro Completo**: Dados pessoais, contato e endereço
+- **Validação Inteligente**: Verificação de duplicidade de WhatsApp
+- **Busca Avançada**: Filtros por localização, tags e status
+- **Importação/Exportação**: Dados em CSV
 
 ### 🗺️ Mapa Interativo
-- **Visualização geográfica** de todos os contatos
-- **Clusters inteligentes** para melhor performance
-- **Filtros por região** e status
-- **Integração com Google Maps**
-- **Busca por endereço** com autocomplete
-
-### 📈 Projeções e Metas
-- **Metas por cidade** e bairro
-- **Projeções de votos** baseadas em dados históricos
-- **Acompanhamento de progresso** em tempo real
-- **Relatórios detalhados** por região
+- **Visualização Geográfica**: Contatos plotados no mapa
+- **Clusters Inteligentes**: Agrupamento por proximidade
+- **Filtros Dinâmicos**: Por bairro, cidade e tags
+- **Geolocalização**: Busca por CEP e coordenadas
 
 ### 🏷️ Sistema de Tags
-- **Categorização flexível** de pessoas
-- **Filtros por tags** (qualquer/ todas)
-- **Gestão centralizada** de tags
-- **Aplicação em massa**
+- **Categorização**: Organização por segmentos
+- **Cores Personalizadas**: Identificação visual
+- **Filtros**: Busca por tags específicas
+- **Estatísticas**: Contagem por categoria
 
-### ⚙️ Administração
-- **Controle de acesso** por roles (ADMIN/LEADER)
-- **Configurações de eleição** (data, tipo, filtros)
-- **Auditoria completa** de ações
-- **Backup e sincronização** de dados
+### 👑 Gestão de Líderes
+- **Hierarquia**: Estrutura organizacional
+- **Metas Individuais**: Objetivos por líder
+- **Relatórios**: Performance e resultados
+- **Convites**: Sistema de convite para novos líderes
+
+### 📊 Projeções Eleitorais
+- **Análise de Dados**: Tendências e padrões
+- **Relatórios**: Estatísticas detalhadas
+- **Exportação**: Dados para análise externa
 
 ## 🛠️ Tecnologias
 
 ### Frontend
-- **React 18** com TypeScript
-- **Vite** para build e desenvolvimento
-- **Tailwind CSS** para estilização
-- **React Hook Form** + **Zod** para validação
-- **React Router** para navegação
-- **TanStack Query** para gerenciamento de estado
-- **Google Maps API** para mapas
-- **Lucide React** para ícones
+- **React 18** - Biblioteca de interface
+- **TypeScript** - Tipagem estática
+- **Vite** - Build tool e dev server
+- **Tailwind CSS** - Framework CSS
+- **React Hook Form** - Gerenciamento de formulários
+- **Zod** - Validação de schemas
+- **React Router** - Roteamento
+- **Framer Motion** - Animações
 
-### Backend
-- **Supabase** (PostgreSQL + Auth + Edge Functions)
-- **Row Level Security (RLS)** para segurança
-- **Edge Functions** para lógica de negócio
-- **Real-time subscriptions** para atualizações
+### Backend & Database
+- **Supabase** - Backend as a Service
+- **PostgreSQL** - Banco de dados
+- **Row Level Security (RLS)** - Segurança de dados
+- **Real-time** - Atualizações em tempo real
 
-### Validação e Segurança
-- **Zod** para validação de schemas
-- **React Hook Form** para formulários
-- **Validação em 3 camadas**: Frontend, Backend e Database
-- **Autenticação JWT** com Supabase Auth
-- **Controle de acesso** baseado em roles
+### APIs & Integrações
+- **Google Maps API** - Mapas e geolocalização
+- **ViaCEP** - Busca de endereços por CEP
+- **WhatsApp API** - Integração de mensagens
 
-## 📋 Pré-requisitos
+### Ferramentas de Desenvolvimento
+- **Vitest** - Framework de testes
+- **Testing Library** - Testes de componentes
+- **ESLint** - Linting de código
+- **Prettier** - Formatação de código
 
-- Node.js 18+
+## 🚀 Instalação
+
+### Pré-requisitos
+- Node.js 18+ 
 - npm ou yarn
 - Conta no Supabase
 - Chave da API do Google Maps
 
-## 🚀 Instalação
-
-1. **Clone o repositório**
+### 1. Clone o repositório
 ```bash
-git clone https://github.com/adilsoncorretor85/gestaopolitica.git
-cd gestaopolitica
+git clone https://github.com/seu-usuario/gestao-politica.git
+cd gestao-politica
 ```
 
-2. **Instale as dependências**
+### 2. Instale as dependências
 ```bash
 npm install
 ```
 
-3. **Configure as variáveis de ambiente**
+### 3. Configure as variáveis de ambiente
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Edite o arquivo `.env.local` com suas credenciais:
+Edite o arquivo `.env` com suas credenciais:
 ```env
 VITE_SUPABASE_URL=sua_url_do_supabase
 VITE_SUPABASE_ANON_KEY=sua_chave_anonima
 VITE_GOOGLE_MAPS_API_KEY=sua_chave_do_google_maps
+VITE_DEBUG=false
 ```
 
-4. **Configure o banco de dados**
-- Execute o SQL do arquivo `docs/db-setup.md` no Supabase SQL Editor
-- Configure as Edge Functions no painel do Supabase
-
-5. **Execute o projeto**
+### 4. Execute o projeto
 ```bash
 npm run dev
 ```
 
-## 📁 Estrutura do Projeto
+O projeto estará disponível em `http://localhost:5173`
 
+## ⚙️ Configuração
+
+### Supabase Setup
+
+1. **Crie um projeto no Supabase**
+2. **Execute as migrações**:
+   ```bash
+   npm run supabase:setup
+   ```
+3. **Configure RLS policies**
+4. **Execute seed data** (opcional)
+
+### Google Maps Setup
+
+1. **Ative a Google Maps API**
+2. **Configure domínios permitidos**
+3. **Adicione a chave no .env**
+
+### Estrutura do Banco
+
+```sql
+-- Principais tabelas
+people          -- Cadastro de pessoas
+leaders         -- Líderes da campanha
+tags            -- Sistema de tags
+election_settings -- Configurações da eleição
+```
+
+## 📱 PWA
+
+O sistema é uma **Progressive Web App** completa:
+
+### ✅ Funcionalidades PWA
+- **Instalação**: Pode ser instalado como app nativo
+- **Offline**: Funciona sem conexão com cache inteligente
+- **Notificações**: Push notifications para engajamento
+- **Sincronização**: Dados sincronizados automaticamente
+- **Performance**: Carregamento instantâneo
+
+### 📲 Como Instalar
+1. Acesse o sistema no navegador
+2. Clique no ícone de instalação
+3. Confirme a instalação
+4. O app aparecerá na tela inicial
+
+## 🧪 Testes
+
+### Executar Testes
+```bash
+# Todos os testes
+npm run test
+
+# Modo watch
+npm run test:watch
+
+# Com coverage
+npm run test:coverage
+
+# Testes unitários
+npm run test:unit
+
+# Testes de integração
+npm run test:integration
+```
+
+### Cobertura de Testes
+- **Threshold**: 70% mínimo
+- **Tipos**: Unitários, integração e E2E
+- **Ferramentas**: Vitest + Testing Library
+
+## 📚 Documentação
+
+### 📖 Guias Disponíveis
+- [Guia de Instalação](docs/INSTALLATION.md)
+- [Configuração do Supabase](docs/SUPABASE_SETUP.md)
+- [API Reference](docs/API.md)
+- [Guia de Contribuição](docs/CONTRIBUTING.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+### 🏗️ Arquitetura
 ```
 src/
-├── components/          # Componentes reutilizáveis
-│   ├── modals/         # Modais do sistema
-│   ├── drawers/        # Drawers laterais
-│   └── ...
-├── contexts/           # Contextos React
-├── hooks/              # Hooks customizados
-├── lib/                # Utilitários e configurações
-├── pages/              # Páginas da aplicação
-├── services/           # Serviços de API
-├── types/              # Definições TypeScript
-└── utils/              # Funções utilitárias
+├── components/     # Componentes React
+├── pages/         # Páginas da aplicação
+├── hooks/         # Custom hooks
+├── services/      # Serviços e APIs
+├── types/         # Definições TypeScript
+├── lib/           # Utilitários
+├── test/          # Testes
+└── styles/        # Estilos CSS
 ```
 
-## 🔐 Sistema de Autenticação
-
-### Roles
-- **ADMIN**: Acesso total ao sistema
-- **LEADER**: Acesso limitado aos próprios dados
-
-### Fluxo de Convite
-1. ADMIN convida líder via email
-2. Líder recebe link de convite
-3. Líder define senha e ativa conta
-4. Sistema cria perfil automaticamente
-
-## 📊 Validações Implementadas
-
-### Nome Completo (Obrigatório)
-- **Mínimo 3 caracteres**
-- **Pelo menos 2 palavras** (nome e sobrenome)
-- **Validação em 3 camadas**:
-  - Frontend: Zod + React Hook Form
-  - Backend: Validação nos serviços
-  - Database: Constraint no PostgreSQL
-
-### Mensagens de Erro Específicas
-- "Nome é obrigatório"
-- "Nome deve ter pelo menos 3 caracteres"
-- "Informe o nome completo (nome e sobrenome)"
-
-## 🗄️ Banco de Dados
-
-### Tabelas Principais
-- **profiles**: Perfis de usuário
-- **people**: Contatos cadastrados
-- **leader_profiles**: Dados dos líderes
-- **invite_tokens**: Tokens de convite
-- **audit_logs**: Log de auditoria
-- **org_settings**: Configurações gerais
-- **leader_targets**: Metas por líder
-
-### Segurança
-- **Row Level Security (RLS)** ativado
-- **Políticas de acesso** por role
-- **Auditoria** de todas as ações
-
-## 🚀 Scripts Disponíveis
-
+### 🔧 Scripts Disponíveis
 ```bash
-# Desenvolvimento
-npm run dev
-
-# Build para produção
-npm run build
-
-# Preview da build
-npm run preview
-
-# Verificação de tipos
-npm run typecheck
-
-# Linting
-npm run lint
-
-# Sincronização com Supabase
-npm run sync:data
+npm run dev          # Desenvolvimento
+npm run build        # Build de produção
+npm run preview      # Preview do build
+npm run typecheck    # Verificação TypeScript
+npm run lint         # Linting
+npm run test         # Testes
+npm run test:coverage # Testes com coverage
 ```
-
-## 📱 Responsividade
-
-O sistema é totalmente responsivo e funciona em:
-- 📱 **Mobile** (320px+)
-- 📱 **Tablet** (768px+)
-- 💻 **Desktop** (1024px+)
-
-## 🔧 Configurações Avançadas
-
-### Google Maps
-- Configuração de clusters
-- Autocomplete de endereços
-- Geolocalização automática
-- Integração com ViaCEP
-
-### Supabase
-- Edge Functions para lógica complexa
-- Real-time subscriptions
-- Backup automático
-- Migrations versionadas
-
-## 📈 Performance
-
-- **Lazy loading** de componentes
-- **Virtualização** de listas grandes
-- **Debounce** em buscas
-- **Cache** com TanStack Query
-- **Otimização** de imagens e assets
-
-## 🛡️ Segurança
-
-- **Autenticação JWT** com Supabase
-- **Controle de acesso** granular
-- **Validação** em múltiplas camadas
-- **Sanitização** de inputs
-- **Auditoria** completa de ações
 
 ## 🤝 Contribuição
 
-1. Fork o projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
-5. Abra um Pull Request
+### Como Contribuir
+1. **Fork** o projeto
+2. **Crie** uma branch para sua feature
+3. **Commit** suas mudanças
+4. **Push** para a branch
+5. **Abra** um Pull Request
+
+### Padrões de Código
+- **TypeScript** para tipagem
+- **ESLint** para qualidade
+- **Prettier** para formatação
+- **Conventional Commits** para mensagens
+
+### Estrutura de Commits
+```
+feat: adiciona nova funcionalidade
+fix: corrige bug
+docs: atualiza documentação
+style: formatação de código
+refactor: refatoração
+test: adiciona testes
+chore: tarefas de manutenção
+```
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-## 📞 Suporte
+## 👨‍💻 Desenvolvido por
 
-Para suporte e dúvidas:
-- 📧 Email: [seu-email@exemplo.com]
-- 🐛 Issues: [GitHub Issues](https://github.com/adilsoncorretor85/gestaopolitica/issues)
+**Vereador Wilian Tonezi - PL**
+- 📧 Email: contato@wiliantonezi.com.br
+- 🌐 Website: [wiliantonezi.com.br](https://wiliantonezi.com.br)
+- 📱 WhatsApp: [Contato](https://wa.me/5547999999999)
 
 ---
 
-**Desenvolvido com ❤️ para campanhas políticas eficientes**
+<div align="center">
+
+**⭐ Se este projeto foi útil, considere dar uma estrela! ⭐**
+
+[![GitHub stars](https://img.shields.io/github/stars/seu-usuario/gestao-politica?style=social)](https://github.com/seu-usuario/gestao-politica)
+
+</div>

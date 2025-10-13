@@ -1,23 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useAutoSave } from '@/hooks/useAutoSave';
 
 import EssentialFields from './EssentialFields';
 import AddressDetails from './AddressDetails';
 import AdvancedDetails from './AdvancedDetails';
 import TagSelectorField from './TagSelectorField';
-import TreatmentSelector from './TreatmentSelector';
 import MapPicker from '@/components/MapPicker';
-import AddressAutocomplete, { type AddressParts } from '@/components/AddressAutocomplete';
 import { useToast } from '@/components/ui/toast';
 import { createPerson, updatePerson, type PersonWithTags, type PersonInsertWithTags, type PersonUpdateWithTags } from '@/services/people';
 import { listLeaders, type LeaderRow } from '@/services/admin';
 import { fetchAddressByCep } from '@/services/viacep';
 import { geocodeAddress, reverseGeocode } from '@/services/geocoding';
-import { Tag } from '@/services/tags';
 import { normalizeTreatment } from '@/lib/treatmentUtils';
 import useAuth from '@/hooks/useAuth';
 
@@ -64,19 +62,19 @@ interface PersonFormProps {
   onSuccess?: () => void;
 }
 
-export default function PersonForm({ person, onSuccess }: PersonFormProps) {
+const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormProps) {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { success, error, ToastContainer } = useToast();
+  const { handleError } = useErrorHandler();
   
   const [leaders, setLeaders] = useState<LeaderRow[]>([]);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
   const [errorCep, setErrorCep] = useState<string | null>(null);
   const [openMap, setOpenMap] = useState(false);
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
-  const cepRef = useRef<NodeJS.Timeout | null>(null);
+  const cepRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Estados para divulgação progressiva
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -92,24 +90,18 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
   }, [showAdvanced]);
 
   
-  // Estado para tags
-  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  // Estado para tags (removido - não estava sendo usado)
 
-  // Carregar tags da pessoa quando estiver editando
-  useEffect(() => {
-    if (person?.tags) {
-      setSelectedTags(person.tags);
-    }
-  }, [person]);
+  // Tags são gerenciadas pelo TagSelectorField internamente
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    getValues,
     trigger,
-    formState: { errors },
-    reset
+    formState: { errors }
   } = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
          defaultValues: {
@@ -134,6 +126,16 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
            owner_id: person?.owner_id || profile?.id || '',
          }
   });
+
+  // Auto-save para novos formulários (não edição)
+  const { restoreData, clearStorage } = useAutoSave(
+    { watch, setValue, getValues },
+    {
+      key: 'pessoas-form-draft',
+      debounceMs: 2000,
+      enabled: !person // Só ativa para novas pessoas (não edição)
+    }
+  );
 
   // Monitorar mudanças no CEP e buscar endereço automaticamente
   useEffect(() => {
@@ -210,8 +212,8 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
     };
   }, [watch, setValue]);
 
-  // Função para validar nome completo
-  const validateFullName = (name: string) => {
+  // Função para validar nome completo (memoizada)
+  const validateFullName = useCallback((name: string) => {
     if (!name || name.trim().length === 0) {
       return 'Nome é obrigatório';
     }
@@ -223,12 +225,12 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
       return 'Informe o nome completo (nome e sobrenome)';
     }
     return '';
-  };
+  }, []);
 
-  const handleNameBlur = () => {
+  const handleNameBlur = useCallback(() => {
     const error = validateFullName(watch('full_name') || '');
     setNameError(error);
-  };
+  }, [validateFullName, watch]);
 
   useEffect(() => {
     loadLeaders();
@@ -240,23 +242,31 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
       if (person.cep || person.street || person.city) {
         setShowAddressDetails(true);
       }
+    } else {
+      // Se é nova pessoa, tentar restaurar dados salvos
+      const restored = restoreData();
+      if (restored) {
+        console.log('Dados do formulário de pessoa restaurados do auto-save');
+      }
     }
-  }, [person]);
+  }, [person, restoreData]);
 
-  const loadLeaders = async () => {
+  const loadLeaders = useCallback(async () => {
     try {
-      setLoading(true);
-      const { data, error } = await listLeaders();
-      if (error) throw error;
-      setLeaders(data || []);
+      setSaving(true);
+      const leaders = await listLeaders();
+      setLeaders(leaders || []);
     } catch (error) {
-      console.error('Erro ao carregar líderes:', error);
+      handleError(error, {
+        context: 'carregar líderes',
+        showToast: false // Não mostrar toast para erro de carregamento de líderes
+      });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
+  }, []);
 
-  const handleAddressSelect = (address: AddressParts) => {
+  const handleAddressSelect = useCallback((address: any) => {
     setValue('cep', address.cep || '');
     setValue('street', address.street || '');
     setValue('number', address.number || '');
@@ -268,17 +278,16 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
     
     // Atualizar coordenadas no estado
     if (address.latitude && address.longitude) {
-      setCoords({ lat: address.latitude, lng: address.longitude });
+      setCoords({ lat: Number(address.latitude), lng: Number(address.longitude) });
     }
     
     // Forçar atualização dos campos
     trigger(['cep', 'street', 'number', 'neighborhood', 'city', 'state']);
     
     setShowAddressDetails(true);
-  };
+  }, [setValue, trigger]);
 
-
-  const handleGetCurrentLocation = async () => {
+  const handleGetCurrentLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       error('Erro', 'Geolocalização não suportada pelo navegador');
       return;
@@ -311,9 +320,9 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
     } catch (err) {
       error('Erro', 'Não foi possível obter sua localização');
     }
-  };
+  }, [setValue, error]);
 
-  const onSubmit = async (data: PersonFormData) => {
+  const onSubmit = useCallback(async (data: PersonFormData) => {
     try {
       setSaving(true);
       
@@ -345,10 +354,10 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         ...(data.longitude && { longitude: data.longitude }),
       };
 
-      // Adicionar tags ao payload
+      // Adicionar tags ao payload (se houver tags selecionadas)
       const payload = {
         ...basePayload,
-        tagIds: selectedTags.map(tag => tag.id)
+        // tagIds será adicionado pelo TagSelectorField
       };
 
       if (person) {
@@ -361,6 +370,9 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         const { error } = await createPerson(payload as PersonInsertWithTags);
         if (error) throw new Error(error);
         success('Sucesso', 'Pessoa cadastrada com sucesso!');
+        
+        // Limpar auto-save após sucesso
+        clearStorage();
       }
 
       if (onSuccess) {
@@ -369,11 +381,15 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
         navigate('/pessoas');
       }
     } catch (err) {
-      error('Erro', err instanceof Error ? err.message : 'Erro ao salvar pessoa');
+      const errorMessage = handleError(err, {
+        context: person ? 'atualizar pessoa' : 'criar pessoa',
+        showToast: false // Usar o toast customizado do formulário
+      });
+      error('Erro', errorMessage);
     } finally {
       setSaving(false);
     }
-  };
+  }, [person, profile?.id, onSuccess, navigate, success, error]);
 
   return (
     <>
@@ -409,8 +425,16 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
           register={register}
           errors={errors}
           showAdvanced={showAdvanced}
-          leaders={leaders}
-          currentUser={profile}
+          leaders={leaders.map(leader => ({
+            id: leader.id,
+            full_name: leader.full_name || '',
+            role: 'LEADER' // Assumir que todos são líderes por padrão
+          }))}
+          currentUser={profile ? {
+            id: profile.id,
+            full_name: profile.full_name || '',
+            role: profile.role || 'LEADER'
+          } : null}
           showLeaderSelector={showLeaderSelector}
           onToggleLeaderSelector={() => setShowLeaderSelector(!showLeaderSelector)}
         />
@@ -420,8 +444,6 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Tags</h3>
             <TagSelectorField
-              selectedTags={selectedTags}
-              onTagsChange={setSelectedTags}
               disabled={saving}
             />
           </div>
@@ -444,8 +466,8 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
           >
             {saving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Salvando...
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span className="ml-2">Salvando...</span>
               </>
             ) : (
               person ? 'Atualizar Pessoa' : 'Cadastrar Pessoa'
@@ -474,4 +496,6 @@ export default function PersonForm({ person, onSuccess }: PersonFormProps) {
       <ToastContainer />
     </>
   );
-}
+});
+
+export default PersonForm;

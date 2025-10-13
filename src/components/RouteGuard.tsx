@@ -41,7 +41,9 @@ export default function RouteGuard({ children }: RouteGuardProps) {
           .single();
 
         if (error) {
-          console.error('Erro ao verificar perfil:', error);
+          if (import.meta.env.DEV) {
+            console.error('Erro ao verificar perfil:', error);
+          }
           navigate('/login');
           return;
         }
@@ -52,9 +54,9 @@ export default function RouteGuard({ children }: RouteGuardProps) {
           
           // 1. Verifica se está banido no Supabase Auth
           const { data: authUser } = await supabase.auth.getUser();
-          devLog('Auth user ban status:', authUser?.user?.banned_until);
-          
-          if (authUser?.user?.banned_until && new Date(authUser.user.banned_until) > new Date()) {
+          const userWithBan = authUser?.user as { banned_until?: string };
+          devLog('Auth user ban status:', userWithBan?.banned_until);
+          if (userWithBan?.banned_until && new Date(userWithBan.banned_until) > new Date()) {
             devLog('Usuário banido no Auth, redirecionando...');
             setIsBlocked(true);
             navigate('/conta-bloqueada');
@@ -69,7 +71,9 @@ export default function RouteGuard({ children }: RouteGuardProps) {
             .single();
 
           if (leaderError) {
-            console.error('Erro ao verificar status do líder:', leaderError);
+            if (import.meta.env.DEV) {
+              console.error('Erro ao verificar status do líder:', leaderError);
+            }
             navigate('/login');
             return;
           }
@@ -88,7 +92,9 @@ export default function RouteGuard({ children }: RouteGuardProps) {
 
         setIsChecking(false);
       } catch (error) {
-        console.error('Erro ao verificar status do usuário:', error);
+        if (import.meta.env.DEV) {
+          console.error('Erro ao verificar status do usuário:', error);
+        }
         navigate('/login');
       }
     };

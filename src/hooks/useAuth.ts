@@ -25,12 +25,15 @@ export default function useAuth(): UseAuth {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   
-  // Debug: verificar se o hook está sendo chamado
-  devLog('useAuth: Hook sendo executado');
-  devLog('useAuth: Estado inicial:', { user, session, profile, loading });
+  // Debug apenas quando necessário
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+    devLog('useAuth: Hook sendo executado');
+  }
 
   const load = useCallback(async () => {
-    devLog('useAuth: Função load sendo executada');
+    if (import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true') {
+      devLog('useAuth: Função load sendo executada');
+    }
     setLoading(true);
 
     try {
@@ -40,7 +43,9 @@ export default function useAuth(): UseAuth {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        devLog('Erro ao obter sessão:', handleSupabaseError(sessionError, 'obter sessão'));
+        if (import.meta.env.DEV) {
+          devLog('Erro ao obter sessão:', handleSupabaseError(sessionError, 'obter sessão'));
+        }
         setUser(null);
         setSession(null);
         setProfile(null);
@@ -63,19 +68,23 @@ export default function useAuth(): UseAuth {
           .maybeSingle();
 
         if (!error) {
-          setProfile((data as Profile) ?? null);
+          setProfile(data ?? null);
           
           // ✅ ativa líder quando já logado (hard refresh, deep link, etc.)
           ensureLeaderActivated();
         } else {
-          devLog('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
+          if (import.meta.env.DEV) {
+            devLog('Erro ao carregar perfil:', handleSupabaseError(error, 'carregar perfil'));
+          }
           setProfile(null);
         }
       } else {
         setProfile(null);
       }
     } catch (error) {
-      devLog('Erro no useAuth:', error);
+      if (import.meta.env.DEV) {
+        devLog('Erro no useAuth:', error);
+      }
       setUser(null);
       setSession(null);
       setProfile(null);
@@ -120,15 +129,16 @@ export default function useAuth(): UseAuth {
     }
   }, [load]);
 
-  // TEMPORÁRIO: Simplificar verificação de admin para debug
   const isAdmin = !!profile && profile.role === "ADMIN";
   
-  // Debug: verificar o cálculo do isAdmin
-  devLog('useAuth: Cálculo do isAdmin:', {
-    hasProfile: !!profile,
-    profileRole: profile?.role,
-    finalIsAdmin: isAdmin
-  });
+  // Debug apenas quando necessário
+  if (import.meta.env.VITE_DEBUG === 'true') {
+    devLog('useAuth: Cálculo do isAdmin:', {
+      hasProfile: !!profile,
+      profileRole: profile?.role,
+      finalIsAdmin: isAdmin
+    });
+  }
 
   return {
     user,

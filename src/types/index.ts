@@ -46,3 +46,51 @@ export interface PeopleFilters {
   page?: number;
   pageSize?: number;
 }
+
+// Tipos para componentes que usavam mockData
+export interface Contato {
+  id: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  endereco: string;
+  bairro: string;
+  zona: string;
+  secao: string;
+  compromissoVoto: 'confirmado' | 'provavel' | 'indefinido' | 'incerto';
+  observacoes?: string;
+  liderancaId: string;
+  liderancaNome: string;
+  dataCadastro: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Lideranca {
+  id: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  endereco: string;
+  bairro: string;
+  zona: string;
+  secao: string;
+  status: 'ativo' | 'inativo';
+  metaContatos: number;
+  contatosAtuais: number;
+  contatosAtingidos: number;
+  observacoes?: string;
+  dataCadastro: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaderWithProfile {
+  id: string;
+  full_name: string;
+  role: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+  profile?: Profile;
+}

@@ -104,9 +104,7 @@ Deno.serve(async (req)=>{
       const { error: e2 } = await admin.from('leader_profiles').update({
         status: 'INACTIVE'
       }).eq('id', body.userId);
-      if (e2 && Deno.env.get('ENVIRONMENT') === 'development') {
-        console.warn('leader_profiles update warn:', e2);
-      }
+      if (e2) console.warn('leader_profiles update warn:', e2);
     } else {
       // DESBANIR
       const { error: e1 } = await admin.auth.admin.updateUserById(body.userId, {
@@ -121,9 +119,7 @@ Deno.serve(async (req)=>{
       const { error: e2 } = await admin.from('leader_profiles').update({
         status: 'ACTIVE'
       }).eq('id', body.userId);
-      if (e2 && Deno.env.get('ENVIRONMENT') === 'development') {
-        console.warn('leader_profiles update warn:', e2);
-      }
+      if (e2) console.warn('leader_profiles update warn:', e2);
     }
     // 6) auditoria
     await admin.from('audit_logs').insert({
@@ -144,9 +140,7 @@ Deno.serve(async (req)=>{
       status: 200
     });
   } catch (err) {
-    if (Deno.env.get('ENVIRONMENT') === 'development') {
-      console.error('admin_ban_user error:', err);
-    }
+    console.error('admin_ban_user error:', err);
     return new Response(JSON.stringify({
       ok: false,
       error: err?.message ?? 'Internal error'

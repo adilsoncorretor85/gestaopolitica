@@ -16,15 +16,25 @@ import { TagList } from '@/components/TagList';
 import { TagEditModal } from '@/components/modals/TagEditModal';
 import { TagFilter } from '@/components/TagFilter';
 import { Badge } from '@/components/ui/badge';
+import { ListSkeleton } from '@/components/ui/skeleton';
+import LoadingSpinner from '@/components/ui/loading-spinner';
 import { useTags } from '@/hooks/useTags';
 import { Tag, tagsService, SearchPeopleParams } from '@/services/tags';
 import { Plus, Search, Phone, MapPin, Edit2, Trash2, ExternalLink, Mail, Copy, ArrowUpDown, ArrowUp, ArrowDown, Tags, Download, Check } from 'lucide-react';
+import { usePageSEO } from '@/hooks/useSEO';
 
 export default function PessoasPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pessoas');
   const { profile, isAdmin } = useAuth();
   const { defaultFilters } = useElection();
+  
+  // SEO para a página Pessoas
+  usePageSEO('Pessoas', {
+    description: 'Gerencie o cadastro de pessoas e contatos da campanha eleitoral. Visualize, edite e organize informações dos eleitores.',
+    keywords: ['pessoas', 'contatos', 'eleitores', 'cadastro', 'gestão'],
+    noindex: true, // Página interna não deve ser indexada
+  });
   
   const [people, setPeople] = useState<Person[]>([]);
   const [leaders, setLeaders] = useState<LeaderRow[]>([]);
@@ -313,7 +323,7 @@ export default function PessoasPage() {
         if (error) throw error;
         
         const allIds = new Set((data || []).map(person => person.id));
-        setSelectedPeopleIds(allIds);
+        setSelectedPeopleIds(allIds as Set<string>);
         setSelectAllFromFilter(true);
         setSelectAllChecked(true);
         
@@ -907,8 +917,8 @@ export default function PessoasPage() {
             {/* Lista */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               {loading ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 dark:text-gray-400">Carregando...</p>
+                <div className="p-6">
+                  <ListSkeleton count={8} />
                 </div>
               ) : people.length === 0 ? (
                 <div className="text-center py-12">

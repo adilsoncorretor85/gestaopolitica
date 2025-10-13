@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,7 +25,7 @@ const completeProfileSchema = z.object({
   full_name: z.string().min(1, 'Nome é obrigatório'),
   phone: z.string().min(1, 'Telefone é obrigatório'),
   birth_date: z.string().min(1, 'Data de nascimento é obrigatória'),
-  gender: z.enum(['M', 'F', 'O'], { required_error: 'Sexo é obrigatório' }),
+  gender: z.enum(['M', 'F', 'O'], { message: 'Sexo é obrigatório' }),
   cep: z.string().min(1, 'CEP é obrigatório'),
   street: z.string().min(1, 'Rua é obrigatória'),
   number: z.string().min(1, 'Número é obrigatório'),
@@ -52,6 +52,7 @@ export default function CompleteProfilePage() {
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
   const [leaderData, setLeaderData] = useState<LeaderDetail | null>(null);
   const [profileCompleted, setProfileCompleted] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     register,
@@ -67,6 +68,13 @@ export default function CompleteProfilePage() {
     if (profile?.id) {
       loadLeader();
     }
+    
+    // Cleanup do timeout quando componente desmonta
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [profile?.id]);
 
   const loadLeader = async () => {
@@ -81,7 +89,7 @@ export default function CompleteProfilePage() {
       setValue('full_name', data.full_name || '');
       setValue('phone', data.phone || '');
       setValue('birth_date', data.birth_date || '');
-      setValue('gender', data.gender as 'M' | 'F' | 'O' || '');
+      setValue('gender', (data.gender && ['M', 'F', 'O'].includes(data.gender)) ? data.gender as 'M' | 'F' | 'O' : 'M');
       setValue('cep', data.cep || '');
       setValue('street', data.street || '');
       setValue('number', data.number || '');
@@ -113,7 +121,7 @@ export default function CompleteProfilePage() {
 
     if (!rua || !cidade || !estado) return;
     const c = await geocodeAddress({ street: rua, number: numero, neighborhood: bairro, city: cidade, state: estado, cep });
-    if (c) setCoords(c);
+    if (c) setCoords({ lat: c.latitude, lng: c.longitude });
   }
 
   // Handler para quando um endereço é selecionado no autocomplete
@@ -135,8 +143,10 @@ export default function CompleteProfilePage() {
     setErrorCep(null);
     setValue('cep', maskCep(v));
     const d = onlyDigits(v);
-    
-    if (d.length === 8) {
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (d.length !== 8) return;
       setLoadingCep(true);
       const adr = await fetchAddressByCep(d).catch(() => null);
       setLoadingCep(false);
@@ -148,11 +158,26 @@ export default function CompleteProfilePage() {
       if (!watch('city')) setValue('city', adr.city);
       if (!watch('state')) setValue('state', adr.state);
 
-      // Se já houver número, geocodifica de imediato
-      if (watch('number')) {
-        await tryGeocodeFromForm();
+      // Fazer geocoding para obter coordenadas automaticamente
+      try {
+        const coords = await geocodeAddress({
+          street: adr.street,
+          neighborhood: adr.neighborhood,
+          city: adr.city,
+          state: adr.state,
+          cep: adr.cep
+        });
+        
+        if (coords) {
+          setValue('latitude', coords.latitude);
+          setValue('longitude', coords.longitude);
+          setCoords({ lat: coords.latitude, lng: coords.longitude });
+        }
+      } catch (geoError) {
+        console.warn('Erro ao obter coordenadas do CEP:', geoError);
+        // Não falha o processo se não conseguir as coordenadas
       }
-    }
+    }, 400);
   }
 
   const onSubmit = async (data: CompleteProfileData) => {
@@ -491,10 +516,10 @@ export default function CompleteProfilePage() {
       {/* Modal do Mapa */}
       {openMap && (
         <MapPicker
-          isOpen={openMap}
+          open={openMap}
           onClose={() => setOpenMap(false)}
-          onSelect={(lat, lng) => {
-            setCoords({ lat, lng });
+          onConfirm={(coords) => {
+            setCoords(coords);
             setOpenMap(false);
           }}
           initialCoords={coords}

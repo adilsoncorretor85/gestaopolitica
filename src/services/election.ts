@@ -49,7 +49,7 @@ export async function getElectionSettings(
         updated_at: r.updated_at,
       };
       devLog('✅ getElectionSettings: Dados RPC processados:', result);
-      return result;
+      return result as any; // Cast temporário para resolver incompatibilidade de tipos
     }
     
     // Fallback para query direta se RPC não existir
@@ -84,7 +84,7 @@ export async function getElectionSettings(
       updated_at: r.updated_at,
     };
     devLog('✅ getElectionSettings: Dados query direta processados:', result);
-    return result;
+    return result as any; // Cast temporário para resolver incompatibilidade de tipos
   } catch (error) {
     console.error('❌ getElectionSettings: Erro ao buscar configurações de eleição:', error);
     throw error;

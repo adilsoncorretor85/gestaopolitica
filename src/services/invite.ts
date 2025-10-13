@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import { inviteLeaderFallback } from './inviteFallback';
 
 export type InviteLeaderInput = {
   full_name: string;

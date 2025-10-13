@@ -9,6 +9,7 @@ import Sidebar from '@/components/Sidebar';
 import MapPicker from '@/components/MapPicker';
 import AddressAutocomplete, { type AddressParts } from '@/components/AddressAutocomplete';
 import useAuth from '@/hooks/useAuth';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { getLeaderDetail, updateLeaderProfile, type LeaderDetail } from '@/services/leader';
 import { inviteLeader } from '@/services/invite';
 import { toggleUserBan } from '@/services/admin';
@@ -17,6 +18,7 @@ import { geocodeAddress } from '@/services/geocoding';
 // HOTFIX: Imports de leadership comentados temporariamente
 // import { listLeadershipCatalog, createProfileLeadership, getRoleRequirements } from '@/services/leadership';
 import { ArrowLeft, Loader2, MapPin, Crown } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Funções utilitárias para CEP
 function onlyDigits(s: string) { return (s || '').replace(/\D/g, ''); }
@@ -54,8 +56,15 @@ type LeaderFormData = z.infer<typeof leaderSchema>;
 type InviteFormData = z.infer<typeof inviteSchema>;
 
 export default function LideresFormPage() {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const params = useParams();
+  const { id } = params || {};
+  
+  // Verificação de segurança para evitar erro de contexto
+  if (!params) {
+    return <LoadingSpinner text="Carregando..." />;
+  }
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('lideres');
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
@@ -91,24 +100,49 @@ export default function LideresFormPage() {
 
   const isInvite = !id; // Se não tem ID, é um convite
   
+  // Debug: verificar se isInvite está correto
+  console.log('LideresForm Debug:', { id, isInvite, params });
+  
+  // Debug: verificar localStorage
+  if (isInvite) {
+    const savedData = localStorage.getItem('lideres-form-draft');
+    console.log('LideresForm localStorage:', savedData);
+  }
+  
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    getValues,
     formState: { errors }
   } = useForm<LeaderFormData | InviteFormData>({
-    resolver: zodResolver(isInvite ? inviteSchema : leaderSchema)
+    resolver: zodResolver(isInvite ? inviteSchema : leaderSchema) as any
   });
 
+  // Auto-save para formulários de convite (novos líderes)
+  const { restoreData, clearStorage } = useAutoSave(
+    { watch, setValue, getValues },
+    {
+      key: 'lideres-form-draft',
+      debounceMs: 2000,
+      enabled: isInvite // Só ativa para novos convites
+    }
+  );
 
   useEffect(() => {
     if (id) {
       loadLeader();
+    } else {
+      // Se é um novo convite, tentar restaurar dados salvos
+      const restored = restoreData();
+      if (restored) {
+        console.log('Dados do formulário restaurados do auto-save');
+      }
     }
     // HOTFIX: Comentado temporariamente
     // loadLeadershipCatalog();
-  }, [id]);
+  }, [id]); // Removido restoreData das dependências para evitar loops
 
   // HOTFIX: Função comentada temporariamente
   /*
@@ -190,7 +224,7 @@ export default function LideresFormPage() {
 
     if (!rua || !cidade || !estado) return;
     const c = await geocodeAddress({ street: rua, number: numero, neighborhood: bairro, city: cidade, state: estado, cep });
-    if (c) setCoords(c);
+    if (c) setCoords({ lat: c.latitude, lng: c.longitude });
   }
 
   // Handler para quando um endereço é selecionado no autocomplete
@@ -276,6 +310,9 @@ export default function LideresFormPage() {
             emailStatus: result?.emailStatus || 'skipped',
             acceptUrl: result?.acceptUrl
           });
+          
+          // Limpar auto-save após sucesso
+          clearStorage();
           
           // Log para debug
           if (result?.acceptUrl) {
@@ -423,7 +460,7 @@ export default function LideresFormPage() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
                 {/* Dados Básicos */}
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">

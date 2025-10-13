@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { UseFormRegister, FieldErrors } from 'react-hook-form';
 import { MapPin, Navigation } from 'lucide-react';
 
@@ -12,7 +12,7 @@ interface AddressDetailsProps {
   errorCep: string | null;
 }
 
-export default function AddressDetails({
+const AddressDetails = ({
   register,
   errors,
   showAddressDetails,
@@ -20,7 +20,7 @@ export default function AddressDetails({
   onGetCurrentLocation,
   loadingCep,
   errorCep
-}: AddressDetailsProps) {
+}: AddressDetailsProps) => {
   if (!showAddressDetails) return null;
 
   return (
@@ -67,7 +67,12 @@ export default function AddressDetails({
           />
           {errors.cep && (
             <p className="text-red-500 text-sm mt-1">
-              {errors.cep.message}
+              {(() => {
+                if (typeof errors.cep === 'object' && errors.cep && 'message' in errors.cep) {
+                  return (errors.cep as any).message;
+                }
+                return String(errors.cep || '');
+              })()}
             </p>
           )}
         </div>
@@ -192,4 +197,6 @@ export default function AddressDetails({
       )}
     </div>
   );
-}
+};
+
+export default memo(AddressDetails);
