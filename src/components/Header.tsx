@@ -46,11 +46,11 @@ const Header: React.FC<HeaderProps> = ({ profile, sidebarOpen, setSidebarOpen })
                 <img 
                   src="/logo_tonezi.png" 
                   alt="Logo Wilian Tonezi" 
-                  className="h-10 w-10 object-contain" 
+                  className="h-12 w-12 object-contain" 
                 />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                   <button 
                     onClick={() => navigate('/dashboard')} 
                     className="focus-visible hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -58,7 +58,6 @@ const Header: React.FC<HeaderProps> = ({ profile, sidebarOpen, setSidebarOpen })
                     Gestão Política
                   </button>
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Wilian Tonezi - 2026</p>
               </div>
             </div>
           </div>

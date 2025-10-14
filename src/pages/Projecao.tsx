@@ -446,36 +446,37 @@ function ProjecaoContent() {
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <main className="flex-1 overflow-x-hidden">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            <div className="space-y-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Projeção de Votação</h1>
                 <p className="text-gray-600 dark:text-gray-400">Metas por cidade/bairro, desempenho e alocação de lideranças.</p>
               </div>
 
-              <div className="flex gap-2">
+              {/* Botões de ação - responsivos */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => setElectionOpen(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                  className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors w-full sm:w-auto"
                 >
                   <CalendarDays className="h-4 w-4" />
-                  <span>Definir eleição</span>
+                  <span className="text-sm sm:text-base">Definir eleição</span>
                 </button>
                 {election?.election_level === 'ESTADUAL' && (
                   <button
                     onClick={() => setShowCityModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>Meta Cidade</span>
+                    <span className="text-sm sm:text-base">Meta Cidade</span>
                   </button>
                 )}
                 <button
                   onClick={() => setShowHoodModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Meta Bairro</span>
+                  <span className="text-sm sm:text-base">Meta Bairro</span>
                 </button>
               </div>
             </div>
@@ -504,61 +505,64 @@ function ProjecaoContent() {
               </div>
             )}
 
-            {/* Filtros */}
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-sm text-gray-700 dark:text-gray-300">Cidade:</label>
-              <select
-                value={selectedCity}
-                onChange={(e) => {
-                  setSelectedCity(e.target.value);
-                  setSearchTerm(''); // Limpar busca ao trocar cidade
-                  setCitySearchTerm(''); // Limpar busca de cidade
-                }}
-                className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="__all__">Todas</option>
-                {cities.map((c, index) => (
-                  <option key={`${c.city}-${c.state}-${index}`} value={`${c.city}-${c.state}`}>{c.city.toUpperCase()} - {c.state.toUpperCase()}</option>
-                ))}
-              </select>
+            {/* Filtros - Layout responsivo */}
+            <div className="space-y-4">
+              {/* Filtro de cidade */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 sm:w-20">Cidade:</label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => {
+                    setSelectedCity(e.target.value);
+                    setSearchTerm(''); // Limpar busca ao trocar cidade
+                    setCitySearchTerm(''); // Limpar busca de cidade
+                  }}
+                  className="flex-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="__all__">Todas</option>
+                  {cities.map((c, index) => (
+                    <option key={`${c.city}-${c.state}-${index}`} value={`${c.city}-${c.state}`}>{c.city.toUpperCase()} - {c.state.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
               
               {/* Campo de busca para cidades */}
               {selectedCity === '__all__' && (
-                <>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Pesquisar cidade:</label>
-                  <div className="relative">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 sm:w-32">Pesquisar cidade:</label>
+                  <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
                       value={citySearchTerm}
                       onChange={(e) => setCitySearchTerm(e.target.value)}
                       placeholder="Digite o nome da cidade ou estado..."
-                      className="pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                      className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                </>
+                </div>
               )}
               
               {/* Campo de busca para bairros */}
               {selectedCity !== '__all__' && (
-                <>
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Pesquisar bairro:</label>
-                  <div className="relative">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 sm:w-32">Pesquisar bairro:</label>
+                  <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Digite o nome do bairro..."
-                      className="pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                      className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Cards - Grid responsivo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
               <Card 
                 label="Meta" 
                 value={totals.meta === 0 ? "Não configurada" : totals.meta} 
@@ -653,10 +657,10 @@ function ProjecaoContent() {
               </div>
             </div>
 
-            {/* Tabela */}
+            {/* Tabela - Responsiva */}
             <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                       {selectedCity === '__all__' 
@@ -675,9 +679,10 @@ function ProjecaoContent() {
                       </p>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center space-x-1">
-                    <Edit3 className="h-4 w-4" />
-                    <span>Clique na linha para editar a meta</span>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center space-x-1">
+                    <Edit3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Clique na linha para editar a meta</span>
+                    <span className="sm:hidden">Toque para editar</span>
                   </p>
                 </div>
               </div>
@@ -685,31 +690,31 @@ function ProjecaoContent() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         {selectedCity === '__all__' 
                           ? (election?.election_level === 'ESTADUAL' ? 'Cidade' : 'Bairro')
                           : 'Bairro'
                         }
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Meta
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Confirmados
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Prováveis
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Realizado
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Gap
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Cobertura
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Ações
                       </th>
                     </tr>
@@ -776,29 +781,29 @@ function ProjecaoContent() {
                           }
                         }}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                           <div className="flex items-center space-x-2">
-                            <span>{row.name}</span>
-                            <Edit3 className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <span className="truncate max-w-[120px] sm:max-w-none">{row.name}</span>
+                            <Edit3 className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(row.meta)}
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          <span className="text-xs sm:text-sm">{formatNumber(row.meta)}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(row.confirmados)}
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          <span className="text-xs sm:text-sm">{formatNumber(row.confirmados)}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(row.provaveis)}
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          <span className="text-xs sm:text-sm">{formatNumber(row.provaveis)}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(row.realizado)}
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          <span className="text-xs sm:text-sm">{formatNumber(row.realizado)}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(row.gap)}
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          <span className="text-xs sm:text-sm">{formatNumber(row.gap)}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`inline-flex px-1.5 sm:px-2 py-1 text-xs font-medium rounded-full ${
                             row.cobertura >= 80 
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                               : row.cobertura >= 60
@@ -808,9 +813,9 @@ function ProjecaoContent() {
                             {row.cobertura}%
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           <button 
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-xs sm:text-sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (row.type === 'city') {
@@ -834,7 +839,8 @@ function ProjecaoContent() {
                               }
                             }}
                           >
-                            Editar Meta
+                            <span className="hidden sm:inline">Editar Meta</span>
+                            <span className="sm:hidden">Editar</span>
                           </button>
                         </td>
                       </tr>
@@ -908,14 +914,14 @@ function Card({ label, value, icon, isEmpty = false }: {
   isEmpty?: boolean;
 }) {
   return (
-    <div className={`rounded-lg border p-6 transition-colors ${
+    <div className={`rounded-lg border p-4 sm:p-6 transition-colors ${
       isEmpty 
         ? 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50' 
         : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
     }`}>
       <div className="flex items-center">
         <div className="flex-shrink-0">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${
             isEmpty 
               ? 'bg-gray-100 dark:bg-gray-600 text-gray-400 dark:text-gray-500' 
               : 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
@@ -923,15 +929,15 @@ function Card({ label, value, icon, isEmpty = false }: {
             {icon}
           </div>
         </div>
-        <div className="ml-4">
-          <div className={`text-sm ${
+        <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+          <div className={`text-xs sm:text-sm ${
             isEmpty 
               ? 'text-gray-500 dark:text-gray-400' 
               : 'text-gray-600 dark:text-gray-400'
           }`}>
             {label}
           </div>
-          <div className={`mt-1 text-2xl font-semibold ${
+          <div className={`mt-1 text-lg sm:text-xl lg:text-2xl font-semibold truncate ${
             isEmpty 
               ? 'text-gray-400 dark:text-gray-500' 
               : 'text-gray-900 dark:text-white'
