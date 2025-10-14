@@ -140,9 +140,13 @@ async function cacheFirst(request) {
     }
 
     const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
+    if (networkResponse.ok && networkResponse.status !== 206) {
       const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, networkResponse.clone());
+      try {
+        await cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.log('[SW] Erro ao armazenar no cache estático:', cacheError);
+      }
     }
     return networkResponse;
   } catch (error) {
@@ -155,9 +159,14 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
+    if (networkResponse.ok && networkResponse.status !== 206) {
+      // Só armazenar no cache se não for uma resposta parcial (206)
       const cache = await caches.open(API_CACHE);
-      cache.put(request, networkResponse.clone());
+      try {
+        await cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.log('[SW] Erro ao armazenar no cache:', cacheError);
+      }
     }
     return networkResponse;
   } catch (error) {
@@ -187,8 +196,12 @@ async function staleWhileRevalidate(request) {
   const cachedResponse = await cache.match(request);
 
   const fetchPromise = fetch(request).then((networkResponse) => {
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+    if (networkResponse.ok && networkResponse.status !== 206) {
+      try {
+        cache.put(request, networkResponse.clone());
+      } catch (cacheError) {
+        console.log('[SW] Erro ao armazenar no cache dinâmico:', cacheError);
+      }
     }
     return networkResponse;
   }).catch(() => {
