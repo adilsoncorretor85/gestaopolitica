@@ -5,6 +5,9 @@ import { logger } from './logger';
 const DEFAULT_SUPABASE_URL = 'https://ojxwwjurwhwtoydywvch.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeHd3anVyd2h3dG95ZHl3dmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4MDMzMzUsImV4cCI6MjA3MTM3OTMzNX0.yYNiRdi0Ve9fzdAHGYsIi1iQf4Lredve3PMbRjw41BI';
 
+// Cliente Supabase lazy (inicializado sob demanda)
+let _supabase: SupabaseClient | null = null;
+
 // Função para inicializar o cliente Supabase de forma segura
 function createSupabaseClient(): SupabaseClient {
   try {
@@ -24,12 +27,21 @@ function createSupabaseClient(): SupabaseClient {
   }
 }
 
-export const supabase: SupabaseClient = createSupabaseClient();
-
-// Função helper para garantir que o cliente Supabase existe
+// Função para obter o cliente Supabase (lazy initialization)
 export function getSupabaseClient(): SupabaseClient {
-  return supabase;
+  if (!_supabase) {
+    _supabase = createSupabaseClient();
+  }
+  return _supabase;
 }
+
+// Export para compatibilidade (mas usar getSupabaseClient() é preferível)
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(target, prop) {
+    return getSupabaseClient()[prop as keyof SupabaseClient];
+  }
+});
+
 
 // Função helper para tratamento seguro de erros do Supabase
 export function handleSupabaseError(error: any, context: string = 'operação'): string {
