@@ -1,5 +1,5 @@
 // src/services/leader.ts
-import { devLog } from '@/lib/logger';
+import { devLog, logger } from '@/lib/logger';
 import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export type LeaderListItem = {
@@ -86,17 +86,39 @@ export async function listLeaders() {
       .order("created_at", { ascending: false });
     
     if (error) {
-      console.error('Erro na query direta:', error);
+      logger.error('Erro na query direta:', error);
       throw error;
     }
     
     devLog('Query direta funcionou, dados brutos:', data);
     
+    // Debug: verificar se profiles está vindo corretamente
+    data?.forEach((leader, index) => {
+      devLog(`Leader ${index}:`, {
+        id: leader.id,
+        email: leader.email,
+        profiles: leader.profiles,
+        full_name: leader.profiles?.full_name
+      });
+    });
+    
     // Transformar para o formato esperado
-    const transformed = (data ?? []).map((leader: any) => ({
+    const transformed = (data ?? []).map((leader: {
+      id: string;
+      email: string;
+      phone: string | null;
+      goal: number | null;
+      status: string;
+      city?: string | null;
+      state?: string | null;
+      profiles: {
+        id: string;
+        full_name: string | null;
+      };
+    }) => ({
       id: leader.id, // leader_profiles.id
-      profile_id: leader.profiles.id, // profiles.id (para usar no modal de liderança)
-      full_name: leader.profiles.full_name || null,
+      profile_id: leader.profiles?.id || '', // profiles.id (para usar no modal de liderança)
+      full_name: leader.profiles?.full_name || null,
       email: leader.email || null,
       phone: leader.phone || null,
       goal: leader.goal,
@@ -114,7 +136,7 @@ export async function listLeaders() {
     devLog('Leaders com IDs:', leaders.map(l => ({ id: l.id, name: l.full_name })));
     return leaders;
   } catch (directError) {
-    console.error('Query falhou:', directError);
+    logger.error('Query falhou:', directError);
     throw directError;
   }
 }
@@ -192,7 +214,17 @@ export async function getLeaderDetail(id: string) {
   return {
     ...transformedData,
     leadership: leadershipData
-  } as LeaderDetail & { leadership?: any };
+  } as LeaderDetail & { 
+    leadership?: {
+      id: string;
+      leader_id: string;
+      reach_scope: string;
+      reach_size: number;
+      extra: string | null;
+      created_at: string;
+      updated_at: string;
+    } | null;
+  };
 }
 
 export async function updateLeaderProfile(

@@ -4,11 +4,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ElectionProvider } from "@/contexts/ElectionContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { usePreload } from "@/lib/preload-manager";
+import { performanceMonitor } from "@/lib/performance-monitor";
 
 // Lazy loading otimizado para páginas com preload
 const Login = lazy(() => import("@/pages/Login"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const DefinirSenha = lazy(() => import("@/pages/DefinirSenha"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Pessoas = lazy(() => import("@/pages/Pessoas"));
 const PessoasForm = lazy(() => import("@/pages/PessoasForm"));
@@ -41,22 +42,21 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 
 
-export default function App() {
+function AppWithPreload() {
+  // Inicializa sistema de preload (agora dentro do Router)
+  usePreload();
+
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <ElectionProvider supabase={supabase}>
-          <BrowserRouter>
-            {/* Skip Link para acessibilidade */}
-            <a href="#main-content" className="skip-link">
-              Pular para o conteúdo principal
-            </a>
-            <Suspense fallback={<LoadingSpinner text="Carregando página..." />}>
-              <Routes>
+    <>
+      {/* Skip Link para acessibilidade */}
+      <a href="#main-content" className="skip-link">
+        Pular para o conteúdo principal
+      </a>
+      <Suspense fallback={<LoadingSpinner text="Carregando página..." />}>
+        <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/definir-senha" element={<DefinirSenha />} />
           <Route path="/conta-bloqueada" element={<ContaBloqueada />} />
           
           <Route
@@ -173,9 +173,26 @@ export default function App() {
           <Route path="/contacts/*" element={<Navigate to="/pessoas" replace />} />
           
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
+        </Routes>
+      </Suspense>
+    </>
+  );
+}
+
+function AppContent() {
+  return (
+    <BrowserRouter>
+      <AppWithPreload />
+    </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ElectionProvider supabase={supabase}>
+          <AppContent />
         </ElectionProvider>
       </ThemeProvider>
       

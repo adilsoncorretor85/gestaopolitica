@@ -1,19 +1,7 @@
 // supabase/functions/leader_admin/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-// CORS – importante para o navegador não bloquear
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-// helpers de resposta
-const json = (status, body)=>new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json'
-    }
-  });
+import { handleCorsPreflight, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts';
+import { applyRateLimit, RATE_LIMITS } from '../_shared/rateLimiter.ts';
 // carrega variáveis de ambiente (definidas em Edge Functions → Secrets)
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -33,33 +21,24 @@ async function requireAdminUser(req) {
   if (pErr || !profile || profile.role !== 'ADMIN') throw new Error('forbidden');
   return data.user.id;
 }
-async function listPending() {
+async function listPending(origin) {
   // usa a view que criamos
   const { data, error } = await admin.from('app_leaders_list').select('*').eq('status', 'PENDING').order('invited_at', {
     ascending: false
   });
-  if (error) return json(400, {
-    ok: false,
-    error: error.message
-  });
-  return json(200, {
+  if (error) return createCorsErrorResponse(error.message, 400, origin);
+  return createCorsResponse({
     ok: true,
     data
-  });
+  }, 200, origin);
 }
 async function resendInvite(payload, origin) {
   const email = payload?.email?.trim();
-  if (!email) return json(400, {
-    ok: false,
-    error: 'email is required'
-  });
+  if (!email) return createCorsErrorResponse('email is required', 400, origin);
   // garante que existe registro pendente
   const { data: lp } = await admin.from('leader_profiles').select('id, status, full_name').eq('email', email).maybeSingle();
   if (!lp || lp.status !== 'PENDING') {
-    return json(400, {
-      ok: false,
-      error: 'Convite não está pendente'
-    });
+    return createCorsErrorResponse('Convite não está pendente', 400, origin);
   }
   // recria token de convite (ou reaproveita se quiser)
   const token = crypto.randomUUID();
@@ -90,47 +69,43 @@ async function resendInvite(payload, origin) {
       error: `invite: ${inviteErr.message}`
     });
   }
-  return json(200, {
+  return createCorsResponse({
     ok: true,
     message: 'Convite reenviado',
     acceptUrl
-  });
+  }, 200, origin);
 }
-async function revokeInvite(payload) {
+async function revokeInvite(payload, origin) {
   const email = payload?.email?.trim();
-  if (!email) return json(400, {
-    ok: false,
-    error: 'email is required'
-  });
+  if (!email) return createCorsErrorResponse('email is required', 400, origin);
   // remove token
   const { error: tokErr } = await admin.from('invite_tokens').delete().eq('email', email);
-  if (tokErr) return json(400, {
-    ok: false,
-    error: `invite_tokens: ${tokErr.message}`
-  });
+  if (tokErr) return createCorsErrorResponse(`invite_tokens: ${tokErr.message}`, 400, origin);
   // apaga leader_profiles pendente
   const { error: lpErr } = await admin.from('leader_profiles').delete().eq('email', email).eq('status', 'PENDING');
-  if (lpErr) return json(400, {
-    ok: false,
-    error: `leader_profiles: ${lpErr.message}`
-  });
+  if (lpErr) return createCorsErrorResponse(`leader_profiles: ${lpErr.message}`, 400, origin);
   // se existir usuário no Auth que nunca logou, apaga do Auth
   const { data: page } = await admin.auth.admin.listUsers();
   const user = page?.users?.find((u)=>(u.email || '').toLowerCase() === email.toLowerCase());
   if (user && !user.last_sign_in_at) {
     await admin.auth.admin.deleteUser(user.id);
   }
-  return json(200, {
+  return createCorsResponse({
     ok: true,
     message: 'Convite cancelado'
-  });
+  }, 200, origin);
 }
 // --------- HANDLER ---------
 Deno.serve(async (req)=>{
-  // CORS preflight
-  if (req.method === 'OPTIONS') return new Response(null, {
-    headers: corsHeaders
-  });
+  const origin = req.headers.get('Origin');
+  
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreflight(req);
+  if (preflightResponse) return preflightResponse;
+  
+  // Apply rate limiting
+  const rateLimitResponse = applyRateLimit(req, RATE_LIMITS.ADMIN, origin);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     // valida admin
     await requireAdminUser(req);
@@ -139,24 +114,22 @@ Deno.serve(async (req)=>{
     const origin = req.headers.get('origin') ?? req.headers.get('referer')?.split('/').slice(0, 3).join('/') ?? 'http://localhost:5173';
     switch(action){
       case 'list_pending':
-        return await listPending();
+        return await listPending(origin);
       case 'resend_invite':
         return await resendInvite(payload, origin);
       case 'revoke_invite':
-        return await revokeInvite(payload);
+        return await revokeInvite(payload, origin);
       case 'delete':
-        return await revokeInvite(payload);
+        return await revokeInvite(payload, origin);
       default:
-        return json(400, {
-          ok: false,
-          error: `Unknown action: ${action}`
-        });
+        return createCorsErrorResponse(`Unknown action: ${action}`, 400, origin);
     }
   } catch (e) {
     const code = e?.message === 'missing_token' ? 401 : e?.message === 'invalid_token' ? 401 : e?.message === 'forbidden' ? 403 : 400;
-    return json(code, {
-      ok: false,
-      error: e?.message || 'unexpected_error'
-    });
+    return createCorsErrorResponse(
+      e?.message || 'unexpected_error', 
+      code, 
+      origin
+    );
   }
 });

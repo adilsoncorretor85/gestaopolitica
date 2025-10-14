@@ -18,7 +18,12 @@ export default defineConfig({
       })
     ] : [])
   ],
-  envDir: '.',   // <- força Vite a ler .env desta raiz
+  envDir: __dirname,   // <- força Vite a ler .env da pasta do projeto
+  server: {
+    host: '127.0.0.1',  // Força IPv4
+    port: 5173,
+    strictPort: true,   // Falha se a porta estiver ocupada
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

@@ -21,7 +21,7 @@ const formatNumber = (num: number | string): string => {
   return num.toLocaleString('pt-BR');
 };
 
-export default function Projecao() {
+function ProjecaoContent() {
   const { profile } = useAuth();
   const { election, setElection } = useElection();
   const navigate = useNavigate();
@@ -932,4 +932,8 @@ function Card({ label, value, icon, isEmpty = false }: {
       </div>
     </div>
   );
+}
+
+export default function Projecao() {
+  return <ProjecaoContent />;
 }

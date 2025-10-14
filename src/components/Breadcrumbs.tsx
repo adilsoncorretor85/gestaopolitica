@@ -39,7 +39,6 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items, className = '' }) => {
         'mapa': 'Mapa',
         'login': 'Login',
         'reset-password': 'Redefinir Senha',
-        'definir-senha': 'Definir Senha',
         'conta-bloqueada': 'Conta Bloqueada',
         'convite': 'Convite',
         'complete-profile': 'Completar Perfil',

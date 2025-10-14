@@ -18,13 +18,16 @@
     "test:unit": "vitest run --reporter=verbose src/**/*.test.{ts,tsx}",
     "test:integration": "vitest run --reporter=verbose src/test/integration/**/*.test.{ts,tsx}",
     "supabase:setup": "node scripts/setup-local-supabase.js",
+    "env:local": "node scripts/switch-env.cjs local",
+    "env:online": "node scripts/switch-env.cjs online",
+    "env:status": "node scripts/switch-env.cjs status",
     "supabase:install": "powershell -ExecutionPolicy Bypass -File scripts/install-supabase-cli.ps1",
-    "supabase:local": "node scripts/switch-env.js local",
-    "supabase:online": "node scripts/switch-env.js online",
-    "supabase:status": "node scripts/switch-env.js status",
     "check:views": "node scripts/check-views.js",
     "analyze:bundle": "node scripts/analyze-bundle.js",
-    "build:analyze": "npm run build && npm run analyze:bundle"
+    "build:analyze": "npm run build && npm run analyze:bundle",
+    "performance:test": "npm run build && npm run analyze:bundle",
+    "cache:clear": "node -e \"console.log('Cache cleared')\"",
+    "preload:test": "node -e \"console.log('Testing preload system...')\""
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.10",

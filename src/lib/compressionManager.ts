@@ -13,8 +13,8 @@ interface CompressionResult {
   compressedData: Uint8Array;
 }
 
-interface DecompressionResult {
-  originalData: any;
+interface DecompressionResult<T = unknown> {
+  originalData: T;
   decompressedSize: number;
 }
 
@@ -22,7 +22,7 @@ class CompressionManager {
   private compressionLevel = 6; // Nível de compressão (0-9)
 
   // Comprimir dados
-  compress(data: any): CompressionResult {
+  compress<T>(data: T): CompressionResult {
     const startTime = Date.now();
     
     try {
@@ -72,7 +72,7 @@ class CompressionManager {
   }
 
   // Descomprimir dados
-  decompress(compressedData: Uint8Array): DecompressionResult {
+  decompress<T>(compressedData: Uint8Array): DecompressionResult<T> {
     const startTime = Date.now();
     
     try {
@@ -81,9 +81,9 @@ class CompressionManager {
       const decompressedSize = new Blob([decompressed as any]).size;
       
       // Converter de volta para objeto
-      const originalData = JSON.parse(decompressed as unknown as string);
+      const originalData = JSON.parse(decompressed as unknown as string) as T;
 
-      const result: DecompressionResult = {
+      const result: DecompressionResult<T> = {
         originalData,
         decompressedSize,
       };
@@ -171,7 +171,7 @@ class CompressionManager {
   }
 
   // Comprimir dados para localStorage
-  compressForStorage(data: any): string {
+  compressForStorage<T>(data: T): string {
     try {
       const compressed = this.compress(data);
       
@@ -198,12 +198,12 @@ class CompressionManager {
   }
 
   // Descomprimir dados do localStorage
-  decompressFromStorage(storageData: string): any {
+  decompressFromStorage<T>(storageData: string): T {
     try {
       const parsed = JSON.parse(storageData);
       const compressedData = this.base64ToUint8Array(parsed.compressed);
       
-      const result = this.decompress(compressedData);
+      const result = this.decompress<T>(compressedData);
       
       structuredLogger.info('Dados descomprimidos do storage', {
         action: 'storage_decompressed',
@@ -342,12 +342,12 @@ export const compressionManager = new CompressionManager();
 
 // Hook para React
 export const useCompressionManager = () => {
-  const compress = (data: any) => {
+  const compress = <T>(data: T) => {
     return compressionManager.compress(data);
   };
 
-  const decompress = (compressedData: Uint8Array) => {
-    return compressionManager.decompress(compressedData);
+  const decompress = <T>(compressedData: Uint8Array) => {
+    return compressionManager.decompress<T>(compressedData);
   };
 
   const compressString = (text: string) => {
@@ -358,12 +358,12 @@ export const useCompressionManager = () => {
     return compressionManager.decompressString(compressedData);
   };
 
-  const compressForStorage = (data: any) => {
+  const compressForStorage = <T>(data: T) => {
     return compressionManager.compressForStorage(data);
   };
 
-  const decompressFromStorage = (storageData: string) => {
-    return compressionManager.decompressFromStorage(storageData);
+  const decompressFromStorage = <T>(storageData: string) => {
+    return compressionManager.decompressFromStorage<T>(storageData);
   };
 
   const compressFile = (file: File) => {

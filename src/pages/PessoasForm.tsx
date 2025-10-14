@@ -7,7 +7,7 @@ import useAuth from '@/hooks/useAuth';
 import { getPerson, type PersonWithTags } from '@/services/people';
 import { ArrowLeft } from 'lucide-react';
 
-export default function PessoasFormPage() {
+function PessoasFormContent() {
   const navigate = useNavigate();
   const params = useParams();
   const { id } = params || {};
@@ -71,12 +71,12 @@ export default function PessoasFormPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header 
-        sidebarOpen={sidebarOpen} 
+        sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
       <div className="flex">
         <Sidebar 
-          isOpen={sidebarOpen} 
+          isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activeTab="pessoas"
           setActiveTab={() => {}}
@@ -85,8 +85,8 @@ export default function PessoasFormPage() {
           <div className="max-w-4xl mx-auto">
             {/* Header */}
             <div className="mb-6">
-              <Link 
-                to="/pessoas" 
+              <Link
+                to="/pessoas"
                 className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
@@ -112,4 +112,8 @@ export default function PessoasFormPage() {
       </div>
     </div>
   );
+}
+
+export default function PessoasFormPage() {
+  return <PessoasFormContent />;
 }

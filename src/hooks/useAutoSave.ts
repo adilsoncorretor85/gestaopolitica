@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { UseFormReturn } from 'react-hook-form';
+import { logger } from '@/lib/logger';
 
 interface UseAutoSaveOptions {
   key: string;
@@ -23,7 +24,7 @@ export function useAutoSave<T extends Record<string, any>>(
       if (dataString !== lastSavedRef.current) {
         localStorage.setItem(key, dataString);
         lastSavedRef.current = dataString;
-        console.log(`Auto-save: Dados salvos em ${key}`);
+        logger.debug(`Auto-save: Dados salvos em ${key}`);
       }
     } catch (error) {
       console.error('Erro ao salvar no localStorage:', error);
@@ -36,7 +37,7 @@ export function useAutoSave<T extends Record<string, any>>(
       const saved = localStorage.getItem(key);
       if (saved) {
         const data = JSON.parse(saved);
-        console.log(`Auto-save: Dados carregados de ${key}`);
+        logger.debug(`Auto-save: Dados carregados de ${key}`);
         return data;
       }
     } catch (error) {
@@ -50,7 +51,7 @@ export function useAutoSave<T extends Record<string, any>>(
     try {
       localStorage.removeItem(key);
       lastSavedRef.current = '';
-      console.log(`Auto-save: Dados limpos de ${key}`);
+      logger.debug(`Auto-save: Dados limpos de ${key}`);
     } catch (error) {
       console.error('Erro ao limpar localStorage:', error);
     }
@@ -59,15 +60,15 @@ export function useAutoSave<T extends Record<string, any>>(
   // Auto-save com debounce
   useEffect(() => {
     if (!enabled) {
-      console.log(`Auto-save desabilitado para ${key}`);
+      logger.debug(`Auto-save desabilitado para ${key}`);
       return;
     }
 
-    console.log(`Auto-save ativado para ${key} com debounce de ${debounceMs}ms`);
-    console.log(`Auto-save enabled: ${enabled}, key: ${key}, debounceMs: ${debounceMs}`);
+    logger.debug(`Auto-save ativado para ${key} com debounce de ${debounceMs}ms`);
+    logger.debug(`Auto-save enabled: ${enabled}, key: ${key}, debounceMs: ${debounceMs}`);
 
     const subscription = watch((data, { name, type }) => {
-      console.log(`Auto-save: Campo ${name} alterado (${type})`, data);
+      logger.debug(`Auto-save: Campo ${name} alterado (${type})`, data);
       
       // Limpar timeout anterior
       if (timeoutRef.current) {
@@ -77,7 +78,7 @@ export function useAutoSave<T extends Record<string, any>>(
       // Configurar novo timeout
       timeoutRef.current = setTimeout(() => {
         const formData = getValues();
-        console.log(`Auto-save: Salvando dados para ${key}`, formData);
+        logger.debug(`Auto-save: Salvando dados para ${key}`, formData);
         
         // Só salva se houver dados válidos
         if (formData && Object.keys(formData).length > 0) {
@@ -98,17 +99,17 @@ export function useAutoSave<T extends Record<string, any>>(
   const restoreData = useCallback(() => {
     const savedData = loadFromStorage();
     if (savedData) {
-      console.log(`Auto-save: Restaurando dados para ${key}`, savedData);
+      logger.debug(`Auto-save: Restaurando dados para ${key}`, savedData);
       let restoredCount = 0;
       
       Object.entries(savedData).forEach(([fieldKey, value]) => {
         if (value !== undefined && value !== null && value !== '') {
-          setValue(fieldKey as keyof T, value, { shouldValidate: false });
+          setValue(fieldKey as any, value, { shouldValidate: false });
           restoredCount++;
         }
       });
       
-      console.log(`Auto-save: ${restoredCount} campos restaurados para ${key}`);
+      logger.debug(`Auto-save: ${restoredCount} campos restaurados para ${key}`);
       return restoredCount > 0;
     }
     return false;

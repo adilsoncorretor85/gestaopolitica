@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import TreatmentSelector from './TreatmentSelector';
 import { checkWhatsAppDuplicate } from '@/services/people';
+import { logger } from '@/lib/logger';
 
 interface EssentialFieldsProps {
   register: UseFormRegister<any>;
@@ -66,7 +67,7 @@ const EssentialFields = ({
                 setWhatsappError('');
               }
             } catch (error) {
-              console.error('Erro ao verificar duplicata:', error);
+              logger.error('Erro ao verificar duplicata:', error);
             } finally {
               setCheckingDuplicate(false);
             }

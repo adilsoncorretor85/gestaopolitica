@@ -1,27 +1,22 @@
 // supabase/functions/admin_ban_user/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-// --- CORS dinâmico -----------------------------------------------------------
-const ALLOWED_ORIGINS = new Set([
-  'https://app.gabitechnology.cloud',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173'
-]);
-function makeCorsHeaders(origin) {
-  const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://app.gabitechnology.cloud';
-  return {
-    'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Vary': 'Origin'
-  };
-}
-// -----------------------------------------------------------------------------
+import { handleCorsPreflight, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts';
+import { applyRateLimit, RATE_LIMITS } from '../_shared/rateLimiter.ts';
+import { createRequestContext, logSuccess, logError, logWarning } from '../_shared/auditLogger.ts';
 Deno.serve(async (req)=>{
   const origin = req.headers.get('Origin');
-  const corsHeaders = makeCorsHeaders(origin);
-  if (req.method === 'OPTIONS') return new Response('ok', {
-    headers: corsHeaders
-  });
+  
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreflight(req);
+  if (preflightResponse) return preflightResponse;
+  
+  // Apply rate limiting (muito restritivo para ban/unban)
+  const rateLimitResponse = applyRateLimit(req, RATE_LIMITS.BAN, origin);
+  if (rateLimitResponse) return rateLimitResponse;
+  
+  // Criar contexto de auditoria
+  const auditContext = createRequestContext(req, 'admin_ban_user', 'ban_user');
+  
   try {
     const url = Deno.env.get('SUPABASE_URL');
     const svc = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -40,58 +35,37 @@ Deno.serve(async (req)=>{
     // 1) precisa estar autenticado
     const { data: me } = await caller.auth.getUser();
     if (!me?.user) {
-      return new Response(JSON.stringify({
-        error: 'Unauthorized'
-      }), {
-        headers: corsHeaders,
-        status: 401
-      });
+      return createCorsErrorResponse('Unauthorized', 401, origin);
     }
     // 2) precisa ser ADMIN
     const { data: prof, error: profErr } = await admin.from('profiles').select('role').eq('id', me.user.id).single();
     if (profErr) throw profErr;
     if (prof?.role !== 'ADMIN') {
-      return new Response(JSON.stringify({
-        error: 'Forbidden'
-      }), {
-        headers: corsHeaders,
-        status: 403
-      });
+      return createCorsErrorResponse('Forbidden', 403, origin);
     }
+    
+    // Atualizar contexto de auditoria
+    auditContext.userId = me.user.id;
+    auditContext.userEmail = me.user.email;
+    auditContext.userRole = prof.role;
     // 3) body
     const body = await req.json();
     if (!body?.userId || body.action !== 'ban' && body.action !== 'unban') {
-      return new Response(JSON.stringify({
-        error: 'Bad request: userId/action required'
-      }), {
-        headers: corsHeaders,
-        status: 400
-      });
+      return createCorsErrorResponse('Bad request: userId/action required', 400, origin);
     }
     if (body.userId === me.user.id) {
-      return new Response(JSON.stringify({
-        error: 'Você não pode desativar a si mesmo'
-      }), {
-        headers: corsHeaders,
-        status: 400
-      });
+      return createCorsErrorResponse('Você não pode desativar a si mesmo', 400, origin);
     }
     // 4) usuário alvo existe?
     const { data: target, error: getErr } = await admin.auth.admin.getUserById(body.userId);
     if (getErr || !target?.user) {
-      return new Response(JSON.stringify({
-        error: 'Usuário não encontrado'
-      }), {
-        headers: corsHeaders,
-        status: 404
-      });
+      return createCorsErrorResponse('Usuário não encontrado', 404, origin);
     }
     // 5) ação
     if (body.action === 'ban') {
-      // BANIR: bloqueia logins futuros
-      // (ban_duration aceita formatos "1h", "24h", "7d", etc. Usamos ~100 anos.)
+      // BANIR: bloqueia logins futuros usando banned_until
       const { error: e1 } = await admin.auth.admin.updateUserById(body.userId, {
-        ban_duration: '876000h',
+        banned_until: '9999-12-31T00:00:00Z',
         user_metadata: {
           banned: true,
           banned_at: new Date().toISOString(),
@@ -100,6 +74,16 @@ Deno.serve(async (req)=>{
         }
       });
       if (e1) throw e1;
+      
+      // Revogar sessões ativas (refresh tokens)
+      try {
+        await admin.auth.admin.signOut(body.userId);
+        logSuccess(auditContext, 200, { action: 'ban', userId: body.userId, sessions_revoked: true });
+      } catch (revokeError) {
+        logWarning(auditContext, 200, 'Failed to revoke sessions', { action: 'ban', userId: body.userId, error: revokeError.message });
+        // Não falha o processo se não conseguir revogar sessões
+      }
+      
       // Domínio
       const { error: e2 } = await admin.from('leader_profiles').update({
         status: 'INACTIVE'
@@ -108,7 +92,7 @@ Deno.serve(async (req)=>{
     } else {
       // DESBANIR
       const { error: e1 } = await admin.auth.admin.updateUserById(body.userId, {
-        ban_duration: 'none',
+        banned_until: null,
         user_metadata: {
           banned: false,
           unbanned_at: new Date().toISOString(),
@@ -120,6 +104,8 @@ Deno.serve(async (req)=>{
         status: 'ACTIVE'
       }).eq('id', body.userId);
       if (e2) console.warn('leader_profiles update warn:', e2);
+      
+      logSuccess(auditContext, 200, { action: 'unban', userId: body.userId });
     }
     // 6) auditoria
     await admin.from('audit_logs').insert({
@@ -132,21 +118,16 @@ Deno.serve(async (req)=>{
         reason: body.reason ?? null
       }
     });
-    return new Response(JSON.stringify({
+    return createCorsResponse({
       ok: true,
       action: body.action
-    }), {
-      headers: corsHeaders,
-      status: 200
-    });
+    }, 200, origin);
   } catch (err) {
-    console.error('admin_ban_user error:', err);
-    return new Response(JSON.stringify({
-      ok: false,
-      error: err?.message ?? 'Internal error'
-    }), {
-      headers: makeCorsHeaders(origin),
-      status: 500
-    });
+    logError(auditContext, 500, err?.message ?? 'Internal error', { error: err });
+    return createCorsErrorResponse(
+      err?.message ?? 'Internal error', 
+      500, 
+      origin
+    );
   }
 });

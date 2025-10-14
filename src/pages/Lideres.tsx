@@ -7,9 +7,10 @@ import DatabaseStatus from '@/components/DatabaseStatus';
 import useAuth from '@/hooks/useAuth';
 import { listLeaders, type LeaderListItem } from '@/services/leader';
 import { resendInvite } from '@/services/invite';
-import { Users, Plus, Edit2, Shield, Mail, RefreshCw, Clock, Crown } from 'lucide-react';
+import { Users, Plus, Edit2, Shield, Mail, RefreshCw, Clock, Crown, Trash2 } from 'lucide-react';
 import LeaderLeadershipModal from '@/components/modals/LeaderLeadershipModal';
 import LeaderDrawer from '@/components/drawers/LeaderDrawer';
+import RemoveLeaderModal from '@/components/modals/RemoveLeaderModal';
 
 export default function LideresPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -29,6 +30,10 @@ export default function LideresPage() {
   // Estados para o drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedLeaderId, setSelectedLeaderId] = useState<string | null>(null);
+  
+  // Estados para o modal de remoção
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [leaderToRemove, setLeaderToRemove] = useState<LeaderListItem | null>(null);
 
   async function load() {
     setLoading(true);
@@ -75,6 +80,16 @@ export default function LideresPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleRemoveLeader = (leader: LeaderListItem) => {
+    setLeaderToRemove(leader);
+    setRemoveModalOpen(true);
+  };
+
+  const handleRemoveSuccess = () => {
+    // Recarregar a lista após remoção bem-sucedida
+    load();
   };
 
   const handleRevokeInvite = async (email: string, fullName: string) => {
@@ -364,6 +379,16 @@ export default function LideresPage() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Link>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveLeader(leader);
+                                  }}
+                                  className="p-2 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                  title="Remover líder"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
                             ) : (
                               <div className="flex items-center justify-end space-x-2">
@@ -423,6 +448,17 @@ export default function LideresPage() {
         leaderId={selectedLeaderId}
         onClose={handleCloseDrawer}
         onEdited={load}
+      />
+
+      {/* Modal de Remoção de Líder */}
+      <RemoveLeaderModal
+        isOpen={removeModalOpen}
+        onClose={() => {
+          setRemoveModalOpen(false);
+          setLeaderToRemove(null);
+        }}
+        leader={leaderToRemove}
+        onSuccess={handleRemoveSuccess}
       />
     </div>
   );

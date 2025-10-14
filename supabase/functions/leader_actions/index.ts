@@ -1,11 +1,8 @@
 // supabase/functions/leader_actions/index.ts
 // Deno deploy target (Edge Function)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+import { handleCorsPreflight, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts';
+import { applyRateLimit, RATE_LIMITS } from '../_shared/rateLimiter.ts';
 function getOrigin(req, body) {
   const headerOrigin = req.headers.get("origin");
   const referer = req.headers.get("referer");
@@ -42,18 +39,18 @@ async function requireAdmin(req) {
   };
 }
 Deno.serve(async (req)=>{
-  // Preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders
-    });
-  }
+  const origin = req.headers.get('Origin');
+  
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreflight(req);
+  if (preflightResponse) return preflightResponse;
+  
+  // Apply rate limiting
+  const rateLimitResponse = applyRateLimit(req, RATE_LIMITS.ADMIN, origin);
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     if (req.method !== "POST") {
-      return new Response("Method not allowed", {
-        status: 405,
-        headers: corsHeaders
-      });
+      return createCorsErrorResponse("Method not allowed", 405, origin);
     }
     const body = await req.json();
     const { admin } = await requireAdmin(req);
@@ -67,20 +64,15 @@ Deno.serve(async (req)=>{
             ascending: false
           });
           if (error) throw error;
-          return Response.json({
+          return createCorsResponse({
             ok: true,
             rows: data
-          }, {
-            headers: corsHeaders
-          });
+          }, 200, origin);
         }
       case "resend_invite":
         {
           if (!body.email) {
-            return new Response("Missing email", {
-              status: 400,
-              headers: corsHeaders
-            });
+            return createCorsErrorResponse("Missing email", 400, origin);
           }
           let sent = false;
           let actionLink = null;
@@ -131,51 +123,39 @@ Deno.serve(async (req)=>{
           await admin.from("invite_tokens").update({
             expires_at: expires.toISOString()
           }).eq("email", body.email);
-          return Response.json({
+          return createCorsResponse({
             ok: true,
             message: sent ? "Invite e-mail sent" : "Invite created; link returned",
             sent,
             link: actionLink
-          }, {
-            headers: corsHeaders
-          });
+          }, 200, origin);
         }
       case "revoke_invite":
         {
           if (!body.email) {
-            return new Response("Missing email", {
-              status: 400,
-              headers: corsHeaders
-            });
+            return createCorsErrorResponse("Missing email", 400, origin);
           }
           // Apaga tokens e marca o líder como INACTIVE
           await admin.from("invite_tokens").delete().eq("email", body.email);
           await admin.from("leader_profiles").update({
             status: "INACTIVE"
           }).eq("email", body.email);
-          return Response.json({
+          return createCorsResponse({
             ok: true,
             message: "Invite revoked"
-          }, {
-            headers: corsHeaders
-          });
+          }, 200, origin);
         }
       default:
-        return new Response(`Unknown action: ${String(body.action)}`, {
-          status: 400,
-          headers: corsHeaders
-        });
+        return createCorsErrorResponse(`Unknown action: ${String(body.action)}`, 400, origin);
     }
   } catch (err) {
     // Erro estruturado (Response) já lançado acima
     if (err instanceof Response) return err;
     console.error("leader_actions error:", err);
-    return Response.json({
-      ok: false,
-      error: err?.message ?? "Internal error"
-    }, {
-      status: 500,
-      headers: corsHeaders
-    });
+    return createCorsErrorResponse(
+      err?.message ?? "Internal error", 
+      500, 
+      origin
+    );
   }
 });

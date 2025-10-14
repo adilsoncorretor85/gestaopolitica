@@ -18,6 +18,21 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Estados de loading consistentes
 - Otimizações de performance
 - Bundle size otimizado
+- **CORS dinâmico nas Edge Functions** - URLs configuráveis via variáveis de ambiente
+- **Função compartilhada de CORS** - Código reutilizável para todas as Edge Functions
+- **Configuração flexível de origens** - Suporte a múltiplos domínios
+- **Sistema de rate limiting** - Proteção contra spam e ataques de força bruta
+- **Endpoints de monitoramento** - Healthcheck, ping e status das Edge Functions
+- **Sistema de auditoria aprimorado** - Logs estruturados com rastreamento detalhado
+- **Tipos TypeScript rigorosos** - Redução significativa do uso de `any`
+
+### Alterado
+- **Edge Functions atualizadas** - Todas as funções agora usam CORS dinâmico
+- **Headers CORS padronizados** - Respostas consistentes com `Vary: Origin`
+- **Fallback inteligente** - URL padrão configurável quando origem não está na lista
+- **Tratamento de erros melhorado** - Uso de `unknown` em vez de `any` para catch blocks
+- **CompressionManager tipado** - Funções genéricas com tipos específicos
+- **Sistema de logging estruturado** - Logs com contexto completo e severidade
 
 ### Alterado
 - Migração completa para TypeScript

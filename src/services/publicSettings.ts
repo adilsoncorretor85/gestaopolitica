@@ -1,4 +1,4 @@
-import { devLog } from '@/lib/logger';
+import { devLog, logger } from '@/lib/logger';
 import { supabase as sbDefault } from '@/lib/supabaseClient';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -73,7 +73,7 @@ export async function loadCountdownData(
     }
     return null;
   } catch (err) {
-    console.error('[loadCountdownData] erro:', err);
+    logger.error('[loadCountdownData] erro:', err);
     return null;
   }
 }

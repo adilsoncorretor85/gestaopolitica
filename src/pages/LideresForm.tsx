@@ -1,4 +1,4 @@
-import { devLog } from '@/lib/logger';
+import { devLog, logger } from '@/lib/logger';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -55,7 +55,7 @@ const leaderSchema = z.object({
 type LeaderFormData = z.infer<typeof leaderSchema>;
 type InviteFormData = z.infer<typeof inviteSchema>;
 
-export default function LideresFormPage() {
+function LideresFormContent() {
   const navigate = useNavigate();
   const params = useParams();
   const { id } = params || {};
@@ -94,19 +94,19 @@ export default function LideresFormPage() {
     level: null as number | null,
     reach_scope: null as 'FAMILIA' | 'BAIRRO' | 'CIDADE' | 'REGIAO' | 'ONLINE' | null,
     reach_size: null as number | null,
-    extra: {} as Record<string, any>
+    extra: {} as Record<string, unknown>
   });
   */
 
   const isInvite = !id; // Se não tem ID, é um convite
   
   // Debug: verificar se isInvite está correto
-  console.log('LideresForm Debug:', { id, isInvite, params });
+  devLog('LideresForm Debug:', { id, isInvite, params });
   
   // Debug: verificar localStorage
   if (isInvite) {
     const savedData = localStorage.getItem('lideres-form-draft');
-    console.log('LideresForm localStorage:', savedData);
+    devLog('LideresForm localStorage:', savedData);
   }
   
   const {
@@ -117,7 +117,9 @@ export default function LideresFormPage() {
     getValues,
     formState: { errors }
   } = useForm<LeaderFormData | InviteFormData>({
-    resolver: zodResolver(isInvite ? inviteSchema : leaderSchema) as any
+    resolver: isInvite 
+      ? zodResolver(inviteSchema) as any
+      : zodResolver(leaderSchema) as any
   });
 
   // Auto-save para formulários de convite (novos líderes)
@@ -137,7 +139,7 @@ export default function LideresFormPage() {
       // Se é um novo convite, tentar restaurar dados salvos
       const restored = restoreData();
       if (restored) {
-        console.log('Dados do formulário restaurados do auto-save');
+        devLog('Dados do formulário restaurados do auto-save');
       }
     }
     // HOTFIX: Comentado temporariamente
@@ -151,7 +153,7 @@ export default function LideresFormPage() {
       const catalog = await listLeadershipCatalog();
       setLeadershipCatalog(catalog);
     } catch (error) {
-      console.error('Erro ao carregar catálogo de lideranças:', error);
+      logger.error('Erro ao carregar catálogo de lideranças:', error);
     }
   };
   */
@@ -207,7 +209,7 @@ export default function LideresFormPage() {
         setCoords({ lat: data.latitude, lng: data.longitude });
       }
     } catch (error) {
-      console.error('Erro ao carregar líder:', error);
+      logger.error('Erro ao carregar líder:', error);
       alert('Erro ao carregar líder');
     } finally {
       setLoading(false);
@@ -287,8 +289,9 @@ export default function LideresFormPage() {
         try {
           await updateLeaderProfile(id, payload);
           alert('Líder atualizado com sucesso!');
-        } catch (e: any) {
-          alert(`Erro ao salvar líder: ${e?.message ?? String(e)}`);
+        } catch (e: unknown) {
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          alert(`Erro ao salvar líder: ${errorMessage}`);
           return;
         }
       } else {
@@ -336,15 +339,17 @@ export default function LideresFormPage() {
                 extra: leadershipData.extra
               });
               devLog('Liderança criada com sucesso');
-            } catch (leadershipError: any) {
-              console.error('Erro ao criar liderança:', leadershipError);
+            } catch (leadershipError: unknown) {
+              const errorMessage = leadershipError instanceof Error ? leadershipError.message : String(leadershipError);
+              console.error('Erro ao criar liderança:', errorMessage);
               // Não falha o convite por causa da liderança
             }
           }
           */
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const errorMessage = e instanceof Error ? e.message : String(e);
           console.error('inviteLeader error', e);
-          alert(`Erro ao enviar convite: ${e?.message || e}`);
+          alert(`Erro ao enviar convite: ${errorMessage}`);
           return;
         }
       }
@@ -430,7 +435,7 @@ export default function LideresFormPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header 
-        profile={profile as any}
+        profile={profile || undefined}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
@@ -460,7 +465,7 @@ export default function LideresFormPage() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 {/* Dados Básicos */}
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
@@ -1069,4 +1074,8 @@ export default function LideresFormPage() {
       </div>
     </div>
   );
+}
+
+export default function LideresFormPage() {
+  return <LideresFormContent />;
 }

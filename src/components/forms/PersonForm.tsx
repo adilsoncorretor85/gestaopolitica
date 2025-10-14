@@ -17,6 +17,7 @@ import { listLeaders, type LeaderRow } from '@/services/admin';
 import { fetchAddressByCep } from '@/services/viacep';
 import { geocodeAddress, reverseGeocode } from '@/services/geocoding';
 import { normalizeTreatment } from '@/lib/treatmentUtils';
+import { logger } from '@/lib/logger';
 import useAuth from '@/hooks/useAuth';
 
 // Função utilitária para obter a data atual no formato YYYY-MM-DD
@@ -187,7 +188,7 @@ const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormPro
                       setCoords({ lat: coords.latitude, lng: coords.longitude });
                     }
                   } catch (geoError) {
-                    console.warn('Erro ao obter coordenadas do CEP:', geoError);
+                    logger.error('Erro ao obter coordenadas do CEP:', geoError);
                     // Não falha o processo se não conseguir as coordenadas
                   }
                 } else {
@@ -246,7 +247,7 @@ const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormPro
       // Se é nova pessoa, tentar restaurar dados salvos
       const restored = restoreData();
       if (restored) {
-        console.log('Dados do formulário de pessoa restaurados do auto-save');
+        logger.debug('Dados do formulário de pessoa restaurados do auto-save');
       }
     }
   }, [person, restoreData]);
@@ -266,15 +267,25 @@ const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormPro
     }
   }, []);
 
-  const handleAddressSelect = useCallback((address: any) => {
+  const handleAddressSelect = useCallback((address: {
+    cep?: string;
+    street?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    latitude?: number | string;
+    longitude?: number | string;
+    coordinates?: { lat: number; lng: number };
+  }) => {
     setValue('cep', address.cep || '');
     setValue('street', address.street || '');
     setValue('number', address.number || '');
     setValue('neighborhood', address.neighborhood || '');
     setValue('city', address.city || '');
     setValue('state', address.state || '');
-    setValue('latitude', address.latitude || null);
-    setValue('longitude', address.longitude || null);
+    setValue('latitude', typeof address.latitude === 'number' ? address.latitude : undefined);
+    setValue('longitude', typeof address.longitude === 'number' ? address.longitude : undefined);
     
     // Atualizar coordenadas no estado
     if (address.latitude && address.longitude) {

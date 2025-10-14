@@ -8,10 +8,11 @@ import Sidebar from '@/components/Sidebar';
 import MapPicker from '@/components/MapPicker';
 import AddressAutocomplete, { type AddressParts } from '@/components/AddressAutocomplete';
 import useAuth from '@/hooks/useAuth';
-import { updateLeaderProfile, getLeaderDetail, type LeaderDetail } from '@/services/leader';
+import { updateLeaderProfile, getLeaderDetail } from '@/services/leader';
 import { fetchAddressByCep } from '@/services/viacep';
 import { geocodeAddress } from '@/services/geocoding';
-import { ArrowLeft, Loader2, MapPin, CheckCircle } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { Loader2, MapPin, CheckCircle } from 'lucide-react';
 
 // Funções utilitárias para CEP
 function onlyDigits(s: string) { return (s || '').replace(/\D/g, ''); }
@@ -33,6 +34,8 @@ const completeProfileSchema = z.object({
   neighborhood: z.string().min(1, 'Bairro é obrigatório'),
   city: z.string().min(1, 'Cidade é obrigatória'),
   state: z.string().min(1, 'Estado é obrigatório'),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   notes: z.string().optional(),
 });
 
@@ -41,8 +44,7 @@ type CompleteProfileData = z.infer<typeof completeProfileSchema>;
 export default function CompleteProfilePage() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('lideres');
-  const { profile, isAdmin } = useAuth();
+  const { profile } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,7 +52,6 @@ export default function CompleteProfilePage() {
   const [errorCep, setErrorCep] = useState<string | null>(null);
   const [openMap, setOpenMap] = useState(false);
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
-  const [leaderData, setLeaderData] = useState<LeaderDetail | null>(null);
   const [profileCompleted, setProfileCompleted] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -83,7 +84,6 @@ export default function CompleteProfilePage() {
     setLoading(true);
     try {
       const data = await getLeaderDetail(profile.id);
-      setLeaderData(data);
       
       // Preencher formulário com dados existentes
       setValue('full_name', data.full_name || '');
@@ -111,18 +111,6 @@ export default function CompleteProfilePage() {
     }
   };
 
-  async function tryGeocodeFromForm() {
-    const rua = watch('street');
-    const numero = watch('number');
-    const bairro = watch('neighborhood');
-    const cidade = watch('city');
-    const estado = watch('state');
-    const cep = watch('cep');
-
-    if (!rua || !cidade || !estado) return;
-    const c = await geocodeAddress({ street: rua, number: numero, neighborhood: bairro, city: cidade, state: estado, cep });
-    if (c) setCoords({ lat: c.latitude, lng: c.longitude });
-  }
 
   // Handler para quando um endereço é selecionado no autocomplete
   function handleAddressSelect(parts: AddressParts) {
@@ -169,12 +157,12 @@ export default function CompleteProfilePage() {
         });
         
         if (coords) {
-          setValue('latitude', coords.latitude);
-          setValue('longitude', coords.longitude);
+          setValue('latitude' as keyof CompleteProfileData, coords.latitude);
+          setValue('longitude' as keyof CompleteProfileData, coords.longitude);
           setCoords({ lat: coords.latitude, lng: coords.longitude });
         }
       } catch (geoError) {
-        console.warn('Erro ao obter coordenadas do CEP:', geoError);
+        logger.warn('Erro ao obter coordenadas do CEP:', geoError);
         // Não falha o processo se não conseguir as coordenadas
       }
     }, 400);
@@ -254,8 +242,8 @@ export default function CompleteProfilePage() {
       
       <div className="flex">
         <Sidebar 
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          activeTab="lideres"
+          setActiveTab={() => {}}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

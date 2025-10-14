@@ -1,16 +1,22 @@
 // supabase/functions/invite_leader/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
+import { handleCorsPreflight, createCorsResponse, createCorsErrorResponse } from '../_shared/cors.ts';
+import { applyRateLimit, RATE_LIMITS } from '../_shared/rateLimiter.ts';
+import { createRequestContext, logSuccess, logError, logWarning } from '../_shared/auditLogger.ts';
 Deno.serve(async (req)=>{
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: corsHeaders
-    });
-  }
+  const origin = req.headers.get('Origin');
+  
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreflight(req);
+  if (preflightResponse) return preflightResponse;
+  
+  // Apply rate limiting
+  const rateLimitResponse = applyRateLimit(req, RATE_LIMITS.INVITE, origin);
+  if (rateLimitResponse) return rateLimitResponse;
+  
+  // Criar contexto de auditoria
+  const auditContext = createRequestContext(req, 'invite_leader', 'invite_leader');
+  
   let phase = 'start';
   try {
     // ── ENV / CLIENTS ────────────────────────────────────────────────────────
@@ -31,54 +37,41 @@ Deno.serve(async (req)=>{
     phase = 'auth_getUser';
     const { data: me } = await caller.auth.getUser();
     if (!me?.user) {
-      return new Response(JSON.stringify({
-        ok: false,
-        error: 'Unauthorized'
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        },
-        status: 401
-      });
+      logError(auditContext, 401, 'Unauthorized - No user found');
+      return createCorsErrorResponse('Unauthorized', 401, origin);
     }
+    
+    // Atualizar contexto de auditoria com informações do usuário
+    auditContext.userId = me.user.id;
+    auditContext.userEmail = me.user.email;
+    
     phase = 'check_admin';
     {
       const { data: profile, error: profErr } = await admin.from('profiles').select('role').eq('id', me.user.id).single();
       if (profErr) throw new Error('profiles read failed: ' + profErr.message);
       if (!profile || profile.role !== 'ADMIN') {
-        return new Response(JSON.stringify({
-          ok: false,
-          error: 'Forbidden'
-        }), {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          },
-          status: 403
-        });
+        auditContext.userRole = profile?.role || 'unknown';
+        logError(auditContext, 403, 'Forbidden - Not admin', { userRole: profile?.role });
+        return createCorsErrorResponse('Forbidden', 403, origin);
       }
+      
+      auditContext.userRole = profile.role;
     }
     // ── INPUT ────────────────────────────────────────────────────────────────
     phase = 'parse_body';
     const body = await req.json();
     if (!body?.full_name || !body?.email) {
-      return new Response(JSON.stringify({
-        ok: false,
-        error: 'Nome e email são obrigatórios'
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        },
-        status: 400
+      logError(auditContext, 400, 'Missing required fields', { 
+        hasFullName: !!body?.full_name, 
+        hasEmail: !!body?.email 
       });
+      return createCorsErrorResponse('Nome e email são obrigatórios', 400, origin);
     }
     // origem para links
     phase = 'origin';
-    const origin = body.appUrl || req.headers.get('origin') || (req.headers.get('referer')?.split('/').slice(0, 3).join('/') ?? '');
-    const redirectTo = `${origin}/convite`;
-    const fallbackUrl = `${origin}/convite`;
+    const appOrigin = body.appUrl || req.headers.get('origin') || (req.headers.get('referer')?.split('/').slice(0, 3).join('/') ?? '');
+    const redirectTo = `${appOrigin}/convite`;
+    const fallbackUrl = `${appOrigin}/convite`;
     // ── CRIAR / LOCALIZAR USUÁRIO (AUTH) ────────────────────────────────────
     let userId = '';
     let status = 'INVITED';
@@ -94,28 +87,93 @@ Deno.serve(async (req)=>{
       }
     });
     if (createErr) {
-      // === Usuário já existe (mantemos o comportamento antigo) ===
+      // === Usuário já existe ou erro na criação ===
       phase = 'get_user_by_email';
       const { data: got } = await admin.auth.admin.getUserByEmail(body.email);
-      if (!got?.user) throw new Error('Falha ao criar e também não encontrei usuário: ' + createErr.message);
-      userId = got.user.id;
-      status = 'USER_EXISTS';
-      phase = 'send_recovery';
-      const { data: rec, error: recErr } = await admin.auth.admin.generateLink({
-        type: 'recovery',
-        email: body.email,
-        options: {
-          redirectTo
+      if (!got?.user) {
+        // Se não encontrou o usuário, pode ser que ele foi removido
+        // Vamos tentar criar novamente com um método diferente
+        phase = 'retry_create_user';
+        const { data: retryCreated, error: retryErr } = await admin.auth.admin.createUser({
+          email: body.email,
+          email_confirm: false,
+          user_metadata: {
+            full_name: body.full_name,
+            phone: body.phone ?? null
+          }
+        });
+        if (retryErr) {
+          throw new Error('Falha ao criar usuário: ' + retryErr.message);
         }
-      });
-      if (recErr) {
-        emailStatus = 'failed';
-        console.error('recovery error:', recErr);
+        userId = retryCreated.user.id;
+        status = 'INVITED';
       } else {
-        emailStatus = 'sent';
-        acceptUrl = rec?.properties?.action_link ?? fallbackUrl;
+        userId = got.user.id;
+        status = 'USER_EXISTS';
       }
-    // ⚠️ Como você pediu: NÃO grava no schema no ramo USER_EXISTS.
+      
+      // Enviar email apropriado baseado no status
+      if (status === 'USER_EXISTS') {
+        phase = 'send_recovery';
+        const { data: rec, error: recErr } = await admin.auth.admin.generateLink({
+          type: 'recovery',
+          email: body.email,
+          options: {
+            redirectTo
+          }
+        });
+        if (recErr) {
+          emailStatus = 'failed';
+          console.error('recovery error:', recErr);
+        } else {
+          emailStatus = 'sent';
+          acceptUrl = rec?.properties?.action_link ?? fallbackUrl;
+        }
+      } else {
+        // Usuário recriado, enviar convite
+        phase = 'send_invite_retry';
+        const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(body.email, {
+          redirectTo,
+          data: {
+            full_name: body.full_name
+          }
+        });
+        if (inviteErr) {
+          emailStatus = 'failed';
+          console.error('invite error:', inviteErr);
+        } else {
+          emailStatus = 'sent';
+          acceptUrl = invited?.properties?.action_link ?? fallbackUrl;
+        }
+      }
+      
+      // Criar/atualizar registros nas tabelas
+      phase = 'upserts_existing_user';
+      await admin.from('profiles').upsert({
+        id: userId,
+        email: body.email,
+        role: 'LEADER',
+        full_name: body.full_name
+      });
+      await admin.from('leader_profiles').upsert({
+        id: userId,
+        email: body.email,
+        phone: body.phone ?? null,
+        birth_date: body.birth_date ?? null,
+        gender: body.gender ?? null,
+        cep: body.cep ?? null,
+        street: body.street ?? null,
+        number: body.number ?? null,
+        complement: body.complement ?? null,
+        neighborhood: body.neighborhood ?? null,
+        city: body.city ?? null,
+        state: body.state ?? null,
+        notes: body.notes ?? null,
+        goal: body.goal ?? null,
+        latitude: body.latitude ?? null,
+        longitude: body.longitude ?? null,
+        status: 'PENDING'
+      });
     } else {
       // === Criado agora (comportamento antigo) — *Apenas* ajuste de email no profiles ===
       userId = created.user.id;
@@ -176,32 +234,29 @@ Deno.serve(async (req)=>{
       });
     }
     // ── OK ───────────────────────────────────────────────────────────────────
-    return new Response(JSON.stringify({
+    logSuccess(auditContext, 200, {
+      status,
+      userId,
+      emailStatus,
+      targetEmail: body.email,
+      targetName: body.full_name
+    });
+    
+    return createCorsResponse({
       ok: true,
       acceptUrl,
       status,
       userId,
       emailStatus,
       message: status === 'USER_EXISTS' ? 'Usuário já existe — link de recuperação enviado.' : 'Convite enviado com sucesso!'
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
-      status: 200
-    });
+    }, 200, origin);
   } catch (err) {
     console.error('invite_leader error phase=', phase, 'msg=', err?.message);
-    return new Response(JSON.stringify({
-      ok: false,
-      phase,
-      error: err?.message ?? 'Erro interno'
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      },
-      status: 500
-    });
+    logError(auditContext, 500, err?.message ?? 'Erro interno', { phase });
+    return createCorsErrorResponse(
+      err?.message ?? 'Erro interno', 
+      500, 
+      origin
+    );
   }
 });

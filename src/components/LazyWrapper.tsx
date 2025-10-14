@@ -1,4 +1,4 @@
-import React, { Suspense, ComponentType, ReactNode } from 'react';
+import React, { Suspense, ComponentType, ReactNode, useState, useEffect } from 'react';
 import LoadingSpinner from './ui/loading-spinner';
 
 interface LazyWrapperProps {
@@ -13,16 +13,28 @@ export function LazyWrapper({
   fallback, 
   delay = 200 
 }: LazyWrapperProps) {
+  const [showFallback, setShowFallback] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowFallback(true);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [delay]);
+
   return (
     <Suspense 
       fallback={
-        fallback || (
-          <LoadingSpinner 
-            size="lg" 
-            text="Carregando..." 
-            className="min-h-96"
-          />
-        )
+        showFallback ? (
+          fallback || (
+            <LoadingSpinner 
+              size="lg" 
+              text="Carregando..." 
+              className="min-h-96"
+            />
+          )
+        ) : null
       }
     >
       {children}

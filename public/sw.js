@@ -1,8 +1,8 @@
 // Service Worker para PWA - Gestão Política
-const CACHE_NAME = 'gestao-politica-v1.0.0';
-const STATIC_CACHE = 'static-v1.0.0';
-const DYNAMIC_CACHE = 'dynamic-v1.0.0';
-const API_CACHE = 'api-v1.0.0';
+const CACHE_NAME = 'gestao-politica-v1.0.2';
+const STATIC_CACHE = 'static-v1.0.2';
+const DYNAMIC_CACHE = 'dynamic-v1.0.2';
+const API_CACHE = 'api-v1.0.2';
 
 // Arquivos estáticos para cache
 const STATIC_FILES = [
@@ -59,7 +59,7 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            // Remove caches antigos
+            // Remove TODOS os caches antigos (incluindo versões anteriores)
             if (cacheName !== STATIC_CACHE && 
                 cacheName !== DYNAMIC_CACHE && 
                 cacheName !== API_CACHE) {
@@ -69,10 +69,24 @@ self.addEventListener('activate', (event) => {
           })
         );
       })
-      .then(() => {
-        console.log('[SW] Service Worker ativado!');
-        return self.clients.claim();
-      })
+             .then(() => {
+               console.log('[SW] Service Worker ativado! Limpando cache antigo...');
+               // Força limpeza de todos os caches antigos
+               return Promise.all([
+                 caches.delete('gestao-politica-v1.0.0'),
+                 caches.delete('gestao-politica-v1.0.1'),
+                 caches.delete('static-v1.0.0'),
+                 caches.delete('static-v1.0.1'),
+                 caches.delete('dynamic-v1.0.0'),
+                 caches.delete('dynamic-v1.0.1'),
+                 caches.delete('api-v1.0.0'),
+                 caches.delete('api-v1.0.1')
+               ]);
+             })
+             .then(() => {
+               console.log('[SW] Cache antigo removido com sucesso!');
+               return self.clients.claim();
+             })
   );
 });
 
@@ -309,4 +323,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] Service Worker carregado!');
+console.log('[SW] Service Worker carregado! Versão 1.0.2 - Cache limpo!');

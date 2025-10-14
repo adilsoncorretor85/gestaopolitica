@@ -1,4 +1,4 @@
-import { devLog } from '@/lib/logger';
+import { devLog, logger } from '@/lib/logger';
 import { loadGoogleMaps } from '@/lib/googleMaps';
 import type { AddressParts } from '@/components/AddressAutocomplete';
 
@@ -32,7 +32,7 @@ export async function reverseGeocode(
             resolve(addressParts);
           } else {
             if (import.meta.env.DEV) {
-              console.error('Erro no reverse geocoding:', status);
+              logger.error('Erro no reverse geocoding:', status);
             }
             reject(new Error(`Erro ao converter coordenadas em endereço: ${status}`));
           }
@@ -41,7 +41,7 @@ export async function reverseGeocode(
     });
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('Erro ao fazer reverse geocoding:', error);
+      logger.error('Erro ao fazer reverse geocoding:', error);
     }
     throw error;
   }
@@ -93,7 +93,7 @@ export async function geocodeAddress(address: {
             });
           } else {
             if (import.meta.env.DEV) {
-              console.error('Erro no geocoding:', status);
+              logger.error('Erro no geocoding:', status);
             }
             resolve(null);
           }
@@ -102,7 +102,7 @@ export async function geocodeAddress(address: {
     });
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.error('Erro ao fazer geocoding:', error);
+      logger.error('Erro ao fazer geocoding:', error);
     }
     return null;
   }

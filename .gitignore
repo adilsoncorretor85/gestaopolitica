@@ -16,6 +16,10 @@ dist-ssr
 src/**/*.js
 src/**/*.d.ts
 src/**/*.js.map
+*.tsbuildinfo
+
+# Backups
+backups/
 
 # Editor directories and files
 .vscode/*
@@ -32,3 +36,11 @@ src/**/*.js.map
 
 # Local Netlify folder
 .netlify
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Test coverage
+coverage/
+.nyc_output/

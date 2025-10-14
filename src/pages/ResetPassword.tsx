@@ -13,7 +13,7 @@ export default function ResetPassword() {
     setMsg(null);
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/definir-senha`,
+      redirectTo: `${window.location.origin}/convite`,
     });
     setLoading(false);
     if (error) setErr(error.message);

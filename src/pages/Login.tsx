@@ -37,7 +37,7 @@ export default function Login() {
         if (!error) {
           // se veio de convite ou recuperação, peça para definir senha
           if (type === 'invite' || type === 'recovery') {
-            navigate('/definir-senha', { replace: true });
+            navigate('/convite', { replace: true });
           } else {
             navigate('/dashboard', { replace: true });
           }

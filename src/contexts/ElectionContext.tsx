@@ -42,7 +42,7 @@ export function ElectionProvider({
             scope_city: publicSettings.scope_city || null,
             scope_city_ibge: publicSettings.scope_city_ibge || null,
             uf: publicSettings.scope_state || null, // Mapear scope_state para uf
-            city: publicSettings.scope_city, // Mapear scope_city para city
+            city: publicSettings.scope_city || null, // Mapear scope_city para city
             created_at: publicSettings.created_at,
             updated_at: publicSettings.updated_at,
           };

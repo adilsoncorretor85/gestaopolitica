@@ -154,6 +154,198 @@ O projeto estará disponível em `http://localhost:5173`
 2. **Configure domínios permitidos**
 3. **Adicione a chave no .env**
 
+### Edge Functions Setup
+
+As Edge Functions agora suportam CORS dinâmico baseado em variáveis de ambiente:
+
+#### Variáveis de Ambiente (Edge Functions)
+
+```bash
+# CORS - URLs permitidas (separadas por vírgula)
+ALLOWED_ORIGINS=https://app.gabitechnology.cloud,http://localhost:5173,http://127.0.0.1:5173
+
+# URL padrão para fallback
+DEFAULT_ORIGIN=https://app.gabitechnology.cloud
+```
+
+#### Configuração no Supabase
+
+1. **Acesse o Dashboard do Supabase**
+2. **Vá para Edge Functions → Settings**
+3. **Adicione as variáveis de ambiente**:
+   - `ALLOWED_ORIGINS`: Lista de URLs permitidas
+   - `DEFAULT_ORIGIN`: URL padrão para fallback
+
+#### Exemplo de Configuração
+
+```bash
+# Para desenvolvimento local
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DEFAULT_ORIGIN=http://localhost:5173
+
+# Para produção
+ALLOWED_ORIGINS=https://app.gabitechnology.cloud,https://gestaopolitica.com.br
+DEFAULT_ORIGIN=https://app.gabitechnology.cloud
+```
+
+### Monitoramento e Healthcheck
+
+O sistema inclui endpoints de monitoramento para verificar a saúde das Edge Functions:
+
+#### Endpoints Disponíveis
+
+- **`/functions/v1/ping`** - Ping simples para verificar se a função está respondendo
+- **`/functions/v1/health`** - Healthcheck completo com status de serviços
+- **`/functions/v1/status`** - Status de todas as Edge Functions
+
+#### Exemplo de Uso
+
+```bash
+# Ping simples
+curl https://seu-projeto.supabase.co/functions/v1/ping
+
+# Healthcheck completo
+curl https://seu-projeto.supabase.co/functions/v1/health
+
+# Status de todas as funções
+curl https://seu-projeto.supabase.co/functions/v1/status
+```
+
+#### Resposta do Healthcheck
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "version": "1.0.0",
+  "environment": "production",
+  "services": {
+    "database": "up",
+    "auth": "up",
+    "storage": "up"
+  },
+  "uptime": 1234567,
+  "memory": {
+    "used": 45,
+    "total": 128,
+    "percentage": 35
+  },
+  "responseTime": 150
+}
+```
+
+### Rate Limiting
+
+O sistema inclui proteção contra spam e ataques de força bruta através de rate limiting:
+
+#### Configurações de Rate Limiting
+
+- **Geral**: 100 requests por 15 minutos
+- **Convites**: 10 requests por hora (por IP)
+- **Admin**: 50 requests por 5 minutos (por token + IP)
+- **Ban/Unban**: 5 requests por hora (por token + IP)
+
+#### Headers de Rate Limiting
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1642248000
+Retry-After: 300
+```
+
+#### Resposta de Rate Limit Excedido
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "message": "Too many requests. Please try again later.",
+  "retryAfter": 300,
+  "resetTime": "2024-01-15T11:00:00.000Z"
+}
+```
+
+### Sistema de Auditoria
+
+O sistema inclui um sistema de auditoria aprimorado para monitoramento e rastreamento de atividades:
+
+#### Endpoint de Logs de Auditoria
+
+- **`/functions/v1/audit-logs`** - Visualizar logs de auditoria (apenas admin)
+
+#### Exemplo de Uso
+
+```bash
+# Obter logs recentes
+curl -H "Authorization: Bearer <token>" \
+  https://seu-projeto.supabase.co/functions/v1/audit-logs
+
+# Filtrar por severidade
+curl -H "Authorization: Bearer <token>" \
+  "https://seu-projeto.supabase.co/functions/v1/audit-logs?severity=error"
+
+# Filtrar por função
+curl -H "Authorization: Bearer <token>" \
+  "https://seu-projeto.supabase.co/functions/v1/audit-logs?function=invite_leader"
+```
+
+#### Estrutura dos Logs
+
+```json
+{
+  "success": true,
+  "data": {
+    "logs": [
+      {
+        "id": "req_1642248000_abc123",
+        "timestamp": "2024-01-15T10:30:00.000Z",
+        "function": "invite_leader",
+        "action": "invite_leader",
+        "userId": "user-uuid",
+        "userEmail": "admin@example.com",
+        "userRole": "ADMIN",
+        "ip": "192.168.1.1",
+        "userAgent": "Mozilla/5.0...",
+        "requestId": "req_1642248000_abc123",
+        "method": "POST",
+        "endpoint": "/functions/v1/invite_leader",
+        "statusCode": 200,
+        "responseTime": 150,
+        "metadata": {
+          "status": "NEW_USER",
+          "targetEmail": "leader@example.com",
+          "targetName": "João Silva"
+        },
+        "severity": "info"
+      }
+    ],
+    "stats": {
+      "totalLogs": 1250,
+      "bySeverity": {
+        "info": 1000,
+        "warn": 200,
+        "error": 45,
+        "critical": 5
+      },
+      "byFunction": {
+        "invite_leader": 500,
+        "admin_ban_user": 100,
+        "leader_actions": 300
+      },
+      "averageResponseTime": 120,
+      "errorRate": 4
+    }
+  }
+}
+```
+
+#### Níveis de Severidade
+
+- **info**: Operações normais e bem-sucedidas
+- **warn**: Situações que requerem atenção
+- **error**: Erros que não impedem o funcionamento
+- **critical**: Erros críticos que afetam o sistema
+
 ### Estrutura do Banco
 
 ```sql
@@ -272,9 +464,9 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 ## 👨‍💻 Desenvolvido por
 
 **Vereador Wilian Tonezi - PL**
-- 📧 Email: contato@wiliantonezi.com.br
-- 🌐 Website: [wiliantonezi.com.br](https://wiliantonezi.com.br)
-- 📱 WhatsApp: [Contato](https://wa.me/5547999999999)
+- 📧 Email: tonezivereador@gmail.com
+- 🌐 Website: [tonezi.com.br](https://tonezi.com.br)
+- 📱 WhatsApp: [Contato](https://wa.me/554797238106)
 
 ---
 

@@ -1,4 +1,4 @@
-import { devLog } from '@/lib/logger';
+import { devLog, logger } from '@/lib/logger';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase } from '@/lib/supabaseClient';
@@ -345,7 +345,7 @@ export default function Mapa() {
         setLoading(false);
       } catch (e: any) {
         if (!cancelled) {
-          console.error('Erro ao criar mapa:', e);
+          logger.error('Erro ao criar mapa:', e);
           setError(e?.message ?? 'Falha ao criar o mapa.');
           setLoading(false);
         }
@@ -390,7 +390,7 @@ export default function Mapa() {
         const tags = await tagsService.getAvailableTags();
         setAvailableTags(tags);
       } catch (error) {
-        console.error('[MAP] Erro ao carregar tags:', error);
+        logger.error('[MAP] Erro ao carregar tags:', error);
       } finally {
         setLoadingTags(false);
       }
@@ -476,7 +476,7 @@ export default function Mapa() {
             return true;
           });
         } catch (error) {
-          console.error('[MAP] Erro na busca com tags:', error);
+          logger.error('[MAP] Erro na busca com tags:', error);
           peopleErr = error;
           peopleData = [];
         }
@@ -534,7 +534,7 @@ export default function Mapa() {
         peopleData = result.data || [];
         peopleErr = result.error;
       }
-      if (peopleErr) console.error("[MAP] erro pessoas:", peopleErr);
+      if (peopleErr) logger.error("[MAP] erro pessoas:", peopleErr);
       
       devLog("[MAP] Pessoas encontradas:", peopleData?.length || 0);
       if (peopleData && peopleData.length > 0) {
@@ -617,7 +617,7 @@ export default function Mapa() {
         if (selectedCityKey) leadersQuery = leadersQuery.ilike("city", `%${selectedCityKey}%`);
 
         const { data: leadersRaw, error: leadersErr } = await leadersQuery;
-        if (leadersErr) console.error("[MAP] erro leaders:", leadersErr);
+        if (leadersErr) logger.error("[MAP] erro leaders:", leadersErr);
 
         // Mapear dados sem filtro adicional de cidade
         leaders = (leadersRaw ?? [])
@@ -700,7 +700,7 @@ export default function Mapa() {
     }
 
     fetchAndDraw().catch(err => {
-      console.error("Erro ao carregar dados do mapa:", err);
+      logger.error("Erro ao carregar dados do mapa:", err);
       setError("Falha ao carregar dados do mapa.");
     });
 
