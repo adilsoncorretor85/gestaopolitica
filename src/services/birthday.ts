@@ -43,7 +43,8 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         profiles(full_name)
       `)
       .not('birth_date', 'is', null)
-      .eq('status', 'ACTIVE');
+      .eq('status', 'ACTIVE')
+      .limit(1000);
 
     // Buscar pessoas (contatos) que fazem aniversário hoje
     const { data: peopleData, error: peopleError } = await supabase
@@ -59,7 +60,8 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         full_name,
         treatment
       `)
-      .not('birth_date', 'is', null);
+      .not('birth_date', 'is', null)
+      .limit(1000);
 
     if (leadersError) {
       console.error('❌ [getTodayBirthdays] Erro ao buscar líderes aniversariantes:', leadersError);
@@ -185,7 +187,8 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         profiles(full_name)
       `)
       .not('birth_date', 'is', null)
-      .eq('status', 'ACTIVE');
+      .eq('status', 'ACTIVE')
+      .limit(1000);
 
     // Buscar pessoas (contatos)
     const { data: peopleData, error: peopleError } = await supabase
@@ -201,7 +204,8 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         full_name,
         treatment
       `)
-      .not('birth_date', 'is', null);
+      .not('birth_date', 'is', null)
+      .limit(1000);
 
     if (leadersError) {
       console.error('Erro ao buscar líderes próximos aniversariantes:', leadersError);
