@@ -31,9 +31,10 @@
       form-action 'self';
       frame-ancestors 'none';
 
-      connect-src 'self' https://*.supabase.co https://*.supabase.in https://maps.googleapis.com https://servicodados.ibge.gov.br;
-      img-src 'self' data: https://*.googleapis.com https://*.gstatic.com;
+      connect-src 'self' https://*.supabase.co https://*.supabase.in https://maps.googleapis.com https://servicodados.ibge.gov.br wss://*.supabase.co;
+      img-src 'self' data: https://*.googleapis.com https://*.gstatic.com blob:;
       font-src 'self' data: https://*.gstatic.com;
       style-src 'self' 'unsafe-inline';
-      script-src 'self' https://maps.googleapis.com https://*.gstatic.com;
+      script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://*.gstatic.com;
+      worker-src 'self' blob:;
     '''
