@@ -1,106 +1,56 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 export default defineConfig({
   plugins: [
-    react(),
-    // Sentry plugin apenas em produção
-    ...(process.env.NODE_ENV === 'production' ? [
-      sentryVitePlugin({
-        org: process.env.SENTRY_ORG,
-        project: process.env.SENTRY_PROJECT,
-        authToken: process.env.SENTRY_AUTH_TOKEN,
-        sourcemaps: {
-          assets: "./dist/**",
-        },
-      })
-    ] : [])
+    react({
+      // Configuração mais conservadora do React
+      jsxRuntime: 'automatic',
+      jsxImportSource: 'react',
+    }),
   ],
-  envDir: __dirname,   // <- força Vite a ler .env da pasta do projeto
+  envDir: __dirname,
   server: {
-    host: '127.0.0.1',  // Força IPv4
+    host: '127.0.0.1',
     port: 5173,
-    strictPort: true,   // Falha se a porta estiver ocupada
+    strictPort: true,
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
-    dedupe: ['react', 'react-dom'], // Evitar múltiplas instâncias do React
+    // Remover dedupe que pode causar problemas
   },
   define: {
-    // Garantir que React seja tratado corretamente
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'recharts'], // Forçar inclusão de dependências críticas
-    exclude: [], // Não excluir nada
+    include: ['react', 'react-dom'],
+    force: true, // Forçar re-otimização
   },
   build: {
-    sourcemap: false,               // Desabilitar sourcemap em produção para evitar problemas
+    sourcemap: false,
     minify: 'esbuild',
-    chunkSizeWarningLimit: 1000, // Aumentar limite para 1MB
-    target: 'es2020', // Otimizar para browsers modernos
-    cssCodeSplit: true, // Separar CSS em chunks
-    commonjsOptions: {
-      include: [/node_modules/],
-    },
+    chunkSizeWarningLimit: 1000,
+    target: 'es2020',
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // Vendor chunks simplificados para evitar problemas
-          if (id.includes('node_modules')) {
-            // Manter React junto com outros vendors para evitar problemas de referência
-            if (id.includes('react') || id.includes('react-dom') || id.includes('@supabase')) {
-              return 'vendor';
-            }
-            if (id.includes('@radix-ui') || id.includes('lucide-react')) {
-              return 'ui-components';
-            }
-            if (id.includes('@googlemaps') || id.includes('@react-google-maps')) {
-              return 'maps';
-            }
-            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
-              return 'forms';
-            }
-            if (id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
-              return 'utils';
-            }
-            if (id.includes('framer-motion')) {
-              return 'animations';
-            }
-            if (id.includes('recharts')) {
-              return 'charts';
-            }
-            // Outros vendor libraries
-            return 'vendor';
-          }
-          
-          // Chunks por funcionalidade
-          if (id.includes('/pages/')) {
-            const pageName = id.split('/pages/')[1].split('/')[0];
-            return `page-${pageName}`;
-          }
-          
-          if (id.includes('/components/forms/')) {
-            return 'forms-components';
-          }
-          
-          if (id.includes('/components/modals/')) {
-            return 'modals';
-          }
-          
-          if (id.includes('/services/')) {
-            return 'services';
-          }
+        // Chunking mais simples e conservador
+        manualChunks: {
+          // Chunk único para vendors principais
+          vendor: ['react', 'react-dom', '@supabase/supabase-js'],
+          // Chunk para UI components
+          'ui-components': ['@radix-ui/react-dropdown-menu', '@radix-ui/react-label', '@radix-ui/react-slot', 'lucide-react'],
+          // Chunk para forms
+          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+          // Chunk para charts
+          charts: ['recharts'],
+          // Chunk para maps
+          maps: ['@googlemaps/js-api-loader', '@react-google-maps/api'],
         },
-        // Otimizar nomes dos chunks
-        chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk';
-          return `js/[name]-[hash].js`;
-        },
+        chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.');
@@ -114,6 +64,6 @@ export default defineConfig({
     },
   },
   esbuild: {
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [], // remove console.* e debugger apenas em produção
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
   },
 });
