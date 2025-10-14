@@ -30,6 +30,10 @@ export default defineConfig({
     },
     dedupe: ['react', 'react-dom'], // Evitar múltiplas instâncias do React
   },
+  define: {
+    // Garantir que React seja tratado corretamente
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+  },
   optimizeDeps: {
     include: ['react', 'react-dom', 'recharts'], // Forçar inclusão de dependências críticas
     exclude: [], // Não excluir nada
@@ -40,16 +44,17 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000, // Aumentar limite para 1MB
     target: 'es2020', // Otimizar para browsers modernos
     cssCodeSplit: true, // Separar CSS em chunks
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Vendor chunks otimizados
+          // Vendor chunks simplificados para evitar problemas
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@supabase')) {
-              return 'supabase';
+            // Manter React junto com outros vendors para evitar problemas de referência
+            if (id.includes('react') || id.includes('react-dom') || id.includes('@supabase')) {
+              return 'vendor';
             }
             if (id.includes('@radix-ui') || id.includes('lucide-react')) {
               return 'ui-components';
