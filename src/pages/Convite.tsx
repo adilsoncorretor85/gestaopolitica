@@ -164,6 +164,11 @@ export default function Convite() {
               value={pwd}
               onChange={(e) => setPwd(e.target.value)}
               placeholder="Crie uma senha (mínimo 6 caracteres)"
+              autoComplete="new-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+              inputMode="text"
             />
           </div>
 
@@ -177,6 +182,11 @@ export default function Convite() {
               value={pwd2}
               onChange={(e) => setPwd2(e.target.value)}
               placeholder="Repita a senha"
+              autoComplete="new-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+              inputMode="text"
             />
           </div>
 
