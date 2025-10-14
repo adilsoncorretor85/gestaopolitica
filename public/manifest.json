@@ -1,7 +1,7 @@
 {
-  "name": "Gestão Política - Vereador Wilian Tonezi",
+  "name": "Gestão Política - Wilian Tonezi 2026",
   "short_name": "GestãoPol",
-  "description": "Sistema completo para gestão de campanhas políticas do Vereador Wilian Tonezi - PL",
+  "description": "Sistema completo para gestão de campanhas políticas - Wilian Tonezi 2026",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -9,13 +9,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/logo_tonezi.png",
+      "src": "/logo_tonezi.png?v=2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo_tonezi.png",
+      "src": "/logo_tonezi.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
