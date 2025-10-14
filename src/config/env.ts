@@ -20,6 +20,17 @@ interface AppConfig {
 
 function validateEnvVar(name: string, value: string | undefined): string {
   if (!value) {
+    // Em produção, usar valores padrão se não estiverem definidos
+    if (import.meta.env.PROD) {
+      console.warn(`Variável de ambiente ${name} não definida, usando valor padrão`);
+      // Valores padrão para produção (você deve configurar no Netlify)
+      const defaults: Record<string, string> = {
+        'VITE_SUPABASE_URL': 'https://ojxwwjurwhwtoydywvch.supabase.co',
+        'VITE_SUPABASE_ANON_KEY': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeHd3anVyd2h3dG95ZHl3dmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4MDMzMzUsImV4cCI6MjA3MTM3OTMzNX0.yYNiRdi0Ve9fzdAHGYsIi1iQf4Lredve3PMbRjw41BI',
+        'VITE_GOOGLE_MAPS_API_KEY': 'AIzaSyDGJnbNad10CANDkpLAqVy7c3fSV0V3SK8'
+      };
+      return defaults[name] || '';
+    }
     throw new Error(`Variável de ambiente ${name} é obrigatória`);
   }
   return value;

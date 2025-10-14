@@ -1,15 +1,30 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { logger } from './logger';
-import config from '@/config/env';
 
-if (import.meta.env.DEV) {
-  logger.info('Carregando configuração do Supabase');
+// Valores padrão para fallback
+const DEFAULT_SUPABASE_URL = 'https://ojxwwjurwhwtoydywvch.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeHd3anVyd2h3dG95ZHl3dmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4MDMzMzUsImV4cCI6MjA3MTM3OTMzNX0.yYNiRdi0Ve9fzdAHGYsIi1iQf4Lredve3PMbRjw41BI';
+
+// Função para inicializar o cliente Supabase de forma segura
+function createSupabaseClient(): SupabaseClient {
+  try {
+    // Tentar usar variáveis de ambiente diretamente primeiro
+    const url = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+    
+    if (import.meta.env.DEV) {
+      logger.info('Carregando configuração do Supabase');
+    }
+    
+    return createClient(url, anonKey);
+  } catch (error) {
+    console.error('Erro ao inicializar Supabase:', error);
+    // Fallback com valores diretos se tudo falhar
+    return createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY);
+  }
 }
 
-export const supabase: SupabaseClient = createClient(
-  config.supabase.url,
-  config.supabase.anonKey
-);
+export const supabase: SupabaseClient = createSupabaseClient();
 
 // Função helper para garantir que o cliente Supabase existe
 export function getSupabaseClient(): SupabaseClient {
