@@ -11,7 +11,6 @@ export type BirthdayPerson = {
   neighborhood: string | null;
   city: string | null;
   state: string | null;
-  treatment: string | null;
 };
 
 /**
@@ -38,9 +37,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         phone,
         neighborhood,
         city,
-        state,
-        treatment,
-        profiles(full_name)
+        state
       `)
       .not('birth_date', 'is', null)
       .eq('status', 'ACTIVE')
@@ -57,8 +54,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         neighborhood,
         city,
         state,
-        full_name,
-        treatment
+        full_name
       `)
       .not('birth_date', 'is', null)
       .limit(1000);
@@ -71,11 +67,27 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
       console.error('❌ [getTodayBirthdays] Erro ao buscar pessoas aniversariantes:', peopleError);
     }
 
+    // Buscar nomes dos líderes separadamente
+    const leaderIds = (leadersData || []).map(l => l.id);
+    let leaderNames: Record<string, string> = {};
+    
+    if (leaderIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', leaderIds);
+      
+      leaderNames = (profilesData || []).reduce((acc, profile) => {
+        acc[profile.id] = profile.full_name || '';
+        return acc;
+      }, {} as Record<string, string>);
+    }
+
     // Combinar dados de líderes e pessoas
     const allData = [
       ...(leadersData || []).map(leader => ({
         ...leader,
-        full_name: leader.profiles?.full_name || '',
+        full_name: leaderNames[leader.id] || '',
         phone: leader.phone
       })),
       ...(peopleData || []).map(person => ({
@@ -148,7 +160,6 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
           neighborhood: person.neighborhood,
           city: person.city,
           state: person.state,
-          treatment: person.treatment || null,
         };
       });
 
@@ -182,9 +193,7 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         phone,
         neighborhood,
         city,
-        state,
-        treatment,
-        profiles(full_name)
+        state
       `)
       .not('birth_date', 'is', null)
       .eq('status', 'ACTIVE')
@@ -201,8 +210,7 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         neighborhood,
         city,
         state,
-        full_name,
-        treatment
+        full_name
       `)
       .not('birth_date', 'is', null)
       .limit(1000);
@@ -215,11 +223,27 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
       console.error('Erro ao buscar pessoas próximos aniversariantes:', peopleError);
     }
 
+    // Buscar nomes dos líderes separadamente
+    const leaderIds = (leadersData || []).map(l => l.id);
+    let leaderNames: Record<string, string> = {};
+    
+    if (leaderIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', leaderIds);
+      
+      leaderNames = (profilesData || []).reduce((acc, profile) => {
+        acc[profile.id] = profile.full_name || '';
+        return acc;
+      }, {} as Record<string, string>);
+    }
+
     // Combinar dados de líderes e pessoas
     const allData = [
       ...(leadersData || []).map(leader => ({
         ...leader,
-        full_name: leader.profiles?.full_name || '',
+        full_name: leaderNames[leader.id] || '',
         phone: leader.phone
       })),
       ...(peopleData || []).map(person => ({
@@ -268,7 +292,6 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
           neighborhood: person.neighborhood,
           city: person.city,
           state: person.state,
-          treatment: person.treatment || null,
         });
       }
     });
