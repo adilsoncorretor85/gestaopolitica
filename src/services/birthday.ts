@@ -40,7 +40,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
         city,
         state,
         treatment,
-        profiles!inner(full_name)
+        profiles(full_name)
       `)
       .not('birth_date', 'is', null)
       .eq('status', 'ACTIVE');
@@ -73,16 +73,7 @@ export async function getTodayBirthdays(): Promise<BirthdayPerson[]> {
     const allData = [
       ...(leadersData || []).map(leader => ({
         ...leader,
-        full_name: (() => {
-          if (Array.isArray(leader.profiles)) {
-            return leader.profiles[0]?.full_name || '';
-          }
-          if (leader.profiles && typeof leader.profiles === 'object' && 'full_name' in leader.profiles) {
-            const fullName = (leader.profiles as any).full_name;
-            return typeof fullName === 'string' ? fullName : '';
-          }
-          return '';
-        })(),
+        full_name: leader.profiles?.full_name || '',
         phone: leader.phone
       })),
       ...(peopleData || []).map(person => ({
@@ -191,7 +182,7 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
         city,
         state,
         treatment,
-        profiles!inner(full_name)
+        profiles(full_name)
       `)
       .not('birth_date', 'is', null)
       .eq('status', 'ACTIVE');
@@ -224,16 +215,7 @@ export async function getUpcomingBirthdays(days: number = 7): Promise<BirthdayPe
     const allData = [
       ...(leadersData || []).map(leader => ({
         ...leader,
-        full_name: (() => {
-          if (Array.isArray(leader.profiles)) {
-            return leader.profiles[0]?.full_name || '';
-          }
-          if (leader.profiles && typeof leader.profiles === 'object' && 'full_name' in leader.profiles) {
-            const fullName = (leader.profiles as any).full_name;
-            return typeof fullName === 'string' ? fullName : '';
-          }
-          return '';
-        })(),
+        full_name: leader.profiles?.full_name || '',
         phone: leader.phone
       })),
       ...(peopleData || []).map(person => ({
