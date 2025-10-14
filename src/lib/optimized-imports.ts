@@ -197,24 +197,8 @@ export { FixedSizeList as List, VariableSizeList } from 'react-window';
 // React Window Infinite Loader - imports específicos
 export { InfiniteLoader } from 'react-window-infinite-loader';
 
-// Recharts - imports específicos
-export { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area
-} from 'recharts';
+// Recharts - removido para evitar problemas de forwardRef
+// Usar importação direta nos componentes que precisam
 
 // Google Maps - imports específicos
 export { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';

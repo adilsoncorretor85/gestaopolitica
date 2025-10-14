@@ -9,7 +9,17 @@ import {
   listCitiesForFilter, listNeighborhoodGoals, listCityProjection, listNeighborhoodProjection
 } from '@/services/projecoes';
 import { listLeaders } from '@/services/admin';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
+// Importação mais segura do Recharts para evitar problemas de forwardRef
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer, 
+  CartesianGrid 
+} from 'recharts';
 import { Plus, Target, Users, TrendingUp, MapPin, CalendarDays, Edit3, Search } from 'lucide-react';
 import { CityGoalModal, NeighborhoodGoalModal } from '@/components/ProjecaoModals';
 import ElectionSettingsModal from '@/components/modals/ElectionSettingsModal';

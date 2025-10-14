@@ -28,9 +28,14 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
+    dedupe: ['react', 'react-dom'], // Evitar múltiplas instâncias do React
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'recharts'], // Forçar inclusão de dependências críticas
+    exclude: [], // Não excluir nada
   },
   build: {
-    sourcemap: true,               // habilitar sourcemap para debugging
+    sourcemap: false,               // Desabilitar sourcemap em produção para evitar problemas
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000, // Aumentar limite para 1MB
     target: 'es2020', // Otimizar para browsers modernos
@@ -60,6 +65,9 @@ export default defineConfig({
             }
             if (id.includes('framer-motion')) {
               return 'animations';
+            }
+            if (id.includes('recharts')) {
+              return 'charts';
             }
             // Outros vendor libraries
             return 'vendor';

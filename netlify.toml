@@ -23,8 +23,7 @@
     # Permissões do navegador (só libere o que você usa)
     Permissions-Policy = "geolocation=(), microphone=(), camera=(), fullscreen=(self)"
 
-    # CSP alinhada ao seu stack (SPA + Supabase + Google Maps)
-    # Ajuste se adicionar analytics/CDNs.
+    # CSP mais permissiva para resolver problemas de React/Recharts
     Content-Security-Policy = '''
       default-src 'self';
       base-uri 'self';
@@ -38,3 +37,24 @@
       script-src 'self' 'unsafe-eval' 'unsafe-inline' https://maps.googleapis.com https://*.gstatic.com;
       worker-src 'self' blob:;
     '''
+
+# Configurações específicas para Node.js
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
+
+# Configurações de cache
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
