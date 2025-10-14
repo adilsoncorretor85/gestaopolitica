@@ -1,18 +1,9 @@
 import { devLog } from '@/lib/logger';
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Users, Shield, X, MapPin, BarChart3, Tags } from 'lucide-react';
+import { Home, Users, Shield, X, MapPin, BarChart3, Tags } from 'lucide-react';
 import useAuth from '@/hooks/useAuth';
 import { useAccessibility } from '@/hooks/useAccessibility';
-
-// Componente personalizado para o ícone do Dashboard
-const DashboardIcon = () => (
-  <img 
-    src="/logo_tonezi.png" 
-    alt="Dashboard" 
-    className="h-5 w-5 object-contain" 
-  />
-);
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,7 +18,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
   const isAdmin = profile?.role === 'ADMIN';
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: DashboardIcon },
+    { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: Home },
     { id: 'pessoas', label: 'Pessoas', to: '/pessoas', icon: Users },
     { id: 'lideres', label: 'Líderes', to: '/lideres', icon: Shield, onlyAdmin: true },
     { id: 'tags', label: 'Tags', to: '/admin/tags', icon: Tags, onlyAdmin: true },

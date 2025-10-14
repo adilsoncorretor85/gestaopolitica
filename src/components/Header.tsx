@@ -42,8 +42,12 @@ const Header: React.FC<HeaderProps> = ({ profile, sidebarOpen, setSidebarOpen })
               <Menu className="h-6 w-6" />
             </button>
             <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 p-2 rounded-lg" role="img" aria-label="Logo do sistema de gestão política">
-                <Vote className="h-8 w-8 text-white" />
+              <div className="p-1" role="img" aria-label="Logo do Vereador Wilian Tonezi">
+                <img 
+                  src="/logo_tonezi.png" 
+                  alt="Logo Wilian Tonezi" 
+                  className="h-10 w-10 object-contain" 
+                />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -54,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({ profile, sidebarOpen, setSidebarOpen })
                     Gestão Política
                   </button>
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Vereador Wilian Tonezi - PL</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Wilian Tonezi - 2026</p>
               </div>
             </div>
           </div>
