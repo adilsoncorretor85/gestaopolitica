@@ -19,7 +19,7 @@ type UseAuth = {
   refresh: () => Promise<void>;
 };
 
-export default function useAuth(): UseAuth {
+export function useAuth(): UseAuth {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -149,3 +149,6 @@ export default function useAuth(): UseAuth {
     refresh: load,
   };
 }
+
+// Export default para compatibilidade
+export default useAuth;

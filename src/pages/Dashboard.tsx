@@ -97,7 +97,8 @@ export default function DashboardPage() {
       
       // Usar a função real de countdown
       const { loadCountdownData } = await import('@/services/publicSettings');
-      const countdownData = await loadCountdownData();
+      const { getSupabaseClient } = await import('@/lib/supabaseClient');
+      const countdownData = await loadCountdownData(getSupabaseClient());
       
       devLog('🔍 [Dashboard] Dados do countdown carregados:', countdownData);
       

@@ -63,7 +63,7 @@ export async function loadCountdownData(
 
     // 2) fallback RPC
     const { getElectionSettings } = await import('./election');
-    const e = await getElectionSettings(client!);
+    const e = await getElectionSettings(client ?? sbDefault);
     if (e?.election_date) {
       return {
         date: e.election_date,

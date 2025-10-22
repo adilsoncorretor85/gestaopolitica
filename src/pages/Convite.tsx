@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { finalizeInvite } from '@/services/invite';
-import { Vote } from 'lucide-react';
+import { Vote, Eye, EyeOff } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 function useInviteParams() {
@@ -24,6 +24,8 @@ export default function Convite() {
   const [pwd2, setPwd2] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
 
   // 1) Trocar o link por sessão (hash: invite; query: recovery)
   useEffect(() => {
@@ -37,13 +39,48 @@ export default function Convite() {
 
         const typeQuery = query.get('type');
         const code = query.get('code');
+        const token = query.get('token');
 
+        console.log('🔍 Convite: Analisando parâmetros', {
+          typeHash,
+          hasAccessToken: !!at,
+          hasRefreshToken: !!rt,
+          typeQuery,
+          hasCode: !!code,
+          hasToken: !!token,
+          fullUrl: window.location.href
+        });
+
+        // Caso 1: Convite via hash (access_token + refresh_token)
         if (typeHash === 'invite' && at && rt) {
+          console.log('📧 Processando convite via hash');
           const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
           if (error) throw error;
-        } else if (typeQuery === 'recovery' && code) {
+        } 
+        // Caso 2: Recovery via query (type=recovery + code)
+        else if (typeQuery === 'recovery' && code) {
+          console.log('🔑 Processando recovery via code');
           await supabase.auth.exchangeCodeForSession(window.location.href);
-        } else {
+        }
+        // Caso 3: Recovery via query (type=recovery + token) - formato alternativo
+        else if (typeQuery === 'recovery' && token) {
+          console.log('🔑 Processando recovery via token');
+          await supabase.auth.exchangeCodeForSession(window.location.href);
+        }
+        // Caso 4: Tentar processar URL completa (fallback para recovery)
+        else if (window.location.href.includes('type=recovery') || window.location.href.includes('token=')) {
+          console.log('🔑 Processando recovery via URL completa');
+          await supabase.auth.exchangeCodeForSession(window.location.href);
+        }
+        else {
+          console.error('❌ Nenhum parâmetro válido encontrado', {
+            typeHash,
+            typeQuery,
+            hasCode: !!code,
+            hasToken: !!token,
+            hasAccessToken: !!at,
+            hasRefreshToken: !!rt
+          });
           throw new Error('Link de convite inválido ou expirado.');
         }
 
@@ -158,36 +195,66 @@ export default function Convite() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Senha *
             </label>
-            <input
-              type="password"
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={pwd}
-              onChange={(e) => setPwd(e.target.value)}
-              placeholder="Crie uma senha (mínimo 6 caracteres)"
-              autoComplete="new-password"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck="false"
-              inputMode="text"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={pwd}
+                onChange={(e) => setPwd(e.target.value)}
+                placeholder="Crie uma senha (mínimo 6 caracteres)"
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                inputMode="text"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={saving}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Confirmar senha *
             </label>
-            <input
-              type="password"
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={pwd2}
-              onChange={(e) => setPwd2(e.target.value)}
-              placeholder="Repita a senha"
-              autoComplete="new-password"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck="false"
-              inputMode="text"
-            />
+            <div className="relative">
+              <input
+                type={showPassword2 ? "text" : "password"}
+                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={pwd2}
+                onChange={(e) => setPwd2(e.target.value)}
+                placeholder="Repita a senha"
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+                inputMode="text"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword2(!showPassword2)}
+                disabled={saving}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label={showPassword2 ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword2 ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {err && (

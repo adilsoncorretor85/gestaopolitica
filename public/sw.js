@@ -127,7 +127,9 @@ function isAPIRequest(request) {
   const url = new URL(request.url);
   return url.pathname.startsWith('/api/') || 
          url.hostname.includes('supabase.co') ||
-         url.hostname.includes('googleapis.com');
+         url.hostname.includes('googleapis.com') ||
+         url.origin === 'http://127.0.0.1:54321' ||
+         url.origin === 'http://localhost:54321';
 }
 
 // Verificar se é uma requisição de navegação

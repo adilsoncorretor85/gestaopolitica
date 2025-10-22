@@ -305,6 +305,54 @@ export async function deactivateLeader(id: string) {
   }
 }
 
+// Função para obter dados do líder/admin atual (para pré-preenchimento de formulários)
+export async function getCurrentLeaderProfile(): Promise<{ city: string | null; state: string | null } | null> {
+  try {
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return null;
+    }
+
+    // Buscar o perfil do usuário para verificar o role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      logger.error('Erro ao obter perfil do usuário:', profileError);
+      return null;
+    }
+
+    // Se for ADMIN ou LEADER, buscar dados na tabela leader_profiles
+    if (profile?.role === 'ADMIN' || profile?.role === 'LEADER') {
+      const { data: leaderProfile, error } = await supabase
+        .from('leader_profiles')
+        .select('city, state')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        logger.error('Erro ao obter perfil do líder/admin atual:', error);
+        return null;
+      }
+
+      return {
+        city: leaderProfile?.city || null,
+        state: leaderProfile?.state || null
+      };
+    }
+
+    return null;
+  } catch (error) {
+    logger.error('Erro ao obter dados do líder/admin atual:', error);
+    return null;
+  }
+}
+
 // Funções antigas para compatibilidade
 export const listPendingLeaders = () => listLeaders().then(leaders => leaders.filter(l => l.is_pending))
 export const revokeInvite = async (email: string) => {

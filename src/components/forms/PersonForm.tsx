@@ -14,6 +14,7 @@ import MapPicker from '@/components/MapPicker';
 import { useToast } from '@/components/ui/toast';
 import { createPerson, updatePerson, type PersonWithTags, type PersonInsertWithTags, type PersonUpdateWithTags } from '@/services/people';
 import { listLeaders, type LeaderRow } from '@/services/admin';
+import { getCurrentLeaderProfile } from '@/services/leader';
 import { fetchAddressByCep } from '@/services/viacep';
 import { geocodeAddress, reverseGeocode } from '@/services/geocoding';
 import { normalizeTreatment } from '@/lib/treatmentUtils';
@@ -75,6 +76,7 @@ const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormPro
   const [errorCep, setErrorCep] = useState<string | null>(null);
   const [openMap, setOpenMap] = useState(false);
   const [coords, setCoords] = useState<{lat: number; lng: number} | null>(null);
+  const [currentLeaderData, setCurrentLeaderData] = useState<{ city: string | null; state: string | null } | null>(null);
   const cepRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Estados para divulgação progressiva
@@ -89,6 +91,7 @@ const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormPro
       setShowAddressDetails(true);
     }
   }, [showAdvanced]);
+
 
   
   // Estado para tags (removido - não estava sendo usado)
@@ -137,6 +140,31 @@ const PersonForm = memo(function PersonForm({ person, onSuccess }: PersonFormPro
       enabled: !person // Só ativa para novas pessoas (não edição)
     }
   );
+
+  // Carregar dados do líder/admin atual para pré-preenchimento (apenas para novas pessoas)
+  useEffect(() => {
+    const loadCurrentLeaderData = async () => {
+      if (!person && (profile?.role === 'LEADER' || profile?.role === 'ADMIN')) {
+        try {
+          const leaderData = await getCurrentLeaderProfile();
+          if (leaderData) {
+            setCurrentLeaderData(leaderData);
+            // Pré-preencher cidade e estado se disponíveis
+            if (leaderData.city) {
+              setValue('city', leaderData.city);
+            }
+            if (leaderData.state) {
+              setValue('state', leaderData.state);
+            }
+          }
+        } catch (error) {
+          logger.error('Erro ao carregar dados do líder/admin atual:', error);
+        }
+      }
+    };
+
+    loadCurrentLeaderData();
+  }, [person, profile?.role, setValue]);
 
   // Monitorar mudanças no CEP e buscar endereço automaticamente
   useEffect(() => {

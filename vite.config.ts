@@ -12,9 +12,14 @@ export default defineConfig({
   ],
   envDir: __dirname,
   server: {
-    host: '127.0.0.1',
+    host: 'localhost',
     port: 5173,
     strictPort: true,
+    open: false, // Não abrir navegador automaticamente
+    hmr: {
+      host: 'localhost',
+      port: 5173,
+    },
   },
   resolve: {
     alias: {

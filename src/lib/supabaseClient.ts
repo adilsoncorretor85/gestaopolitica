@@ -1,9 +1,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { logger } from './logger';
 
-// Valores padrão para fallback
-const DEFAULT_SUPABASE_URL = 'https://ojxwwjurwhwtoydywvch.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qeHd3anVyd2h3dG95ZHl3dmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4MDMzMzUsImV4cCI6MjA3MTM3OTMzNX0.yYNiRdi0Ve9fzdAHGYsIi1iQf4Lredve3PMbRjw41BI';
+// Valores padrão para fallback (LOCAL) - SEM CHAVES HARDCODED
+const DEFAULT_SUPABASE_URL = 'http://127.0.0.1:54321';
+const DEFAULT_SUPABASE_ANON_KEY = ''; // Não expor chaves no código!
 
 // Cliente Supabase lazy (inicializado sob demanda)
 let _supabase: SupabaseClient | null = null;
@@ -11,19 +11,33 @@ let _supabase: SupabaseClient | null = null;
 // Função para inicializar o cliente Supabase de forma segura
 function createSupabaseClient(): SupabaseClient {
   try {
-    // Tentar usar variáveis de ambiente diretamente primeiro
-    const url = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+    // OBRIGATÓRIO: usar apenas variáveis de ambiente
+    const url = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+    const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+    
+    // Validações de segurança
+    if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      throw new Error(`[Supabase] URL inválida: "${url}". Use uma URL válida do Supabase.`);
+    }
+    if (!anonKey) {
+      throw new Error('[Supabase] ANON KEY ausente.');
+    }
+    if (anonKey.startsWith('sb_publishable_')) {
+      throw new Error("[Supabase] No local, NÃO use 'sb_publishable_*'. Use a ANON (JWT que começa com 'eyJ').");
+    }
     
     if (import.meta.env.DEV) {
       logger.info('Carregando configuração do Supabase');
+      console.info('[SB URL]', url);
+      console.info('[SB KEY]', anonKey.slice(0, 10) + '...'); // Log do prefixo da chave
     }
     
-    return createClient(url, anonKey);
+    return createClient(url, anonKey, {
+      realtime: { params: { eventsPerSecond: 10 } },
+    });
   } catch (error) {
     console.error('Erro ao inicializar Supabase:', error);
-    // Fallback com valores diretos se tudo falhar
-    return createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY);
+    throw new Error('Falha ao inicializar Supabase. Verifique as variáveis de ambiente.');
   }
 }
 
