@@ -1,1 +1,4 @@
-{ "verify_jwt": false }
+{
+  "verify_jwt": false,
+  "require_authorization": false
+}

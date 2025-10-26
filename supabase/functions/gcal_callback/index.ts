@@ -91,16 +91,21 @@ export default async (req: Request) => {
       redirectUri: REDIRECT_URI 
     });
 
-    // Troca code por tokens no Google (com timeout de 5s - mais agressivo)
+    // Troca code por tokens no Google (com timeout de 3s - mais agressivo)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error('⏱️ Timeout de 5s atingido!');
+      console.error('⏱️ Timeout de 3s atingido!');
       controller.abort();
-    }, 5000);
+    }, 3000);
     
     let tokenRes;
     try {
       console.log('📡 Iniciando fetch para oauth2.googleapis.com...');
+      console.log('📡 Parâmetros:', {
+        code: code.substring(0, 10) + '...',
+        client_id: CLIENT_ID.substring(0, 10) + '...',
+        redirect_uri: REDIRECT_URI
+      });
       const fetchStart = Date.now();
       
       tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -119,6 +124,7 @@ export default async (req: Request) => {
       clearTimeout(timeoutId);
       const fetchDuration = Date.now() - fetchStart;
       console.log(`✅ Fetch completado em ${fetchDuration}ms`);
+      console.log(`📡 Status: ${tokenRes.status}`);
       
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
@@ -223,8 +229,8 @@ export default async (req: Request) => {
 
     console.log('✅ Google Calendar connected successfully!');
 
-    // Redireciona de volta ao app
-    return Response.redirect(`${siteUrl.replace(/\/$/, "")}/agenda?connected=1`, 302);
+    // Redireciona de volta ao app com status de sucesso
+    return Response.redirect(`${siteUrl.replace(/\/$/, "")}/agenda?gcal_status=success&email=${encodeURIComponent(email)}`, 302);
   } catch (err) {
     console.error('Callback error:', err);
     return new Response(JSON.stringify({ error: String(err) }), { 

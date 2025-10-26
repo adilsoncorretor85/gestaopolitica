@@ -25,7 +25,7 @@ export default async (req: Request) => {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
-    
+
     console.log('🔵 gcal_callback_public: Processing callback', {
       hasCode: !!code,
       codeLength: code?.length,
@@ -34,27 +34,27 @@ export default async (req: Request) => {
 
     if (!code) {
       console.log('❌ Missing code parameter');
-      return new Response(JSON.stringify({ error: "Missing code" }), { 
+      return new Response(JSON.stringify({ error: "Missing code" }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     // Configurações
-    const SUPABASE_URL = "https://ojxwwjurwhwtoydywvch.supabase.co";
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "https://ojxwwjurwhwtoydywvch.supabase.co";
     const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY") ?? "";
     const CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") ?? "";
     const CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") ?? "";
-    const REDIRECT_URI = "https://ojxwwjurwhwtoydywvch.supabase.co/functions/v1/gcal_callback_public";
-    const SITE_URL = "http://localhost:5173";
+    const REDIRECT_URI = Deno.env.get("GCAL_REDIRECT_URI") ?? "https://ojxwwjurwhwtoydywvch.supabase.co/functions/v1/gcal_callback_public";
+    const SITE_URL = Deno.env.get("SITE_URL") ?? "http://localhost:5173";
 
     if (!SERVICE_ROLE_KEY || !CLIENT_ID || !CLIENT_SECRET) {
-      console.error('❌ Missing env secrets:', { 
-        hasServiceRole: !!SERVICE_ROLE_KEY, 
-        hasClientId: !!CLIENT_ID, 
-        hasClientSecret: !!CLIENT_SECRET 
+      console.error('❌ Missing env secrets:', {
+        hasServiceRole: !!SERVICE_ROLE_KEY,
+        hasClientId: !!CLIENT_ID,
+        hasClientSecret: !!CLIENT_SECRET
       });
-      return new Response(JSON.stringify({ error: "Missing env secrets" }), { 
+      return new Response(JSON.stringify({ error: "Missing env secrets" }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -73,8 +73,8 @@ export default async (req: Request) => {
       ? state
       : crypto.randomUUID();
 
-    console.log('🔄 Exchanging code for tokens...', { 
-      hasCode: !!code, 
+    console.log('🔄 Exchanging code for tokens...', {
+      hasCode: !!code,
       codeLength: code?.length,
       clientIdPrefix: CLIENT_ID.substring(0, 10),
       redirectUri: REDIRECT_URI
@@ -126,23 +126,26 @@ export default async (req: Request) => {
       ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
       : new Date(Date.now() + 55 * 60 * 1000).toISOString();
 
-    const { error: upsertError } = await admin.from("gcal_accounts").upsert(
-      {
-        owner_profile_id: ownerId,
-        google_user_id: userInfo.sub,
-        email: userInfo.email,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token ?? "",
-        scope: tokens.scope ?? null,
-        token_type: tokens.token_type ?? null,
-        expires_at: expiresAt,
-      },
-      { onConflict: "owner_profile_id" }
-    );
+    // CORREÇÃO: Como a tabela tem índice único em (true) para singleton,
+    // precisamos deletar registros antigos e inserir novo
+    console.log('🗑️ Deletando registros antigos...');
+    await admin.from("gcal_accounts").delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-    if (upsertError) {
-      console.error("❌ Failed to save tokens:", upsertError);
-      return new Response(JSON.stringify({ error: "Failed to save tokens", details: upsertError.message }), {
+    console.log('💾 Inserindo novos tokens...');
+    const { error: insertError } = await admin.from("gcal_accounts").insert({
+      owner_profile_id: ownerId,
+      google_user_id: userInfo.sub,
+      email: userInfo.email,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token ?? "",
+      scope: tokens.scope ?? null,
+      token_type: tokens.token_type ?? null,
+      expires_at: expiresAt,
+    });
+
+    if (insertError) {
+      console.error("❌ Failed to save tokens:", insertError);
+      return new Response(JSON.stringify({ error: "Failed to save tokens", details: insertError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -150,8 +153,8 @@ export default async (req: Request) => {
 
     console.log("✅ Google Calendar connected successfully!");
 
-    // Redirecionar para o frontend
-    return Response.redirect(`${SITE_URL}/agenda?gcal_connected=true`, 302);
+    // Redirecionar para o frontend com status de sucesso
+    return Response.redirect(`${SITE_URL}/agenda?gcal_status=success&email=${encodeURIComponent(userInfo.email)}`, 302);
 
   } catch (err: any) {
     console.error("❌ gcal_callback_public error:", err);

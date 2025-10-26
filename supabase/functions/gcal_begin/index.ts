@@ -14,7 +14,16 @@ Deno.serve(async (req) => {
     const SUPABASE_URL  = (Deno.env.get('SUPABASE_URL') || '').trim();
     const ANON_KEY      = (Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('ANON_KEY') || '').trim();
     const CLIENT_ID     = (Deno.env.get('GOOGLE_CLIENT_ID') || Deno.env.get('GCAL_CLIENT_ID') || '').trim();
-    const REDIRECT_URI  = (Deno.env.get('GCAL_REDIRECT_URI') || 'https://ojxwwjurwhwtoydywvch.supabase.co/functions/v1/gcal_callback_public').trim();
+    const BASE_REDIRECT_URI  = (Deno.env.get('GCAL_REDIRECT_URI') || 'https://ojxwwjurwhwtoydywvch.supabase.co/functions/v1/gcal_callback_public').trim();
+    // Adicionar apikey na URL para permitir que Edge Function aceite callback do Google (free tier exige)
+    const REDIRECT_URI = `${BASE_REDIRECT_URI}?apikey=${ANON_KEY}`;
+    
+    console.log('🔵 gcal_begin: Environment variables', {
+      SUPABASE_URL: SUPABASE_URL ? 'SET' : 'NOT SET',
+      ANON_KEY: ANON_KEY ? 'SET' : 'NOT SET',
+      CLIENT_ID: CLIENT_ID ? 'SET' : 'NOT SET',
+      REDIRECT_URI: REDIRECT_URI ? 'SET' : 'NOT SET'
+    });
 
     if (!CLIENT_ID || !REDIRECT_URI) {
       return new Response(JSON.stringify({
@@ -42,6 +51,13 @@ Deno.serve(async (req) => {
       'https://www.googleapis.com/auth/calendar'
     ].join(' ');
 
+    console.log('🔵 gcal_begin: Creating auth URL', {
+      CLIENT_ID: CLIENT_ID,
+      BASE_REDIRECT_URI: BASE_REDIRECT_URI,
+      REDIRECT_URI_has_apikey: REDIRECT_URI.includes('apikey='),
+      state: state
+    });
+    
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     authUrl.searchParams.set('client_id', CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', REDIRECT_URI);   // <- callback da Function

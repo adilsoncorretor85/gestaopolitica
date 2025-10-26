@@ -44,3 +44,39 @@ supabase/.branches/
 # Test coverage
 coverage/
 .nyc_output/
+
+# Arquivos temporários e de desenvolvimento
+CLAUDE.md
+.claude/
+AGENDA_TEMPORARIA.md
+test_gcal_flow.md
+
+# Scripts de teste e debug
+check_*.js
+debug_*.js
+test_*.js
+clone_*.js
+import_*.js
+final_*.js
+sync_*.js
+disable_*.js
+create_admin_*.js
+
+# Scripts SQL temporários/de teste
+create_admin_*.sql
+create_tables.sql
+create_admin_final.sql
+fix_*.sql
+clear_*.sql
+dados_online.sql
+schema_online.sql
+public_data_inserts.sql
+import_data.sql
+import_public_data.sql
+import_data_with_admin_reference.sql
+import_with_*.sql
+
+# Manter apenas os arquivos SQL necessários:
+# - apply_whatsapp_unique_rule.sql (função check_whatsapp_exists)
+# - apply_missing_rpc_functions.sql (funções RPC essenciais)
+# - supabase/migrations/*.sql (schemas do banco)

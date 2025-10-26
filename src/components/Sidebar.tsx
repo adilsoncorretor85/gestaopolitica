@@ -20,7 +20,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeTab, setActive
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: Home },
     { id: 'pessoas', label: 'Pessoas', to: '/pessoas', icon: Users },
-    // { id: 'agenda', label: 'Agenda', to: '/agenda', icon: Calendar }, // Temporariamente removido
     { id: 'lideres', label: 'Líderes', to: '/lideres', icon: Shield, onlyAdmin: true },
     { id: 'tags', label: 'Tags', to: '/admin/tags', icon: Tags, onlyAdmin: true },
     { id: 'projecao', label: 'Projeção', to: '/projecao', icon: BarChart3, onlyAdmin: true },

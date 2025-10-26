@@ -18,10 +18,10 @@ const Lideres = lazy(() => import("@/pages/Lideres"));
 const LideresForm = lazy(() => import("@/pages/LideresForm"));
 const Projecao = lazy(() => import("@/pages/Projecao"));
 const AdminTags = lazy(() => import("@/pages/AdminTags"));
-// const Agenda = lazy(() => import("@/pages/Agenda")); // Temporariamente removido
 const Convite = lazy(() => import("@/pages/Convite"));
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const ContaBloqueada = lazy(() => import("@/pages/ContaBloqueada"));
+// const Agenda = lazy(() => import("@/pages/Agenda")); // Temporariamente desabilitado
 
 // Preload das páginas mais importantes
 const preloadDashboard = () => import("@/pages/Dashboard");
@@ -156,16 +156,15 @@ function AppWithPreload() {
             }
           />
 
-          {/* Temporariamente removido - página Agenda em desenvolvimento
-          <Route
+          {/* Temporariamente desabilitado - Agenda */}
+          {/* <Route
             path="/agenda"
             element={
               <RouteGuard>
                 <Agenda />
               </RouteGuard>
             }
-          />
-          */}
+          /> */}
           
           <Route path="/convite" element={<Convite />} />
           

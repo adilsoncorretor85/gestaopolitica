@@ -32,21 +32,12 @@ export async function checkWhatsAppDuplicate(whatsapp: string, currentPersonId?:
     const normalizedWhatsapp = whatsapp.replace(/\D/g, '');
     const supabase = getSupabaseClient();
     
-    // Buscar pessoa existente com informações do owner
-    const { data: existingPerson, error } = await supabase
-      .from("people")
-      .select(`
-        id,
-        whatsapp,
-        full_name,
-        owner:profiles!owner_id(
-          id,
-          full_name,
-          role
-        )
-      `)
-      .eq('whatsapp', normalizedWhatsapp)
-      .maybeSingle();
+    // Usar a função RPC que ignora RLS para verificar duplicatas entre todos os líderes
+    const { data, error } = await supabase
+      .rpc('check_whatsapp_exists', {
+        p_whatsapp: normalizedWhatsapp,
+        p_current_person_id: currentPersonId || null
+      });
     
     if (error) {
       if (import.meta.env.DEV) {
@@ -55,15 +46,23 @@ export async function checkWhatsAppDuplicate(whatsapp: string, currentPersonId?:
       return { isDuplicate: false };
     }
     
-    // Se encontrou uma pessoa e não é a mesma que está sendo editada
-    if (existingPerson && existingPerson.id !== currentPersonId) {
-      const ownerRole = Array.isArray(existingPerson.owner) 
-        ? (existingPerson.owner[0] as { role?: string })?.role 
-        : (existingPerson.owner as { role?: string })?.role;
+    // A função RPC retorna um array com um único resultado
+    const result = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    
+    // Se encontrou uma duplicata
+    if (result && result.is_duplicate) {
+      const ownerRole = result.owner_role;
+      const ownerName = result.owner_name || 'usuário';
       const roleText = ownerRole === 'ADMIN' ? 'administrador' : 'líder';
+      
+      // Formatar data de criação para mostrar quando foi cadastrado
+      const createdDate = result.created_at 
+        ? new Date(result.created_at).toLocaleDateString('pt-BR')
+        : '';
+      
       return {
         isDuplicate: true,
-        message: `Já existe uma pessoa cadastrada com este WhatsApp pelo ${roleText} ${(Array.isArray(existingPerson.owner) ? (existingPerson.owner[0] as { full_name?: string })?.full_name : (existingPerson.owner as { full_name?: string })?.full_name) || 'usuário'}.`
+        message: `Este WhatsApp já foi cadastrado pelo ${roleText} ${ownerName}${createdDate ? ` em ${createdDate}` : ''}. Cada número pode ser cadastrado apenas uma vez no sistema.`
       };
     }
     
