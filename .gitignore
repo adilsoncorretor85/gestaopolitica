@@ -40,6 +40,7 @@ backups/
 # Supabase local
 supabase/.temp/
 supabase/.branches/
+supabase/config.toml
 
 # Test coverage
 coverage/
